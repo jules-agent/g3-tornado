@@ -129,19 +129,19 @@ export default async function Home({
       <div className="card p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Hit List</h1>
+            <h1 className="text-3xl page-title">Hit List</h1>
             <div className="flex items-center gap-4 mt-2">
               <span className="flex items-center gap-1.5 text-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-slate-600">{stats.open} open</span>
+                <span className="text-slate-600 dark:text-slate-400">{stats.open} open</span>
               </span>
               <span className="flex items-center gap-1.5 text-sm">
                 <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                <span className="text-slate-600">{stats.overdue} overdue</span>
+                <span className="text-slate-600 dark:text-slate-400">{stats.overdue} overdue</span>
               </span>
               <span className="flex items-center gap-1.5 text-sm">
                 <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                <span className="text-slate-600">{stats.blocked} blocked</span>
+                <span className="text-slate-600 dark:text-slate-400">{stats.blocked} blocked</span>
               </span>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default async function Home({
             {isAdmin && (
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 transition"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -173,15 +173,15 @@ export default async function Home({
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm">
           {filters.map((f) => (
             <Link
               key={f.key}
               href={`/?filter=${f.key}${projectFilter !== "all" ? `&project=${projectFilter}` : ""}`}
-              className={`px-4 py-2 text-sm font-medium border-r border-slate-200 last:border-r-0 transition ${
+              className={`px-4 py-2 text-sm font-medium border-r border-slate-200 dark:border-slate-700 last:border-r-0 transition ${
                 filter === f.key
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
+                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
               }`}
             >
               <span className={f.color && filter !== f.key ? f.color : undefined}>{f.label}</span>
@@ -200,7 +200,7 @@ export default async function Home({
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="table-header text-left text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="table-header text-left text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <th className="px-4 py-3 font-semibold w-16">ID</th>
               <th className="px-4 py-3 font-semibold">Task</th>
               <th className="px-4 py-3 font-semibold w-32">Project</th>
@@ -210,16 +210,16 @@ export default async function Home({
               <th className="px-4 py-3 font-semibold w-24 text-center">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {filteredTasks.length > 0 ? (
               filteredTasks.map((task) => {
                 let rowClasses = "table-row";
                 if (task.status === "closed") {
-                  rowClasses += " bg-slate-50/50 text-slate-400";
+                  rowClasses += " bg-slate-50/50 dark:bg-slate-800/50 text-slate-400";
                 } else if (task.isOverdue) {
-                  rowClasses += " bg-gradient-to-r from-red-50 to-transparent border-l-4 border-l-red-500";
+                  rowClasses += " bg-gradient-to-r from-red-50 dark:from-red-900/20 to-transparent border-l-4 border-l-red-500";
                 } else if (task.is_blocked) {
-                  rowClasses += " bg-gradient-to-r from-amber-50 to-transparent border-l-4 border-l-amber-500";
+                  rowClasses += " bg-gradient-to-r from-amber-50 dark:from-amber-900/20 to-transparent border-l-4 border-l-amber-500";
                 }
 
                 return (
@@ -231,7 +231,7 @@ export default async function Home({
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/tasks/${task.id}`} className="group">
-                        <span className={`group-hover:text-cyan-600 transition ${task.status === "closed" ? "text-slate-400" : "text-slate-800 font-medium"}`}>
+                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400" : "text-slate-800 dark:text-slate-100 font-medium"}`}>
                           {task.description}
                         </span>
                       </Link>
@@ -246,13 +246,13 @@ export default async function Home({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 truncate max-w-32">
                       {task.projects?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 truncate max-w-32">
                       {task.ownerNames || "—"}
                     </td>
-                    <td className="px-4 py-3 text-center text-slate-400 text-xs">
+                    <td className="px-4 py-3 text-center text-slate-400 dark:text-slate-500 text-xs">
                       {task.fu_cadence_days}d
                     </td>
                     <td className="px-4 py-3 text-center">

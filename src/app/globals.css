@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Inter font for modern SaaS look */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root {
   /* G3-Tornado Brand Colors */
   --g3-navy: #0f172a;
@@ -7,56 +10,88 @@
   --g3-cyan: #06b6d4;
   --g3-teal: #14b8a6;
   --g3-blue: #3b82f6;
-  --g3-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0891b2 100%);
   
+  /* Light theme */
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #1e293b;
   --border: #e2e8f0;
   --input: #f1f5f9;
-  --ring: #06b6d4;
+  --muted: #64748b;
   --accent: #06b6d4;
-  --accent-foreground: #ffffff;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --border: #334155;
+  --input: #1e293b;
+  --muted: #94a3b8;
+  --accent: #22d3ee;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-}
-
-/* Subtle pattern background */
-.bg-pattern {
-  background-image: url('/g3-pattern-subtle.png');
-  background-size: 400px;
-  background-repeat: repeat;
-  opacity: 0.03;
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* Card styling */
 .card {
-  background: white;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: 16px;
   border: 1px solid var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.dark .card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Brand typography */
+.brand-title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--g3-navy) 0%, var(--g3-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .brand-title {
+  background: linear-gradient(135deg, #ffffff 0%, var(--g3-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
 /* Status badges */
 .status-open {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+}
+
+.dark .status-open {
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  color: #6ee7b7;
 }
 
 .status-overdue {
@@ -64,52 +99,45 @@ body {
   color: #991b1b;
 }
 
+.dark .status-overdue {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fca5a5;
+}
+
 .status-blocked {
-  background: linear-gradient(135deg, #e9d5ff, #d8b4fe);
-  color: #6b21a8;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.dark .status-blocked {
+  background: linear-gradient(135deg, #78350f, #92400e);
+  color: #fde68a;
 }
 
 .status-closed {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  color: #065f46;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  color: #475569;
 }
 
-/* Brand gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.dark .status-closed {
+  background: linear-gradient(135deg, #334155, #475569);
+  color: #cbd5e1;
 }
 
 /* Button styling */
 .btn-primary {
-  background: linear-gradient(135deg, var(--g3-navy), var(--g3-navy-light));
+  background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));
   color: white;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 20px;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
-}
-
-.btn-accent {
-  background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));
-  color: white;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-accent:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35);
 }
 
 /* Table styling */
@@ -118,12 +146,20 @@ body {
   border-bottom: 2px solid var(--border);
 }
 
+.dark .table-header {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+}
+
 .table-row {
   transition: all 0.15s;
 }
 
 .table-row:hover {
   background: #f8fafc;
+}
+
+.dark .table-row:hover {
+  background: #1e293b;
 }
 
 /* Scrollbar styling */
@@ -137,9 +173,17 @@ body {
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
 }
 
 ::-webkit-scrollbar-thumb:hover {
