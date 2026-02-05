@@ -8,8 +8,9 @@ import TaskActions from "@/components/TaskActions";
 export default async function TaskDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const {
@@ -43,12 +44,12 @@ export default async function TaskDetailPage({
           task_owners (owner_id, owners (id, name))
         `
         )
-        .eq("id", params.id)
+        .eq("id", id)
         .single(),
       supabase
         .from("task_notes")
         .select("id, content, created_at, created_by, profiles (full_name, email)")
-        .eq("task_id", params.id)
+        .eq("task_id", id)
         .order("created_at", { ascending: false }),
       supabase.from("owners").select("id, name").order("name"),
       supabase.from("projects").select("id, name").order("name"),
