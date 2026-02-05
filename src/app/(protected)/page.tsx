@@ -195,9 +195,9 @@ export default async function Home({
                 if (task.status === "closed") {
                   rowBg = "bg-slate-50 text-slate-400 hover:bg-slate-100";
                 } else if (task.isOverdue) {
-                  rowBg = "bg-red-50 hover:bg-red-100";
+                  rowBg = "bg-red-100 hover:bg-red-200 border-l-4 border-l-red-500";
                 } else if (task.is_blocked) {
-                  rowBg = "bg-amber-50 hover:bg-amber-100";
+                  rowBg = "bg-amber-100 hover:bg-amber-200";
                 }
 
                 return (
@@ -213,6 +213,9 @@ export default async function Home({
                           {task.description}
                         </span>
                       </Link>
+                      {task.isOverdue && (
+                        <span className="ml-2 text-[10px] bg-red-500 text-white px-1 py-0.5 rounded font-bold">OVERDUE</span>
+                      )}
                       {task.is_blocked && (
                         <span className="ml-2 text-[10px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded">BLOCKED</span>
                       )}
