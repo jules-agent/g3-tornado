@@ -58,13 +58,16 @@ export default async function TaskDetailPage({
     notFound();
   }
 
+  const taskOwners = task.task_owners as unknown as
+    | { owner_id: string; owners: { name: string } | null }[]
+    | null;
   const ownerNames =
-    task.task_owners
-      ?.map((owner) => owner.owners?.name)
+    taskOwners
+      ?.map((to) => to.owners?.name)
       .filter(Boolean)
       .join(", ") || "Unassigned";
   const selectedOwnerIds =
-    task.task_owners?.map((owner) => owner.owner_id).filter(Boolean) ?? [];
+    taskOwners?.map((to) => to.owner_id).filter(Boolean) ?? [];
 
   const daysSinceMovement = Math.floor(
     (Date.now() - new Date(task.last_movement_at).getTime()) /
@@ -113,7 +116,7 @@ export default async function TaskDetailPage({
                   Project
                 </div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {task.projects?.name ?? "No project"}
+                  {(task.projects as unknown as { name: string } | null)?.name ?? "No project"}
                 </div>
               </div>
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -171,7 +174,10 @@ export default async function TaskDetailPage({
                   >
                     <div className="text-sm text-slate-700">{note.content}</div>
                     <div className="mt-2 text-xs text-slate-400">
-                      {note.profiles?.full_name || note.profiles?.email || "Unknown"}
+                      {(() => {
+                        const profile = note.profiles as unknown as { full_name: string | null; email: string } | null;
+                        return profile?.full_name || profile?.email || "Unknown";
+                      })()}
                       {" • "}
                       {new Date(note.created_at).toLocaleString()}
                     </div>

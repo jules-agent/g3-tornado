@@ -105,9 +105,12 @@ export default async function Home() {
                   (1000 * 60 * 60 * 24)
               );
               const isOverdue = daysSinceMovement > task.fu_cadence_days;
+              const taskOwners = task.task_owners as unknown as
+                | { owner_id: string; owners: { name: string } | null }[]
+                | null;
               const owners =
-                task.task_owners
-                  ?.map((owner) => owner.owners?.name)
+                taskOwners
+                  ?.map((to) => to.owners?.name)
                   .filter(Boolean)
                   .join(", ") || "Unassigned";
 
@@ -135,7 +138,7 @@ export default async function Home() {
                       {task.description}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                      <span>{task.projects?.name ?? "No project"}</span>
+                      <span>{(task.projects as unknown as { name: string } | null)?.name ?? "No project"}</span>
                       <span>•</span>
                       <span>FU {task.fu_cadence_days}d</span>
                       <span>•</span>
