@@ -51,6 +51,12 @@ export default async function Home() {
             >
               + New Task
             </Link>
+            <Link
+              href="/issues"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"
+            >
+              🚨 Issues
+            </Link>
             <div className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600">
               {projects?.length ?? 0} projects active
             </div>
