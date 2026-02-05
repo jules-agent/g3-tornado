@@ -4,6 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 export default async function Home() {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Admin check - hardcoded for now
+  const isAdmin = user?.email === "ben@unpluggedperformance.com";
+
   const [{ data: projects }, { data: tasks }] = await Promise.all([
     supabase.from("projects").select("id, name").order("created_at", {
       ascending: false,
@@ -57,6 +64,14 @@ export default async function Home() {
             >
               🚨 Issues
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm transition hover:bg-purple-100"
+              >
+                ⚙️ Admin
+              </Link>
+            )}
             <div className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600">
               {projects?.length ?? 0} projects active
             </div>
