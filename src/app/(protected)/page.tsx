@@ -1,20 +1,36 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { ProjectFilter } from "@/components/ProjectFilter";
 
-export default async function Home() {
+type Task = {
+  id: string;
+  description: string;
+  status: string;
+  is_blocked: boolean;
+  fu_cadence_days: number;
+  last_movement_at: string;
+  task_number: string | null;
+  project_id: string;
+  projects: { id: string; name: string } | null;
+  task_owners: { owner_id: string; owners: { id: string; name: string } | null }[] | null;
+};
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string; project?: string; sort?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Admin check - hardcoded for now
   const isAdmin = user?.email === "ben@unpluggedperformance.com";
 
-  const [{ data: projects }, { data: tasks }] = await Promise.all([
-    supabase.from("projects").select("id, name").order("created_at", {
-      ascending: false,
-    }),
+  const [{ data: projects }, { data: allTasks }] = await Promise.all([
+    supabase.from("projects").select("id, name").order("name"),
     supabase
       .from("tasks")
       .select(
@@ -31,162 +47,223 @@ export default async function Home() {
         task_owners (owner_id, owners (id, name))
       `
       )
-      .order("created_at", { ascending: false })
-      .limit(50),
+      .order("task_number", { ascending: true }),
   ]);
 
-  const totalTasks = tasks?.length ?? 0;
-  const openTasks = tasks?.filter((task) => task.status === "open").length ?? 0;
-  const blockedTasks = tasks?.filter((task) => task.is_blocked).length ?? 0;
+  // Calculate days and overdue status for each task
+  const tasksWithDays = (allTasks as Task[] | null)?.map((task) => {
+    const daysSinceMovement = Math.floor(
+      (Date.now() - new Date(task.last_movement_at).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+    const isOverdue = task.status === "open" && daysSinceMovement > task.fu_cadence_days;
+    const owners =
+      task.task_owners
+        ?.map((to) => to.owners?.name)
+        .filter(Boolean)
+        .join(", ") || "";
+    return { ...task, daysSinceMovement, isOverdue, ownerNames: owners };
+  }) ?? [];
+
+  // Filter tasks
+  const filter = params.filter || "open";
+  const projectFilter = params.project || "all";
+  
+  let filteredTasks = tasksWithDays;
+  
+  if (filter === "open") {
+    filteredTasks = filteredTasks.filter((t) => t.status === "open");
+  } else if (filter === "closed") {
+    filteredTasks = filteredTasks.filter((t) => t.status === "closed");
+  } else if (filter === "blocked") {
+    filteredTasks = filteredTasks.filter((t) => t.is_blocked);
+  } else if (filter === "overdue") {
+    filteredTasks = filteredTasks.filter((t) => t.isOverdue);
+  }
+  
+  if (projectFilter !== "all") {
+    filteredTasks = filteredTasks.filter((t) => t.project_id === projectFilter);
+  }
+
+  // Sort - default by overdue first, then by days descending
+  const sort = params.sort || "priority";
+  if (sort === "priority") {
+    filteredTasks.sort((a, b) => {
+      // Overdue first
+      if (a.isOverdue && !b.isOverdue) return -1;
+      if (!a.isOverdue && b.isOverdue) return 1;
+      // Then blocked
+      if (a.is_blocked && !b.is_blocked) return -1;
+      if (!a.is_blocked && b.is_blocked) return 1;
+      // Then by days descending
+      return b.daysSinceMovement - a.daysSinceMovement;
+    });
+  } else if (sort === "id") {
+    filteredTasks.sort((a, b) => (a.task_number ?? "").localeCompare(b.task_number ?? ""));
+  } else if (sort === "days") {
+    filteredTasks.sort((a, b) => b.daysSinceMovement - a.daysSinceMovement);
+  } else if (sort === "project") {
+    filteredTasks.sort((a, b) => (a.projects?.name ?? "").localeCompare(b.projects?.name ?? ""));
+  }
+
+  // Stats
+  const stats = {
+    total: allTasks?.length ?? 0,
+    open: tasksWithDays.filter((t) => t.status === "open").length,
+    closed: tasksWithDays.filter((t) => t.status === "closed").length,
+    blocked: tasksWithDays.filter((t) => t.is_blocked).length,
+    overdue: tasksWithDays.filter((t) => t.isOverdue).length,
+  };
+
+  const filters = [
+    { key: "all", label: "All", count: stats.total },
+    { key: "open", label: "Open", count: stats.open },
+    { key: "overdue", label: "🔴 Overdue", count: stats.overdue },
+    { key: "blocked", label: "⛔ Blocked", count: stats.blocked },
+    { key: "closed", label: "Closed", count: stats.closed },
+  ];
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Today&apos;s Hit List
-            </h1>
-            <p className="text-sm text-slate-500">
-              Follow-ups, blockers, and next moves across active projects.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Hit List</h1>
+          <p className="text-xs text-slate-500">{stats.open} open · {stats.overdue} overdue · {stats.blocked} blocked</p>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/tasks/new"
+            className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            + New Task
+          </Link>
+          {isAdmin && (
             <Link
-              href="/tasks/new"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              href="/admin"
+              className="rounded border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
-              + New Task
+              Admin
             </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex rounded border border-slate-200 bg-white text-xs">
+          {filters.map((f) => (
             <Link
-              href="/issues"
-              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"
+              key={f.key}
+              href={`/?filter=${f.key}${projectFilter !== "all" ? `&project=${projectFilter}` : ""}`}
+              className={`px-3 py-1.5 border-r border-slate-200 last:border-r-0 ${
+                filter === f.key
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
             >
-              🚨 Issues
+              {f.label} <span className="text-slate-400 ml-1">{f.count}</span>
             </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm transition hover:bg-purple-100"
-              >
-                ⚙️ Admin
-              </Link>
-            )}
-            <div className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600">
-              {projects?.length ?? 0} projects active
-            </div>
-          </div>
+          ))}
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Total Tasks
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">
-              {totalTasks}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Open
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-emerald-600">
-              {openTasks}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Blocked
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-rose-600">
-              {blockedTasks}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Projects
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">
-              {projects?.length ?? 0}
-            </div>
-          </div>
-        </div>
-      </section>
+        <ProjectFilter 
+          projects={projects ?? []} 
+          currentFilter={filter} 
+          currentProject={projectFilter} 
+        />
+      </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Hit List</h2>
-          <span className="text-sm text-slate-400">Last 50 tasks</span>
-        </div>
-        {tasks && tasks.length > 0 ? (
-          <div className="divide-y divide-slate-100">
-            {tasks.map((task) => {
-              const daysSinceMovement = Math.floor(
-                (Date.now() - new Date(task.last_movement_at).getTime()) /
-                  (1000 * 60 * 60 * 24)
-              );
-              const isOverdue = daysSinceMovement > task.fu_cadence_days;
-              const taskOwners = task.task_owners as unknown as
-                | { owner_id: string; owners: { name: string } | null }[]
-                | null;
-              const owners =
-                taskOwners
-                  ?.map((to) => to.owners?.name)
-                  .filter(Boolean)
-                  .join(", ") || "Unassigned";
+      {/* Table */}
+      <div className="rounded border border-slate-200 bg-white overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide">
+              <th className="px-3 py-2 font-semibold w-16">ID</th>
+              <th className="px-3 py-2 font-semibold">Task</th>
+              <th className="px-3 py-2 font-semibold w-28">Project</th>
+              <th className="px-3 py-2 font-semibold w-28">Owner</th>
+              <th className="px-3 py-2 font-semibold w-16 text-center">Cadence</th>
+              <th className="px-3 py-2 font-semibold w-16 text-center">Days</th>
+              <th className="px-3 py-2 font-semibold w-20 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredTasks.length > 0 ? (
+              filteredTasks.map((task) => {
+                // Row background color logic
+                let rowBg = "hover:bg-slate-50";
+                if (task.status === "closed") {
+                  rowBg = "bg-slate-50 text-slate-400 hover:bg-slate-100";
+                } else if (task.isOverdue) {
+                  rowBg = "bg-red-50 hover:bg-red-100";
+                } else if (task.is_blocked) {
+                  rowBg = "bg-amber-50 hover:bg-amber-100";
+                }
 
-              return (
-                <Link
-                  key={task.id}
-                  href={`/tasks/${task.id}`}
-                  className="group flex flex-col gap-4 px-6 py-5 transition hover:bg-slate-50 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      {task.is_blocked && (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-rose-700">
-                          Blocked
+                return (
+                  <tr key={task.id} className={`${rowBg} transition-colors`}>
+                    <td className="px-3 py-2">
+                      <Link href={`/tasks/${task.id}`} className="text-slate-500 hover:text-slate-900 font-mono">
+                        {task.task_number || "—"}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Link href={`/tasks/${task.id}`} className="hover:underline">
+                        <span className={task.status === "closed" ? "text-slate-400" : "text-slate-900 font-medium"}>
+                          {task.description}
                         </span>
+                      </Link>
+                      {task.is_blocked && (
+                        <span className="ml-2 text-[10px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded">BLOCKED</span>
                       )}
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-                        {task.status.replace("_", " ")}
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 truncate max-w-28">
+                      {task.projects?.name ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 truncate max-w-28">
+                      {task.ownerNames || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-center text-slate-400">
+                      {task.fu_cadence_days}d
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`font-bold ${
+                        task.status === "closed" 
+                          ? "text-slate-300" 
+                          : task.isOverdue 
+                            ? "text-red-600" 
+                            : "text-emerald-600"
+                      }`}>
+                        {task.daysSinceMovement}
                       </span>
-                      {task.task_number && (
-                        <span className="text-slate-400">#{task.task_number}</span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {task.status === "closed" ? (
+                        <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">CLOSED</span>
+                      ) : task.status === "close_requested" ? (
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">PENDING</span>
+                      ) : (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">OPEN</span>
                       )}
-                    </div>
-                    <div className="text-base font-semibold text-slate-900 group-hover:text-slate-950">
-                      {task.description}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                      <span>{(task.projects as unknown as { name: string } | null)?.name ?? "No project"}</span>
-                      <span>•</span>
-                      <span>{task.fu_cadence_days}d cadence</span>
-                      <span>•</span>
-                      <span>{owners}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div
-                      className={`text-sm font-semibold ${
-                        isOverdue ? "text-rose-600" : "text-emerald-600"
-                      }`}
-                    >
-                      {daysSinceMovement}d
-                    </div>
-                    <div className="text-xs text-slate-400">since movement</div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="px-6 py-12 text-center text-slate-500">
-            <div className="text-4xl">📋</div>
-            <p className="mt-3">No tasks yet. Create your first task to get started!</p>
-          </div>
-        )}
-      </section>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-slate-400">
+                  No tasks match your filters
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer stats */}
+      <div className="text-xs text-slate-400 text-right">
+        Showing {filteredTasks.length} of {stats.total} tasks
+      </div>
     </div>
   );
 }
