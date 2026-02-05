@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -48,11 +47,11 @@ export default function AppHeader({ user }: AppHeaderProps) {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/g3-logo-abstract.png"
                 alt="G3-Tornado"
-                fill
-                className="object-contain"
+                className="w-full h-full object-contain"
               />
             </div>
             <div>
