@@ -185,7 +185,7 @@ export default async function Home({
               }`}
             >
               <span className={f.color && filter !== f.key ? f.color : undefined}>{f.label}</span>
-              <span className={`ml-1.5 ${filter === f.key ? "text-slate-400" : "text-slate-400"}`}>{f.count}</span>
+              <span className={`ml-1.5 ${filter === f.key ? "text-white/60" : "text-slate-400 dark:text-slate-500"}`}>{f.count}</span>
             </Link>
           ))}
         </div>
@@ -225,13 +225,13 @@ export default async function Home({
                 return (
                   <tr key={task.id} className={rowClasses}>
                     <td className="px-4 py-3">
-                      <Link href={`/tasks/${task.id}`} className="text-slate-400 hover:text-cyan-600 font-mono text-xs">
+                      <Link href={`/tasks/${task.id}`} className="text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs">
                         {task.task_number || "—"}
                       </Link>
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/tasks/${task.id}`} className="group">
-                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400" : "text-slate-800 dark:text-slate-100 font-medium"}`}>
+                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white font-medium"}`}>
                           {task.description}
                         </span>
                       </Link>
@@ -241,7 +241,7 @@ export default async function Home({
                         </span>
                       )}
                       {task.is_blocked && (
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
                           BLOCKED
                         </span>
                       )}
@@ -270,11 +270,11 @@ export default async function Home({
                     </td>
                     <td className="px-4 py-3 text-center">
                       {task.status === "closed" ? (
-                        <span className="status-closed inline-flex px-2 py-1 rounded-full text-[10px] font-semibold">CLOSED</span>
+                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">CLOSED</span>
                       ) : task.status === "close_requested" ? (
-                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">PENDING</span>
+                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">PENDING</span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>
+                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">OPEN</span>
                       )}
                     </td>
                   </tr>
@@ -282,9 +282,9 @@ export default async function Home({
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
                   <div className="flex flex-col items-center gap-2">
-                    <svg className="w-12 h-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-12 h-12 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                     <span>No tasks match your filters</span>
@@ -297,7 +297,7 @@ export default async function Home({
       </div>
 
       {/* Footer stats */}
-      <div className="text-xs text-slate-400 text-right">
+      <div className="text-xs text-slate-400 dark:text-slate-500 text-right">
         Showing {filteredTasks.length} of {stats.total} tasks
       </div>
     </div>
