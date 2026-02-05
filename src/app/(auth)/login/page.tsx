@@ -51,7 +51,7 @@ export default function LoginPage() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
             <div className="font-semibold text-white">What you can do</div>
             <ul className="mt-3 space-y-2">
-              <li>• Assign owners and FU cadence to every task.</li>
+              <li>• Assign owners and follow-up cadence to every task.</li>
               <li>• Track movement with live note updates.</li>
               <li>• Request closes or approve them instantly.</li>
             </ul>

@@ -54,7 +54,7 @@ export default function SignupPage() {
             Activate
           </div>
           <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-            Bring every FU cadence, owner, and blocker into one view.
+            Track follow-ups, owners, and blockers in one view.
           </h1>
           <p className="text-base text-white/70 sm:text-lg">
             Create your account and keep the task movement visible for every
@@ -64,7 +64,7 @@ export default function SignupPage() {
             <div className="font-semibold text-white">After signup</div>
             <ul className="mt-3 space-y-2">
               <li>• Create tasks with owners + cadence.</li>
-              <li>• Add notes to reset FU timers.</li>
+              <li>• Add notes to reset follow-up timers.</li>
               <li>• Request task closure when done.</li>
             </ul>
           </div>

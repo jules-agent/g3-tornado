@@ -212,7 +212,7 @@ export default function TaskForm({
             </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                FU cadence (days)
+                Follow-up cadence (days)
               </label>
               <input
                 type="number"

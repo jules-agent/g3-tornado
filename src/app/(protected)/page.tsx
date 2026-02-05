@@ -140,7 +140,7 @@ export default async function Home() {
                     <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span>{(task.projects as unknown as { name: string } | null)?.name ?? "No project"}</span>
                       <span>•</span>
-                      <span>FU {task.fu_cadence_days}d</span>
+                      <span>{task.fu_cadence_days}d cadence</span>
                       <span>•</span>
                       <span>{owners}</span>
                     </div>
