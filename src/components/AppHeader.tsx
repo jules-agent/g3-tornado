@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -15,6 +16,7 @@ type AppHeaderProps = {
 
 export default function AppHeader({ user }: AppHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
@@ -34,50 +36,85 @@ export default function AppHeader({ user }: AppHeaderProps) {
     router.refresh();
   };
 
+  const navItems = [
+    { href: "/", label: "Hit List" },
+    { href: "/tasks/new", label: "New Task" },
+  ];
+
   return (
-    <header className="border-b bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl">🌪️</span>
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        {/* Logo & Brand */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
+              <Image
+                src="/g3-logo-abstract.png"
+                alt="G3-Tornado"
+                fill
+                className="object-contain"
+              />
+            </div>
             <div>
-              <div className="text-lg font-semibold text-slate-900">G3-Tornado</div>
-              <div className="text-xs text-slate-500">UP.FIT Task Management</div>
+              <div className="text-lg font-bold text-slate-900 tracking-tight">
+                G3-Tornado
+              </div>
+              <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                UP.FIT Task Management
+              </div>
             </div>
           </Link>
-          <nav className="hidden items-center gap-4 text-sm font-medium text-slate-600 md:flex">
-            <Link href="/" className="hover:text-slate-900">
-              Hit List
-            </Link>
-            <Link href="/tasks/new" className="hover:text-slate-900">
-              New Task
-            </Link>
+
+          {/* Navigation */}
+          <nav className="hidden items-center gap-1 md:flex">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    isActive
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* User Menu */}
+        <div className="flex items-center gap-4">
           <Link
             href="/tasks/new"
-            className="hidden rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 sm:inline-flex"
+            className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-cyan-500/25 transition hover:shadow-md hover:shadow-cyan-500/30 hover:-translate-y-0.5"
           >
-            + New Task
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
           </Link>
-          <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-1.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+
+          <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-900 text-xs font-bold text-white">
               {initials}
             </div>
             <div className="hidden text-sm sm:block">
-              <div className="font-medium text-slate-900">{displayName}</div>
-              <div className="text-xs text-slate-500">
+              <div className="font-semibold text-slate-800">{displayName}</div>
+              <div className="text-[10px] font-medium text-cyan-600 uppercase tracking-wide">
                 {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
               </div>
             </div>
             <button
               type="button"
               onClick={handleSignOut}
-              className="text-xs font-semibold uppercase tracking-wide text-slate-500 transition hover:text-slate-900"
+              disabled={isSigningOut}
+              className="ml-2 text-xs font-semibold uppercase tracking-wide text-slate-400 transition hover:text-red-500"
             >
-              {isSigningOut ? "Signing out" : "Sign out"}
+              {isSigningOut ? "..." : "Sign out"}
             </button>
           </div>
         </div>

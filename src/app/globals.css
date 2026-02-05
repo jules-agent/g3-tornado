@@ -1,8 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* G3-Tornado Brand Colors */
+  --g3-navy: #0f172a;
+  --g3-navy-light: #1e293b;
+  --g3-cyan: #06b6d4;
+  --g3-teal: #14b8a6;
+  --g3-blue: #3b82f6;
+  --g3-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0891b2 100%);
+  
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --border: #e2e8f0;
+  --input: #f1f5f9;
+  --ring: #06b6d4;
+  --accent: #06b6d4;
+  --accent-foreground: #ffffff;
 }
 
 @theme inline {
@@ -12,15 +27,121 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Subtle pattern background */
+.bg-pattern {
+  background-image: url('/g3-pattern-subtle.png');
+  background-size: 400px;
+  background-repeat: repeat;
+  opacity: 0.03;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Card styling */
+.card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* Status badges */
+.status-open {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.status-overdue {
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  color: #991b1b;
+}
+
+.status-blocked {
+  background: linear-gradient(135deg, #e9d5ff, #d8b4fe);
+  color: #6b21a8;
+}
+
+.status-closed {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+}
+
+/* Brand gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Button styling */
+.btn-primary {
+  background: linear-gradient(135deg, var(--g3-navy), var(--g3-navy-light));
+  color: white;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));
+  color: white;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-accent:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Table styling */
+.table-header {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-bottom: 2px solid var(--border);
+}
+
+.table-row {
+  transition: all 0.15s;
+}
+
+.table-row:hover {
+  background: #f8fafc;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
