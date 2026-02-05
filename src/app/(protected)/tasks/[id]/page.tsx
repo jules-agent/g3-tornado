@@ -203,7 +203,7 @@ export default async function TaskDetailPage({
               <TaskActions
                 taskId={task.id}
                 status={task.status}
-                isAdmin={profile?.role === "admin"}
+                isAdmin={profile?.role === "admin" || user?.email === "ben@unpluggedperformance.com"}
                 closeRequestedAt={task.close_requested_at}
               />
             </div>

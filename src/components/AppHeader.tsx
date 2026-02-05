@@ -69,7 +69,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <div className="hidden text-sm sm:block">
               <div className="font-medium text-slate-900">{displayName}</div>
               <div className="text-xs text-slate-500">
-                {user.role === "admin" ? "Admin" : "User"}
+                {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
               </div>
             </div>
             <button
