@@ -15,13 +15,22 @@ type ColumnConfig = {
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "id", label: "ID", width: 56, minWidth: 50, align: "left" },
-  { id: "task", label: "Task", width: 300, minWidth: 150, align: "left" },
-  { id: "project", label: "Project", width: 112, minWidth: 80, align: "left" },
-  { id: "owner", label: "Owner", width: 112, minWidth: 80, align: "left" },
-  { id: "cadence", label: "Cad.", width: 64, minWidth: 50, align: "center" },
-  { id: "days", label: "Days", width: 56, minWidth: 50, align: "center" },
-  { id: "status", label: "Status", width: 80, minWidth: 60, align: "center" },
+  { id: "task", label: "Task", width: 250, minWidth: 150, align: "left" },
+  { id: "project", label: "Project", width: 100, minWidth: 80, align: "left" },
+  { id: "updated", label: "Updated", width: 80, minWidth: 60, align: "left" },
+  { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left" },
+  { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left" },
+  { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left" },
+  { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center" },
+  { id: "days", label: "Days", width: 50, minWidth: 40, align: "center" },
+  { id: "status", label: "Status", width: 70, minWidth: 60, align: "center" },
 ];
+
+type Gate = {
+  name: string;
+  owner_name: string;
+  completed: boolean;
+};
 
 type Task = {
   id: string;
@@ -34,6 +43,9 @@ type Task = {
   projects: { id: string; name: string } | null;
   ownerNames: string;
   isOverdue: boolean;
+  last_movement_at: string;
+  gates: Gate[] | null;
+  next_step: string | null;
 };
 
 type TaskTableProps = {
@@ -47,6 +59,41 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   const [resizing, setResizing] = useState<{ id: string; startX: number; startWidth: number } | null>(null);
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
+  // Handle row selection with shift+click for bulk select
+  const handleRowClick = (e: React.MouseEvent, taskId: string, index: number) => {
+    if (e.shiftKey && lastSelectedIndex !== null) {
+      // Shift+click: select range
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const newSelected = new Set(selectedRows);
+      for (let i = start; i <= end; i++) {
+        newSelected.add(tasks[i].id);
+      }
+      setSelectedRows(newSelected);
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd+click: toggle single
+      const newSelected = new Set(selectedRows);
+      if (newSelected.has(taskId)) {
+        newSelected.delete(taskId);
+      } else {
+        newSelected.add(taskId);
+      }
+      setSelectedRows(newSelected);
+      setLastSelectedIndex(index);
+    } else {
+      // Normal click: select single (clear others)
+      setSelectedRows(new Set([taskId]));
+      setLastSelectedIndex(index);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedRows(new Set());
+    setLastSelectedIndex(null);
+  };
 
   // Load from localStorage
   useEffect(() => {
@@ -174,6 +221,27 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   return (
     <div>
+      {/* Selection banner */}
+      {selectedRows.size > 0 && (
+        <div className="mb-2 px-3 py-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-teal-800 dark:text-teal-200">
+            <span className="font-semibold">{selectedRows.size}</span> task{selectedRows.size > 1 ? "s" : ""} selected
+            <span className="text-teal-600 dark:text-teal-400 ml-2">(Shift+click to select range)</span>
+          </span>
+          <div className="flex gap-2">
+            <button 
+              onClick={clearSelection}
+              className="text-xs px-2 py-1 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              Clear
+            </button>
+            <button className="text-xs px-2 py-1 rounded bg-teal-500 text-white hover:bg-teal-600">
+              Bulk Edit
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Reset button */}
       <div className="flex justify-end mb-1">
         <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">
@@ -218,9 +286,12 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {tasks.length > 0 ? (
-                tasks.map((task) => {
-                  let rowClasses = "table-row";
-                  if (task.status === "closed") {
+                tasks.map((task, index) => {
+                  const isSelected = selectedRows.has(task.id);
+                  let rowClasses = "table-row cursor-pointer";
+                  if (isSelected) {
+                    rowClasses += " ring-2 ring-teal-500 ring-inset bg-teal-50 dark:bg-teal-900/20";
+                  } else if (task.status === "closed") {
                     rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400";
                   } else if (task.isOverdue) {
                     rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
@@ -231,7 +302,11 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                   }
 
                   return (
-                    <tr key={task.id} className={rowClasses}>
+                    <tr 
+                      key={task.id} 
+                      className={rowClasses}
+                      onClick={(e) => handleRowClick(e, task.id, index)}
+                    >
                       {columns.map((col) => (
                         <td key={col.id} className={`px-3 py-2 ${col.align === "center" ? "text-center" : ""}`}>
                           {renderCell(col.id, task)}
@@ -289,8 +364,58 @@ function renderCell(columnId: string, task: Task) {
     case "project":
       return <span className="text-slate-700 dark:text-slate-200 truncate text-sm">{task.projects?.name ?? "—"}</span>;
 
-    case "owner":
-      return <span className="text-slate-700 dark:text-slate-200 truncate text-sm">{task.ownerNames || "—"}</span>;
+    case "updated": {
+      const date = new Date(task.last_movement_at);
+      const now = new Date();
+      const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      let colorClass = "text-green-600";
+      let displayText = "Today";
+      if (diffDays === 1) {
+        displayText = "1d ago";
+        colorClass = "text-green-600";
+      } else if (diffDays > 1 && diffDays <= 3) {
+        displayText = `${diffDays}d ago`;
+        colorClass = "text-yellow-600";
+      } else if (diffDays > 3) {
+        displayText = `${diffDays}d ago`;
+        colorClass = "text-red-600";
+      }
+      return <span className={`text-xs font-medium ${colorClass}`}>{displayText}</span>;
+    }
+
+    case "currentGate": {
+      const gates = task.gates || [];
+      const currentIdx = gates.findIndex(g => !g.completed);
+      if (currentIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
+      const gate = gates[currentIdx];
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium">
+          <span className="opacity-60">{currentIdx + 1}/{gates.length}</span>
+          <span className="truncate">{gate.owner_name}</span>
+        </span>
+      );
+    }
+
+    case "nextGate": {
+      const gates = task.gates || [];
+      const currentIdx = gates.findIndex(g => !g.completed);
+      const nextIdx = currentIdx >= 0 ? gates.findIndex((g, i) => i > currentIdx && !g.completed) : -1;
+      if (nextIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
+      const gate = gates[nextIdx];
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-medium">
+          <span className="opacity-60">{nextIdx + 1}/{gates.length}</span>
+          <span className="truncate">{gate.owner_name}</span>
+        </span>
+      );
+    }
+
+    case "nextStep":
+      return (
+        <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>
+          {task.next_step || "—"}
+        </span>
+      );
 
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;

@@ -68,6 +68,8 @@ CREATE TABLE tasks (
   
   -- Close request (for non-admin users)
   close_requested_at TIMESTAMPTZ,
+  gates JSONB DEFAULT '[]',
+  next_step TEXT,
   close_requested_by UUID REFERENCES profiles(id),
   
   -- Metadata

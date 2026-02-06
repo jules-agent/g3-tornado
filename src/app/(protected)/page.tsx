@@ -4,6 +4,12 @@ import { ProjectFilter } from "@/components/ProjectFilter";
 import { SearchBox } from "@/components/SearchBox";
 import { TaskTable } from "@/components/TaskTable";
 
+type Gate = {
+  name: string;
+  owner_name: string;
+  completed: boolean;
+};
+
 type Task = {
   id: string;
   description: string;
@@ -13,6 +19,8 @@ type Task = {
   last_movement_at: string;
   task_number: string | null;
   project_id: string;
+  gates: Gate[] | null;
+  next_step: string | null;
   projects: { id: string; name: string } | null;
   task_owners: { owner_id: string; owners: { id: string; name: string } | null }[] | null;
 };
@@ -46,6 +54,8 @@ export default async function Home({
         last_movement_at,
         task_number,
         project_id,
+        gates,
+        next_step,
         projects (id, name),
         task_owners (owner_id, owners (id, name))
       `
