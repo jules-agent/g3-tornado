@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option B: Pipeline Stage Cards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tooltip { position: relative; }
+    .tooltip:hover .tooltip-content { display: block; }
+    .tooltip-content { 
+      display: none; 
+      position: absolute; 
+      z-index: 50; 
+      background: #1e293b; 
+      color: white; 
+      padding: 12px; 
+      border-radius: 8px; 
+      width: 280px;
+      left: 0;
+      top: 100%;
+      margin-top: 8px;
+      font-size: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .stage { 
+      display: flex; 
+      align-items: center; 
+      gap: 4px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .stage-done { background: #d1fae5; color: #065f46; }
+    .stage-active { background: #fef3c7; color: #92400e; border: 2px solid #f59e0b; }
+    .stage-pending { background: #f1f5f9; color: #64748b; }
+    .stage-arrow { color: #cbd5e1; font-size: 12px; }
+  </style>
+</head>
+<body class="bg-slate-100 p-8">
+  <div class="max-w-[1400px] mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Option B: Pipeline Stage Cards</h1>
+      <p class="text-slate-600 mt-1">Visual stage progression — see exactly where each task is in its journey.</p>
+    </div>
+
+    <!-- Key Features Box -->
+    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+      <h3 class="font-semibold text-indigo-800 mb-2">✨ Key Features</h3>
+      <ul class="text-sm text-indigo-700 space-y-1">
+        <li>• <strong>Visual pipeline</strong> shows all stages: Design → Engineer → Quote → PO → Ship → Done</li>
+        <li>• <strong>Current stage highlighted</strong> in amber with border</li>
+        <li>• <strong>Completed stages</strong> shown in green</li>
+        <li>• <strong>Current blocker</strong> prominently displayed with name</li>
+        <li>• <strong>Changelog hover</strong> on the 📝 icon</li>
+        <li>• More visual, easier to scan progress at a glance</li>
+      </ul>
+    </div>
+
+    <!-- Cards Grid -->
+    <div class="space-y-3">
+      <!-- Card 1 - In Design -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition">
+        <div class="flex items-start justify-between gap-4">
+          <!-- Left: Task Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-slate-400">0010</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600">BLOCKED</span>
+            </div>
+            <h3 class="font-semibold text-slate-900 mt-1">Rear Seat Base Mount Transport Seat</h3>
+            <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span class="font-medium text-slate-600">LVMPD Fleet</span>
+              <span>·</span>
+              <span>Updated <span class="text-green-600 font-medium">today</span></span>
+              <span>·</span>
+              <span>Cadence: 2d</span>
+              <span>·</span>
+              <span class="text-red-600 font-semibold">0 days left</span>
+            </div>
+          </div>
+
+          <!-- Right: Changelog -->
+          <div class="tooltip">
+            <button class="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">📝</button>
+            <div class="tooltip-content">
+              <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+              <div class="space-y-2">
+                <div><span class="text-slate-400">02/06 14:30</span> — Alwin finished design, sent to engineering</div>
+                <div><span class="text-slate-400">02/05 09:15</span> — Talked to Alwin, need new design</div>
+                <div><span class="text-slate-400">02/04 11:00</span> — Area Metal Quote $296.35</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline -->
+        <div class="flex items-center gap-1 mt-4 overflow-x-auto pb-1">
+          <span class="stage stage-done">✓ Design</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-active">⏳ Engineer<br><span class="font-semibold">Alwin</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Quote<br><span class="text-slate-400">Ben</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">PO</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Ship</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Done</span>
+        </div>
+
+        <!-- Next Step -->
+        <div class="mt-3 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+          <span class="font-semibold text-slate-700">Next Step:</span> Alwin to complete engineering review, then Ben finds vendor
+        </div>
+      </div>
+
+      <!-- Card 2 - Overdue -->
+      <div class="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 hover:shadow-md transition">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-slate-400">0012</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600">OVERDUE</span>
+            </div>
+            <h3 class="font-semibold text-slate-900 mt-1">Rear Transport Seat Center Buckle</h3>
+            <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span class="font-medium text-slate-600">LVMPD Fleet</span>
+              <span>·</span>
+              <span>Updated <span class="text-red-600 font-medium">7d ago</span></span>
+              <span>·</span>
+              <span>Cadence: 7d</span>
+              <span>·</span>
+              <span class="text-red-600 font-bold">7 days overdue!</span>
+            </div>
+          </div>
+          <div class="tooltip">
+            <button class="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">📝</button>
+            <div class="tooltip-content">
+              <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+              <div class="space-y-2">
+                <div><span class="text-slate-400">01/30 13:37</span> — Garret still needs to design it</div>
+                <div><span class="text-slate-400">01/28 09:08</span> — Requested Quote from Target</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1 mt-4 overflow-x-auto pb-1">
+          <span class="stage stage-active">⏳ Design<br><span class="font-semibold">Garrett</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Engineer</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Quote<br><span class="text-slate-400">Ben</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">PO</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Ship</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Done</span>
+        </div>
+
+        <div class="mt-3 text-xs text-slate-600 bg-red-50 rounded-lg px-3 py-2">
+          <span class="font-semibold text-red-700">⚠️ Next Step:</span> Garrett still needs to design it, no action possible yet
+        </div>
+      </div>
+
+      <!-- Card 3 - Almost done -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-slate-400">0005</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+            </div>
+            <h3 class="font-semibold text-slate-900 mt-1">2 Drone Dock Bases</h3>
+            <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span class="font-medium text-slate-600">Trailer</span>
+              <span>·</span>
+              <span>Updated <span class="text-yellow-600 font-medium">3d ago</span></span>
+              <span>·</span>
+              <span>Cadence: 7d</span>
+              <span>·</span>
+              <span class="text-green-600 font-semibold">3 days left</span>
+            </div>
+          </div>
+          <div class="tooltip">
+            <button class="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">📝</button>
+            <div class="tooltip-content">
+              <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+              <div class="space-y-2">
+                <div><span class="text-slate-400">02/03 15:18</span> — Need to get these, likely on container truck</div>
+                <div><span class="text-slate-400">02/01 10:00</span> — Aztek said done as of 1/22</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1 mt-4 overflow-x-auto pb-1">
+          <span class="stage stage-done">✓ Design</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Engineer</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Quote</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ PO<br><span class="text-green-700">Aztek</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-active">⏳ Ship<br><span class="font-semibold">Aztek</span></span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-pending">Done</span>
+        </div>
+
+        <div class="mt-3 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+          <span class="font-semibold text-slate-700">Next Step:</span> Loaded on container, awaiting arrival
+        </div>
+      </div>
+
+      <!-- Card 4 - Closed -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 opacity-60">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-slate-400">0006</span>
+              <span class="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">CLOSED</span>
+            </div>
+            <h3 class="font-semibold text-slate-900 mt-1">2 Electric Rails</h3>
+            <div class="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span class="font-medium text-slate-600">Trailer</span>
+              <span>·</span>
+              <span>Completed 5d ago</span>
+            </div>
+          </div>
+          <button class="p-2 rounded-lg text-slate-300">📝</button>
+        </div>
+
+        <div class="flex items-center gap-1 mt-4 overflow-x-auto pb-1">
+          <span class="stage stage-done">✓ Design</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Engineer</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Quote</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ PO</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Ship</span>
+          <span class="stage-arrow">→</span>
+          <span class="stage stage-done">✓ Done</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 flex gap-6 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="stage stage-done">✓ Done</span>
+        <span>Stage completed</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="stage stage-active">⏳ Active</span>
+        <span>Current stage (blocker shown)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="stage stage-pending">Pending</span>
+        <span>Future stages</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

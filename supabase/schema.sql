@@ -17,6 +17,7 @@ CREATE TABLE profiles (
   email TEXT NOT NULL,
   full_name TEXT,
   role user_role NOT NULL DEFAULT 'user',
+  column_layout JSONB DEFAULT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option A: Expanded Info-Dense Table</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tooltip { position: relative; }
+    .tooltip:hover .tooltip-content { display: block; }
+    .tooltip-content { 
+      display: none; 
+      position: absolute; 
+      z-index: 50; 
+      background: #1e293b; 
+      color: white; 
+      padding: 12px; 
+      border-radius: 8px; 
+      width: 320px;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 100%;
+      margin-top: 8px;
+      font-size: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .blocker-badge { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .blocker-active { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .blocker-next { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+    .blocker-cleared { background: #d1fae5; color: #065f46; text-decoration: line-through; opacity: 0.6; }
+  </style>
+</head>
+<body class="bg-slate-100 p-8">
+  <div class="max-w-[1600px] mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Option A: Expanded Info-Dense Table</h1>
+      <p class="text-slate-600 mt-1">RECOMMENDED — Adds columns inline, keeps familiar table UX. Hover for changelog.</p>
+    </div>
+
+    <!-- Key Features Box -->
+    <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
+      <h3 class="font-semibold text-teal-800 mb-2">✨ Key Features</h3>
+      <ul class="text-sm text-teal-700 space-y-1">
+        <li>• <strong>Updated</strong> column shows last action date (color-coded: green=recent, yellow=stale, red=old)</li>
+        <li>• <strong>📝 icon</strong> hover reveals full changelog in tooltip</li>
+        <li>• <strong>Blocker A</strong> = current person to chase (amber badge)</li>
+        <li>• <strong>Blocker B</strong> = next person after A clears (indigo badge)</li>
+        <li>• <strong>Next Step</strong> = current stage/deliverable description</li>
+        <li>• Click blocker badge to mark cleared (turns green with strikethrough)</li>
+      </ul>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200">
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-16">ID</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600">Task</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-28">Project</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-20">Updated</th>
+            <th class="px-3 py-3 text-center font-semibold text-slate-600 w-10">📝</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-32">Blocker A</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-32">Blocker B</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-48">Next Step</th>
+            <th class="px-3 py-3 text-center font-semibold text-slate-600 w-12">Cad.</th>
+            <th class="px-3 py-3 text-center font-semibold text-slate-600 w-14">Days</th>
+            <th class="px-3 py-3 text-left font-semibold text-slate-600 w-20">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <!-- Row 1 - Active with blockers -->
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-3 font-mono text-slate-500">0010</td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">Rear Seat Base Mount Transport Seat</div>
+              <div class="text-xs text-red-500 font-medium mt-0.5">BLOCKED</div>
+            </td>
+            <td class="px-3 py-3 text-slate-600">LVMPD Fleet</td>
+            <td class="px-3 py-3">
+              <span class="text-green-600 font-medium">Today</span>
+            </td>
+            <td class="px-3 py-3 text-center">
+              <div class="tooltip cursor-pointer">
+                <span class="text-slate-400 hover:text-slate-600">📝</span>
+                <div class="tooltip-content text-left">
+                  <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+                  <div class="space-y-2">
+                    <div><span class="text-slate-400">02/06 14:30</span> — Alwin finished design, sent to engineering</div>
+                    <div><span class="text-slate-400">02/05 09:15</span> — Talked to Alwin, need new design</div>
+                    <div><span class="text-slate-400">02/04 11:00</span> — Area Metal Quote $296.35</div>
+                    <div><span class="text-slate-400">02/03 16:20</span> — Ran into design problem, need redesign</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-active">⏳ Alwin</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-next">→ Ben (Vendor)</span>
+            </td>
+            <td class="px-3 py-3 text-slate-600 text-xs">Design → Engineering review</td>
+            <td class="px-3 py-3 text-center text-slate-600">2d</td>
+            <td class="px-3 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-100 text-red-700 font-bold text-xs">0</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+            </td>
+          </tr>
+
+          <!-- Row 2 - Overdue -->
+          <tr class="hover:bg-slate-50 bg-red-50/30">
+            <td class="px-3 py-3 font-mono text-slate-500">0012</td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">Rear Transport Seat Center Buckle</div>
+              <div class="text-xs text-red-500 font-medium mt-0.5">OVERDUE · BLOCKED</div>
+            </td>
+            <td class="px-3 py-3 text-slate-600">LVMPD Fleet</td>
+            <td class="px-3 py-3">
+              <span class="text-red-600 font-medium">7d ago</span>
+            </td>
+            <td class="px-3 py-3 text-center">
+              <div class="tooltip cursor-pointer">
+                <span class="text-slate-400 hover:text-slate-600">📝</span>
+                <div class="tooltip-content text-left">
+                  <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+                  <div class="space-y-2">
+                    <div><span class="text-slate-400">01/30 13:37</span> — Garret still needs to design it</div>
+                    <div><span class="text-slate-400">01/28 09:08</span> — Requested Quote from Target 1/26</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-active">⏳ Garrett</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-next">→ Ben (Vendor)</span>
+            </td>
+            <td class="px-3 py-3 text-slate-600 text-xs">Build prototype first</td>
+            <td class="px-3 py-3 text-center text-slate-600">7d</td>
+            <td class="px-3 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-100 text-red-700 font-bold text-xs">7</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+            </td>
+          </tr>
+
+          <!-- Row 3 - Good progress -->
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-3 font-mono text-slate-500">0005</td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">2 Drone Dock Bases</div>
+            </td>
+            <td class="px-3 py-3 text-slate-600">Trailer</td>
+            <td class="px-3 py-3">
+              <span class="text-yellow-600 font-medium">3d ago</span>
+            </td>
+            <td class="px-3 py-3 text-center">
+              <div class="tooltip cursor-pointer">
+                <span class="text-slate-400 hover:text-slate-600">📝</span>
+                <div class="tooltip-content text-left">
+                  <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+                  <div class="space-y-2">
+                    <div><span class="text-slate-400">02/03 15:18</span> — Need to get these, likely on container truck</div>
+                    <div><span class="text-slate-400">02/01 10:00</span> — Aztek said done as of 1/22</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-cleared">✓ Aztek</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-active">⏳ Shipping</span>
+            </td>
+            <td class="px-3 py-3 text-slate-600 text-xs">PO sent, waiting on arrival</td>
+            <td class="px-3 py-3 text-center text-slate-600">7d</td>
+            <td class="px-3 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold text-xs">3</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+            </td>
+          </tr>
+
+          <!-- Row 4 - Multiple blockers cleared -->
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-3 font-mono text-slate-500">0014</td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">Rear Transport Seat Corner Supports</div>
+            </td>
+            <td class="px-3 py-3 text-slate-600">LVMPD Fleet</td>
+            <td class="px-3 py-3">
+              <span class="text-green-600 font-medium">1d ago</span>
+            </td>
+            <td class="px-3 py-3 text-center">
+              <div class="tooltip cursor-pointer">
+                <span class="text-slate-400 hover:text-slate-600">📝</span>
+                <div class="tooltip-content text-left">
+                  <div class="font-semibold mb-2 text-teal-400">Change Log</div>
+                  <div class="space-y-2">
+                    <div><span class="text-slate-400">02/05 13:38</span> — Bought From Target</div>
+                    <div><span class="text-slate-400">02/04 09:08</span> — Target quoted $60 for 10, $48 for 20</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-cleared">✓ Alwin</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-cleared">✓ Target</span>
+            </td>
+            <td class="px-3 py-3 text-slate-600 text-xs">Ordered, awaiting delivery</td>
+            <td class="px-3 py-3 text-center text-slate-600">5d</td>
+            <td class="px-3 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold text-xs">1</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+            </td>
+          </tr>
+
+          <!-- Row 5 - Closed -->
+          <tr class="hover:bg-slate-50 opacity-60">
+            <td class="px-3 py-3 font-mono text-slate-500">0006</td>
+            <td class="px-3 py-3">
+              <div class="font-medium text-slate-900">2 Electric Rails</div>
+            </td>
+            <td class="px-3 py-3 text-slate-600">Trailer</td>
+            <td class="px-3 py-3">
+              <span class="text-slate-500">5d ago</span>
+            </td>
+            <td class="px-3 py-3 text-center">
+              <span class="text-slate-300">📝</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="blocker-badge blocker-cleared">✓ Rail Co</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="text-slate-400">—</span>
+            </td>
+            <td class="px-3 py-3 text-slate-400 text-xs">Shipped to Sky</td>
+            <td class="px-3 py-3 text-center text-slate-400">—</td>
+            <td class="px-3 py-3 text-center">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs">—</span>
+            </td>
+            <td class="px-3 py-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700">CLOSED</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 flex gap-6 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="blocker-badge blocker-active">⏳ Active</span>
+        <span>Current blocker to chase</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="blocker-badge blocker-next">→ Next</span>
+        <span>Next blocker after current clears</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="blocker-badge blocker-cleared">✓ Cleared</span>
+        <span>Blocker resolved (click to toggle)</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

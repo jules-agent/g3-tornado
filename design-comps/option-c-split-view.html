@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option C: Split Master/Detail View</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .task-row.selected { background: #f0fdfa; border-left: 3px solid #14b8a6; }
+    .blocker-badge { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .blocker-active { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .blocker-next { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+    .blocker-cleared { background: #d1fae5; color: #065f46; }
+  </style>
+</head>
+<body class="bg-slate-100 p-8">
+  <div class="max-w-[1600px] mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Option C: Split Master/Detail View</h1>
+      <p class="text-slate-600 mt-1">Compact list on left, full detail panel on right. Click any task to see everything.</p>
+    </div>
+
+    <!-- Key Features Box -->
+    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+      <h3 class="font-semibold text-purple-800 mb-2">✨ Key Features</h3>
+      <ul class="text-sm text-purple-700 space-y-1">
+        <li>• <strong>Compact task list</strong> on left shows essentials: ID, task, project, status indicators</li>
+        <li>• <strong>Rich detail panel</strong> on right shows EVERYTHING for selected task</li>
+        <li>• <strong>Full blocker chain</strong> visible with all stages and people</li>
+        <li>• <strong>Complete changelog</strong> always visible (no hover needed)</li>
+        <li>• <strong>Quick actions</strong> right in the detail panel</li>
+        <li>• Good for deep-diving into specific tasks while keeping overview</li>
+      </ul>
+    </div>
+
+    <!-- Split View Container -->
+    <div class="flex gap-4 h-[700px]">
+      <!-- Left: Task List -->
+      <div class="w-[480px] bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="font-semibold text-slate-900">Tasks</h2>
+          <span class="text-xs text-slate-500">47 open</span>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+          <!-- Task Row 1 - Selected -->
+          <div class="task-row selected px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0010</span>
+                <span class="w-2 h-2 rounded-full bg-red-500" title="Blocked"></span>
+              </div>
+              <span class="text-xs text-green-600 font-medium">Today</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">Rear Seat Base Mount Transport Seat</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">LVMPD Fleet</span>
+              <div class="flex items-center gap-1">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏳ Alwin</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task Row 2 - Overdue -->
+          <div class="task-row px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 bg-red-50/30">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0012</span>
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <span class="text-xs text-red-600 font-semibold">OVERDUE</span>
+              </div>
+              <span class="text-xs text-red-600 font-medium">7d ago</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">Rear Transport Seat Center Buckle</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">LVMPD Fleet</span>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏳ Garrett</span>
+            </div>
+          </div>
+
+          <!-- Task Row 3 -->
+          <div class="task-row px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0005</span>
+              </div>
+              <span class="text-xs text-yellow-600 font-medium">3d ago</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">2 Drone Dock Bases</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">Trailer</span>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏳ Shipping</span>
+            </div>
+          </div>
+
+          <!-- Task Row 4 -->
+          <div class="task-row px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0014</span>
+              </div>
+              <span class="text-xs text-green-600 font-medium">1d ago</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">Rear Transport Seat Corner Supports</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">LVMPD Fleet</span>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">✓ Ordered</span>
+            </div>
+          </div>
+
+          <!-- Task Row 5 -->
+          <div class="task-row px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0002</span>
+              </div>
+              <span class="text-xs text-slate-500">5d ago</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">Rear Transport Seat</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">LVMPD Fleet</span>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">⏳ Ben</span>
+            </div>
+          </div>
+
+          <!-- Task Row 6 - Closed -->
+          <div class="task-row px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 opacity-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">0006</span>
+                <span class="text-xs text-green-600 font-medium">CLOSED</span>
+              </div>
+              <span class="text-xs text-slate-400">5d ago</span>
+            </div>
+            <div class="font-medium text-slate-900 text-sm mt-1 truncate">2 Electric Rails</div>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-slate-500">Trailer</span>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">✓ Done</span>
+            </div>
+          </div>
+
+          <!-- More rows would continue... -->
+          <div class="px-4 py-6 text-center text-slate-400 text-sm">
+            + 41 more tasks...
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Detail Panel -->
+      <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-sm text-slate-400">0010</span>
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">OPEN</span>
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600">BLOCKED</span>
+              </div>
+              <h2 class="text-xl font-semibold text-slate-900 mt-1">Rear Seat Base Mount Transport Seat</h2>
+              <div class="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                <span class="font-medium text-slate-600">LVMPD Fleet Build</span>
+                <span>·</span>
+                <span>Cadence: 2 days</span>
+                <span>·</span>
+                <span class="text-red-600 font-semibold">0 days remaining</span>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button class="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-semibold hover:bg-teal-600">Add Note</button>
+              <button class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200">Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <!-- Blockers Section -->
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <span>🚧</span> Blocker Chain
+            </h3>
+            <div class="space-y-2">
+              <!-- Stage 1: Done -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
+                <span class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
+                <div class="flex-1">
+                  <div class="font-medium text-green-800">1. Design</div>
+                  <div class="text-xs text-green-600">Completed by Alwin · 02/04</div>
+                </div>
+              </div>
+              
+              <!-- Stage 2: Active -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border-2 border-amber-300">
+                <span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                <div class="flex-1">
+                  <div class="font-semibold text-amber-800">2. Engineering Review</div>
+                  <div class="text-xs text-amber-700">Current blocker: <span class="font-bold">Alwin</span></div>
+                </div>
+                <button class="px-3 py-1 rounded bg-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-300">Mark Done</button>
+              </div>
+              
+              <!-- Stage 3: Next -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                <span class="w-6 h-6 rounded-full bg-indigo-400 text-white flex items-center justify-center text-xs font-bold">3</span>
+                <div class="flex-1">
+                  <div class="font-medium text-indigo-800">3. Vendor Selection & Quote</div>
+                  <div class="text-xs text-indigo-600">Next blocker: <span class="font-semibold">Ben</span></div>
+                </div>
+              </div>
+              
+              <!-- Stage 4: Future -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs font-bold">4</span>
+                <div class="flex-1">
+                  <div class="font-medium text-slate-500">4. PO & Vendor Ships</div>
+                  <div class="text-xs text-slate-400">Vendor TBD</div>
+                </div>
+              </div>
+              
+              <!-- Stage 5: Future -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs font-bold">5</span>
+                <div class="flex-1">
+                  <div class="font-medium text-slate-500">5. Receive & Close</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Next Step -->
+          <div class="mb-6 p-4 rounded-lg bg-teal-50 border border-teal-200">
+            <h3 class="text-sm font-semibold text-teal-800 mb-1">📋 Next Step</h3>
+            <p class="text-sm text-teal-700">Alwin to complete engineering review and send to Ben for vendor sourcing. Need Total 11: 1x - UPFIT-CT-531-4.1</p>
+          </div>
+
+          <!-- Changelog -->
+          <div>
+            <h3 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <span>📝</span> Change Log
+            </h3>
+            <div class="space-y-3 text-sm">
+              <div class="flex gap-3">
+                <div class="w-24 text-slate-400 shrink-0">02/06 14:30</div>
+                <div class="text-slate-700">Alwin finished design, moved to engineering review phase</div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-24 text-slate-400 shrink-0">02/05 17:16</div>
+                <div class="text-slate-700">Talked to Alwin, need new design, also checking with target on quotes</div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-24 text-slate-400 shrink-0">02/05 09:15</div>
+                <div class="text-slate-700">Update Notes: $296.35 - Area Metal Quote</div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-24 text-slate-400 shrink-0">02/04 17:32</div>
+                <div class="text-slate-700">$210.00 Aztek 15 unit - ran into design problem, need redesign</div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-24 text-slate-400 shrink-0">02/04 11:12</div>
+                <div class="text-slate-700">Easy, just need to notify Sky. I'll try again tomorrow to get the info from Alwin</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 flex gap-6 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-red-500"></span>
+        <span>Blocked task</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-green-600 font-medium">Today</span>
+        <span>Updated recently (good)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-red-600 font-medium">7d ago</span>
+        <span>Stale / needs attention</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
