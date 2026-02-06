@@ -215,11 +215,11 @@ export default async function Home({
               filteredTasks.map((task) => {
                 let rowClasses = "table-row";
                 if (task.status === "closed") {
-                  rowClasses += " bg-slate-50/50 dark:bg-slate-800/50 text-slate-400";
+                  rowClasses += " bg-slate-50/50 dark:bg-slate-800 text-slate-400 dark:text-slate-500";
                 } else if (task.isOverdue) {
-                  rowClasses += " bg-gradient-to-r from-red-50 dark:from-red-900/20 to-transparent border-l-4 border-l-red-500";
+                  rowClasses += " bg-gradient-to-r from-red-50 dark:from-red-900/40 to-slate-800 border-l-4 border-l-red-500";
                 } else if (task.is_blocked) {
-                  rowClasses += " bg-gradient-to-r from-amber-50 dark:from-amber-900/20 to-transparent border-l-4 border-l-amber-500";
+                  rowClasses += " bg-gradient-to-r from-amber-50 dark:from-amber-900/40 to-slate-800 border-l-4 border-l-amber-500"; } else { rowClasses += " dark:bg-slate-800/40";
                 }
 
                 return (
