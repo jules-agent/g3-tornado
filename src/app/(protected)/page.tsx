@@ -236,7 +236,7 @@ export default async function Home({
                 return (
                   <tr key={task.id} className={rowClasses}>
                     <td className="px-4 py-3">
-                      <Link href={`/tasks/${task.id}`} className="text-slate-500 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs">
+                      <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs font-medium">
                         {task.task_number || "—"}
                       </Link>
                     </td>
@@ -257,10 +257,10 @@ export default async function Home({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate max-w-32">
                       {task.projects?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate max-w-32">
                       {task.ownerNames || "—"}
                     </td>
                     <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-xs">

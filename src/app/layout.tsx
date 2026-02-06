@@ -21,27 +21,27 @@ export const metadata: Metadata = {
 };
 
 // Script to apply theme before React hydrates (prevents flash)
-// Default is LIGHT mode unless user explicitly chose dark or auto
+// Default is AUTO mode - uses user's local time (dark 6pm-6am)
 const themeScript = `
   (function() {
     try {
       var stored = localStorage.getItem('g3-theme');
-      var theme = stored || 'light';
+      var theme = stored || 'auto';
       var isDark = false;
       
       if (theme === 'dark') {
         isDark = true;
-      } else if (theme === 'auto') {
-        // Auto: dark from 6pm to 6am
+      } else if (theme === 'light') {
+        isDark = false;
+      } else {
+        // Auto: dark from 6pm to 6am based on user's local time
         var hour = new Date().getHours();
         isDark = hour < 6 || hour >= 18;
       }
-      // 'light' = isDark stays false
       
+      document.documentElement.classList.remove('dark');
       if (isDark) {
         document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
       }
     } catch (e) {}
   })();

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 type Theme = 'light' | 'dark' | 'auto';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('auto');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -15,8 +15,8 @@ export function ThemeToggle() {
       setTheme(stored);
       applyTheme(stored);
     } else {
-      // Default to light mode
-      applyTheme('light');
+      // Default to auto mode (follows user's local time)
+      applyTheme('auto');
     }
   }, []);
 
