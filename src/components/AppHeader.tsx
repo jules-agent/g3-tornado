@@ -36,9 +36,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
     router.refresh();
   };
 
-  const navItems = [
-    { href: "/", label: "Tasks" },
-  ];
+  const navItems: { href: string; label: string }[] = [];
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-md">
@@ -64,25 +62,27 @@ export default function AppHeader({ user }: AppHeaderProps) {
             </div>
           </Link>
 
-          {/* Navigation */}
-          <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    isActive
-                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/25"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Navigation - currently empty, reserved for future links */}
+          {navItems.length > 0 && (
+            <nav className="hidden items-center gap-1 md:flex">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      isActive
+                        ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/25"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
         </div>
 
         {/* Right side */}

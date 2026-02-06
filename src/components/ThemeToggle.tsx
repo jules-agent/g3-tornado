@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 type Theme = 'light' | 'dark' | 'auto';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('auto');
+  const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -15,7 +15,8 @@ export function ThemeToggle() {
       setTheme(stored);
       applyTheme(stored);
     } else {
-      applyTheme('auto');
+      // Default to light mode
+      applyTheme('light');
     }
   }, []);
 
