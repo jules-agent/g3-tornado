@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, email } = await request.json();
+  const { name, email, phone } = await request.json();
 
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("owners")
-    .insert({ name, email })
+    .insert({ name, email, phone })
     .select()
     .single();
 
@@ -41,7 +41,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id, name, email } = await request.json();
+  const { id, name, email, phone } = await request.json();
 
   if (!id || !name) {
     return NextResponse.json({ error: "ID and name are required" }, { status: 400 });
@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
 
   const { data, error } = await supabase
     .from("owners")
-    .update({ name, email })
+    .update({ name, email, phone })
     .eq("id", id)
     .select()
     .single();

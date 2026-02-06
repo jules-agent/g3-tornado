@@ -31,6 +31,8 @@ type TaskFormProps = {
   selectedOwnerIds?: string[];
 };
 
+const NEW_PROJECT_VALUE = "__new_project__";
+
 export default function TaskForm({
   mode,
   taskId,
@@ -44,6 +46,10 @@ export default function TaskForm({
   const [projectId, setProjectId] = useState(
     initialValues?.project_id ?? projects[0]?.id ?? ""
   );
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectError, setProjectError] = useState<string | null>(null);
   const [fuCadenceDays, setFuCadenceDays] = useState(
     initialValues?.fu_cadence_days ?? 7
   );
@@ -54,9 +60,16 @@ export default function TaskForm({
     initialValues?.blocker_description ?? ""
   );
   const [ownerIds, setOwnerIds] = useState<string[]>(selectedOwnerIds);
+  const [isAddingOwner, setIsAddingOwner] = useState(false);
+  const [newOwnerName, setNewOwnerName] = useState("");
+  const [newOwnerEmail, setNewOwnerEmail] = useState("");
+  const [newOwnerPhone, setNewOwnerPhone] = useState("");
+  const [isCreatingOwner, setIsCreatingOwner] = useState(false);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasProjects = projects.length > 0;
+  const canSubmitProject = Boolean(projectId && projectId !== NEW_PROJECT_VALUE);
 
   const ownerLookup = useMemo(() => {
     return new Map(owners.map((owner) => [owner.id, owner.name]));
@@ -70,6 +83,103 @@ export default function TaskForm({
     );
   };
 
+  const handleOwnerInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void createOwner();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsAddingOwner(false);
+      setOwnerError(null);
+      setNewOwnerName("");
+      setNewOwnerEmail("");
+      setNewOwnerPhone("");
+    }
+  };
+
+  const createProject = async () => {
+    if (isCreatingProject) return;
+    const trimmedName = newProjectName.trim();
+    if (!trimmedName) return;
+    setIsCreatingProject(true);
+    setProjectError(null);
+
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setProjectError(data?.error ?? "Unable to create project.");
+        setIsCreatingProject(false);
+        return;
+      }
+
+      if (!data?.id) {
+        setProjectError("Unable to create project.");
+        setIsCreatingProject(false);
+        return;
+      }
+
+      setProjectId(data.id);
+      setNewProjectName("");
+      setIsAddingProject(false);
+      router.refresh();
+    } catch {
+      setProjectError("Unable to create project.");
+    }
+    setIsCreatingProject(false);
+  };
+
+  const createOwner = async () => {
+    if (isCreatingOwner) return;
+    const trimmedName = newOwnerName.trim();
+    if (!trimmedName) return;
+    setIsCreatingOwner(true);
+    setOwnerError(null);
+
+    try {
+      const res = await fetch("/api/admin/owners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmedName,
+          email: newOwnerEmail.trim() || null,
+          phone: newOwnerPhone.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setOwnerError(data?.error ?? "Unable to create owner.");
+        setIsCreatingOwner(false);
+        return;
+      }
+
+      if (!data?.id) {
+        setOwnerError("Unable to create owner.");
+        setIsCreatingOwner(false);
+        return;
+      }
+
+      setOwnerIds((prev) => (prev.includes(data.id) ? prev : [...prev, data.id]));
+      setNewOwnerName("");
+      setNewOwnerEmail("");
+      setNewOwnerPhone("");
+      setIsAddingOwner(false);
+      router.refresh();
+    } catch {
+      setOwnerError("Unable to create owner.");
+    }
+    setIsCreatingOwner(false);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSaving) return;
@@ -78,8 +188,12 @@ export default function TaskForm({
 
     const supabase = createClient();
 
-    if (!projectId) {
-      setError("Please select a project.");
+    if (!canSubmitProject) {
+      setError(
+        projectId === NEW_PROJECT_VALUE
+          ? "Please finish adding the new project."
+          : "Please select a project."
+      );
       setIsSaving(false);
       return;
     }
@@ -199,16 +313,60 @@ export default function TaskForm({
               <select
                 required
                 value={projectId}
-                onChange={(event) => setProjectId(event.target.value)}
-                disabled={!hasProjects}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === NEW_PROJECT_VALUE) {
+                    setIsAddingProject(true);
+                    setProjectId(NEW_PROJECT_VALUE);
+                    setProjectError(null);
+                    return;
+                  }
+                  setIsAddingProject(false);
+                  setProjectId(value);
+                  setProjectError(null);
+                }}
+                disabled={isCreatingProject}
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
               >
+                <option value="" disabled>
+                  {hasProjects ? "Select a project" : "Add a project"}
+                </option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name}
                   </option>
                 ))}
+                <option value={NEW_PROJECT_VALUE}>+ New Project</option>
               </select>
+              {isAddingProject && (
+                <div className="mt-2 space-y-2">
+                  <input
+                    value={newProjectName}
+                    onChange={(event) => setNewProjectName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void createProject();
+                      }
+                      if (event.key === "Escape") {
+                        setIsAddingProject(false);
+                        setProjectId(projects[0]?.id ?? "");
+                      }
+                    }}
+                    onBlur={() => {
+                      void createProject();
+                    }}
+                    placeholder="Project name"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                  />
+                  {projectError && (
+                    <div className="text-xs text-rose-600">{projectError}</div>
+                  )}
+                  {isCreatingProject && (
+                    <div className="text-xs text-slate-400">Creating project...</div>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -303,6 +461,74 @@ export default function TaskForm({
                 <div className="text-sm text-slate-400">No owners available.</div>
               )}
             </div>
+            <div className="mt-4">
+              {isAddingOwner ? (
+                <div className="space-y-2">
+                  <input
+                    value={newOwnerName}
+                    onChange={(event) => setNewOwnerName(event.target.value)}
+                    onKeyDown={handleOwnerInputKeyDown}
+                    placeholder="Owner name"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                  />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="email"
+                      value={newOwnerEmail}
+                      onChange={(event) => setNewOwnerEmail(event.target.value)}
+                      onKeyDown={handleOwnerInputKeyDown}
+                      placeholder="Email (optional)"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                    />
+                    <input
+                      type="tel"
+                      value={newOwnerPhone}
+                      onChange={(event) => setNewOwnerPhone(event.target.value)}
+                      onKeyDown={handleOwnerInputKeyDown}
+                      placeholder="Phone (optional)"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void createOwner()}
+                      disabled={isCreatingOwner || !newOwnerName.trim()}
+                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                    >
+                      {isCreatingOwner ? "Adding..." : "Add"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingOwner(false);
+                        setOwnerError(null);
+                        setNewOwnerName("");
+                        setNewOwnerEmail("");
+                        setNewOwnerPhone("");
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {ownerError && (
+                    <div className="text-xs text-rose-600">{ownerError}</div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingOwner(true);
+                    setOwnerError(null);
+                  }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                >
+                  + Add Owner
+                </button>
+              )}
+            </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -317,7 +543,7 @@ export default function TaskForm({
         </div>
       </div>
 
-      {!hasProjects && (
+      {!hasProjects && !isAddingProject && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           You need at least one project before creating tasks.
         </div>
@@ -332,7 +558,7 @@ export default function TaskForm({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={isSaving || !hasProjects}
+          disabled={isSaving || !canSubmitProject}
           className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           {isSaving

@@ -23,6 +23,7 @@ type Owner = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   created_at: string;
 };
 
@@ -416,6 +417,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -427,12 +429,13 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       const res = await fetch("/api/admin/owners", {
         method: ownerId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: ownerId, name, email: email || null }),
+        body: JSON.stringify({ id: ownerId, name, email: email || null, phone: phone || null }),
       });
       
       if (res.ok) {
         setName("");
         setEmail("");
+        setPhone("");
         setShowAdd(false);
         setEditingId(null);
         router.refresh();
@@ -458,6 +461,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setEditingId(owner.id);
     setName(owner.name);
     setEmail(owner.email || "");
+    setPhone(owner.phone || "");
   };
 
   return (
@@ -465,7 +469,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <h2 className="font-semibold text-slate-900">Owners</h2>
         <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setEmail(""); }}
+          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setEmail(""); setPhone(""); }}
           className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800"
         >
           + Add Owner
@@ -495,6 +499,16 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                 placeholder="owner@example.com"
               />
             </div>
+            <div className="flex-1">
+              <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                placeholder="(555) 123-4567"
+              />
+            </div>
             <button
               onClick={() => saveOwner()}
               disabled={loading || !name.trim()}
@@ -511,6 +525,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
           <tr className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide">
             <th className="px-4 py-2 font-semibold">Name</th>
             <th className="px-4 py-2 font-semibold">Email</th>
+            <th className="px-4 py-2 font-semibold">Phone</th>
             <th className="px-4 py-2 font-semibold w-28">Created</th>
             <th className="px-4 py-2 font-semibold w-20">Actions</th>
           </tr>
@@ -518,7 +533,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
         <tbody className="divide-y divide-slate-100">
           {owners.length === 0 ? (
             <tr>
-              <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+              <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                 No owners yet. Add your first owner above.
               </td>
             </tr>
@@ -540,6 +555,15 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded border border-slate-200 px-2 py-1 text-sm"
+                        placeholder="Optional"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         className="w-full rounded border border-slate-200 px-2 py-1 text-sm"
                         placeholder="Optional"
                       />
@@ -569,6 +593,9 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     </td>
                     <td className="px-4 py-2 text-slate-500">
                       {owner.email || "—"}
+                    </td>
+                    <td className="px-4 py-2 text-slate-500">
+                      {owner.phone || "—"}
                     </td>
                     <td className="px-4 py-2 text-slate-500">
                       {new Date(owner.created_at).toLocaleDateString()}
