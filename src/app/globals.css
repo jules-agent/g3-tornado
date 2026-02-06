@@ -90,6 +90,30 @@ html:not(.dark) .card {
   border-color: #e5e7eb !important;
 }
 
+/* Light mode text - ensure all text is dark */
+html:not(.dark) .table-row,
+html:not(.dark) .table-row * {
+  color: #1e293b !important;
+}
+
+html:not(.dark) .table-row a,
+html:not(.dark) .table-row span {
+  color: #1e293b !important;
+}
+
+html:not(.dark) .table-row a:hover {
+  color: #0891b2 !important;
+}
+
+/* Light mode - fix gradient backgrounds for overdue/blocked rows */
+html:not(.dark) tr[class*="from-red"] {
+  background: linear-gradient(to right, #fef2f2, #ffffff) !important;
+}
+
+html:not(.dark) tr[class*="from-amber"] {
+  background: linear-gradient(to right, #fffbeb, #ffffff) !important;
+}
+
 /* Card styling */
 .card {
   background: var(--card);
