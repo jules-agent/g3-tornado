@@ -143,46 +143,11 @@ export default async function Home({
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Hero Header */}
-      <div className="card p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl page-title">Hit List</h1>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="flex items-center gap-1.5 text-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-slate-600 dark:text-slate-400">{stats.open} open</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-sm">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                <span className="text-slate-600 dark:text-slate-400">{stats.overdue} overdue</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-sm">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                <span className="text-slate-600 dark:text-slate-400">{stats.blocked} blocked</span>
-              </span>
-            </div>
-          </div>
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Admin
-            </Link>
-          )}
-        </div>
-      </div>
-
+    <div className="space-y-3">
       {/* Search and Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <SearchBox />
-        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm">
+        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm text-sm">
           {filters.map((f) => (
             <Link
               key={f.key}
@@ -203,6 +168,14 @@ export default async function Home({
           currentFilter={filter} 
           currentProject={projectFilter} 
         />
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+          >
+            ⚙️ Admin
+          </Link>
+        )}
       </div>
 
       {/* Table */}
@@ -210,13 +183,13 @@ export default async function Home({
         <table className="w-full text-sm">
           <thead>
             <tr className="table-header text-left text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              <th className="px-4 py-3 font-semibold w-16">ID</th>
-              <th className="px-4 py-3 font-semibold">Task</th>
-              <th className="px-4 py-3 font-semibold w-32">Project</th>
-              <th className="px-4 py-3 font-semibold w-32">Owner</th>
-              <th className="px-4 py-3 font-semibold w-20 text-center">Cadence</th>
-              <th className="px-4 py-3 font-semibold w-16 text-center">Days</th>
-              <th className="px-4 py-3 font-semibold w-24 text-center">Status</th>
+              <th className="px-3 py-2 font-semibold w-14">ID</th>
+              <th className="px-3 py-2 font-semibold">Task</th>
+              <th className="px-3 py-2 font-semibold w-28">Project</th>
+              <th className="px-3 py-2 font-semibold w-28">Owner</th>
+              <th className="px-3 py-2 font-semibold w-16 text-center">Cad.</th>
+              <th className="px-3 py-2 font-semibold w-12 text-center">Days</th>
+              <th className="px-3 py-2 font-semibold w-20 text-center">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -235,14 +208,14 @@ export default async function Home({
 
                 return (
                   <tr key={task.id} className={rowClasses}>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs font-medium">
                         {task.task_number || "—"}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <Link href={`/tasks/${task.id}`} className="group">
-                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400 dark:text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>
+                        <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-slate-400 dark:text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>
                           {task.description}
                         </span>
                       </Link>
@@ -257,16 +230,16 @@ export default async function Home({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate max-w-32">
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-200 truncate max-w-28 text-sm">
                       {task.projects?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate max-w-32">
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-200 truncate max-w-28 text-sm">
                       {task.ownerNames || "—"}
                     </td>
-                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-xs">
+                    <td className="px-3 py-2 text-center text-slate-500 dark:text-slate-400 text-xs">
                       {task.fu_cadence_days}d
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-2 text-center">
                       <span className={`font-bold text-lg ${
                         task.status === "closed" 
                           ? "text-slate-400 dark:text-slate-500" 
@@ -279,13 +252,13 @@ export default async function Home({
                         {task.daysSinceMovement}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-2 text-center">
                       {task.status === "closed" ? (
-                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">CLOSED</span>
+                        <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">CLOSED</span>
                       ) : task.status === "close_requested" ? (
-                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">PENDING</span>
+                        <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">PENDING</span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">OPEN</span>
+                        <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">OPEN</span>
                       )}
                     </td>
                   </tr>
@@ -308,8 +281,8 @@ export default async function Home({
       </div>
 
       {/* Footer stats */}
-      <div className="text-xs text-slate-400 dark:text-slate-500 text-right">
-        Showing {filteredTasks.length} of {stats.total} tasks
+      <div className="text-[11px] text-slate-400 dark:text-slate-500 text-right -mt-1">
+        {filteredTasks.length} of {stats.total}
       </div>
     </div>
   );
