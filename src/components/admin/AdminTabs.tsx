@@ -126,11 +126,11 @@ function UsersTab({ profiles }: { profiles: Profile[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
         <h2 className="font-semibold text-slate-900">Users</h2>
         <button
           onClick={() => setShowInvite(!showInvite)}
-          className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800"
+          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Invite User
         </button>
