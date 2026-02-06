@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProjectFilter } from "@/components/ProjectFilter";
+import { SearchBox } from "@/components/SearchBox";
 
 type Task = {
   id: string;
@@ -18,9 +19,10 @@ type Task = {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; project?: string; sort?: string }>;
+  searchParams: Promise<{ filter?: string; project?: string; sort?: string; q?: string }>;
 }) {
   const params = await searchParams;
+  const searchQuery = params.q || "";
   const supabase = await createClient();
 
   const {
@@ -83,6 +85,23 @@ export default async function Home({
   
   if (projectFilter !== "all") {
     filteredTasks = filteredTasks.filter((t) => t.project_id === projectFilter);
+  }
+
+  // Search filter - comma-separated terms work as AND
+  if (searchQuery) {
+    const searchTerms = searchQuery.split(',').map(term => term.trim().toLowerCase()).filter(Boolean);
+    filteredTasks = filteredTasks.filter((task) => {
+      const searchableText = [
+        task.description,
+        task.task_number,
+        task.projects?.name,
+        task.ownerNames,
+        task.status
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      // All terms must match (AND logic)
+      return searchTerms.every(term => searchableText.includes(term));
+    });
   }
 
   // Sort - default by overdue first, then by days descending
@@ -171,8 +190,9 @@ export default async function Home({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <div className="flex flex-wrap items-center gap-3">
+        <SearchBox />
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm">
           {filters.map((f) => (
             <Link
@@ -215,11 +235,13 @@ export default async function Home({
               filteredTasks.map((task) => {
                 let rowClasses = "table-row";
                 if (task.status === "closed") {
-                  rowClasses += " bg-slate-50/50 dark:bg-slate-800 text-slate-400 dark:text-slate-500";
+                  rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500";
                 } else if (task.isOverdue) {
-                  rowClasses += " bg-gradient-to-r from-red-50 dark:from-red-900/40 to-slate-800 border-l-4 border-l-red-500";
+                  rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
                 } else if (task.is_blocked) {
-                  rowClasses += " bg-gradient-to-r from-amber-50 dark:from-amber-900/40 to-slate-800 border-l-4 border-l-amber-500"; } else { rowClasses += " dark:bg-slate-800/40";
+                  rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/30 dark:to-slate-800 border-l-4 border-l-amber-500";
+                } else {
+                  rowClasses += " bg-white dark:bg-slate-800/40";
                 }
 
                 return (
@@ -258,12 +280,12 @@ export default async function Home({
                     <td className="px-4 py-3 text-center">
                       <span className={`font-bold text-lg ${
                         task.status === "closed" 
-                          ? "text-slate-300" 
+                          ? "text-slate-400 dark:text-slate-500" 
                           : task.isOverdue 
-                            ? "text-red-600" 
+                            ? "text-red-600 dark:text-red-400" 
                             : task.daysSinceMovement > task.fu_cadence_days * 0.75
-                              ? "text-amber-500"
-                              : "text-emerald-500"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
                       }`}>
                         {task.daysSinceMovement}
                       </span>

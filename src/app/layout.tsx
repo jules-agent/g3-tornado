@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "G3-Tornado",
   description: "UP.FIT task management and follow-up cadence tracking.",
+  icons: {
+    icon: "/tornado.svg",
+  },
 };
 
 export default function RootLayout({
