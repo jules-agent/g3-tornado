@@ -247,13 +247,13 @@ export default async function Home({
                 return (
                   <tr key={task.id} className={rowClasses}>
                     <td className="px-4 py-3">
-                      <Link href={`/tasks/${task.id}`} className="text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs">
+                      <Link href={`/tasks/${task.id}`} className="text-slate-500 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-mono text-xs">
                         {task.task_number || "—"}
                       </Link>
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/tasks/${task.id}`} className="group">
-                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white font-medium"}`}>
+                        <span className={`group-hover:text-cyan-500 transition ${task.status === "closed" ? "text-slate-400 dark:text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>
                           {task.description}
                         </span>
                       </Link>
@@ -268,13 +268,13 @@ export default async function Home({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 truncate max-w-32">
                       {task.projects?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 truncate max-w-32">
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 truncate max-w-32">
                       {task.ownerNames || "—"}
                     </td>
-                    <td className="px-4 py-3 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    <td className="px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-xs">
                       {task.fu_cadence_days}d
                     </td>
                     <td className="px-4 py-3 text-center">
