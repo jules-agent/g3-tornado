@@ -55,11 +55,11 @@ export function AdminTabs({
             href={`/admin?tab=${tab.key}`}
             className={`px-4 py-2 border-r border-slate-200 last:border-r-0 ${
               activeTab === tab.key
-                ? "bg-slate-900 text-white"
+                ? "bg-teal-500 text-white"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
           >
-            {tab.label} <span className="text-slate-400 ml-1">{tab.count}</span>
+            {tab.label} <span className={activeTab === tab.key ? "text-teal-100" : "text-slate-400"}>{tab.count}</span>
           </Link>
         ))}
       </div>
@@ -277,11 +277,11 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
         <h2 className="font-semibold text-slate-900">Projects</h2>
         <button
           onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setDescription(""); }}
-          className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800"
+          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Add Project
         </button>
@@ -466,11 +466,11 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
         <h2 className="font-semibold text-slate-900">Owners</h2>
         <button
           onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setEmail(""); setPhone(""); }}
-          className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800"
+          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Add Owner
         </button>
