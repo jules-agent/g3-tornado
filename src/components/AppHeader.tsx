@@ -37,12 +37,11 @@ export default function AppHeader({ user }: AppHeaderProps) {
   };
 
   const navItems = [
-    { href: "/", label: "Hit List" },
-    { href: "/tasks/new", label: "New Task" },
+    { href: "/", label: "Tasks" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo & Brand */}
         <div className="flex items-center gap-8">
