@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 type Owner = {
@@ -197,27 +198,36 @@ export function GateEditor({ taskId, gateIndex, gates, onClose, onSave }: GateEd
                   </button>
                 </div>
               ) : (
-                <select
-                  value={ownerName}
-                  onChange={(e) => {
-                    if (e.target.value === "__add_new__") {
-                      setShowAddOwner(true);
-                    } else {
-                      setOwnerName(e.target.value);
-                    }
-                  }}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="">Select owner...</option>
-                  {owners.map((owner) => (
-                    <option key={owner.id} value={owner.name}>
-                      {owner.name}
+                <div className="space-y-1">
+                  <select
+                    value={ownerName}
+                    onChange={(e) => {
+                      if (e.target.value === "__add_new__") {
+                        setShowAddOwner(true);
+                      } else {
+                        setOwnerName(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">Select owner...</option>
+                    {owners.map((owner) => (
+                      <option key={owner.id} value={owner.name}>
+                        {owner.name}
+                      </option>
+                    ))}
+                    <option value="__add_new__" className="text-teal-600 font-medium">
+                      + Add new person...
                     </option>
-                  ))}
-                  <option value="__add_new__" className="text-teal-600 font-medium">
-                    + Add new person...
-                  </option>
-                </select>
+                  </select>
+                  <Link
+                    href="/admin/owners"
+                    target="_blank"
+                    className="block text-right text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  >
+                    Manage people list →
+                  </Link>
+                </div>
               )}
             </div>
             
