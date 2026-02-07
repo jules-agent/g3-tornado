@@ -41,23 +41,23 @@ export function AdminTabs({
 }) {
   const router = useRouter();
   const tabs = [
-    { key: "users", label: "Users", count: profiles.length },
-    { key: "projects", label: "Projects", count: projects.length },
-    { key: "owners", label: "Owners", count: owners.length },
+    { key: "users", label: "Users", count: profiles.length, href: "/admin?tab=users" },
+    { key: "projects", label: "Projects", count: projects.length, href: "/admin/projects" },
+    { key: "owners", label: "Owners", count: owners.length, href: "/admin/owners" },
   ];
 
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="flex rounded border border-slate-200 bg-white text-xs mb-4">
+      <div className="flex rounded border border-slate-200 bg-white text-xs mb-4 dark:border-slate-700 dark:bg-slate-800">
         {tabs.map((tab) => (
           <Link
             key={tab.key}
-            href={`/admin?tab=${tab.key}`}
-            className={`px-4 py-2 border-r border-slate-200 last:border-r-0 ${
+            href={tab.href}
+            className={`px-4 py-2 border-r border-slate-200 dark:border-slate-700 last:border-r-0 ${
               activeTab === tab.key
                 ? "bg-teal-500 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
             }`}
           >
             {tab.label} <span className={activeTab === tab.key ? "text-teal-100" : "text-slate-400"}>{tab.count}</span>
