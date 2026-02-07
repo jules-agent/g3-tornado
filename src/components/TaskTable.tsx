@@ -23,7 +23,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
   currentGate: "Current approval gate owner",
   nextGate: "Next person in the approval chain",
   nextStep: "Next action to be taken",
-  notes: "Activity notes and status updates",
+  lastUpdate: "Most recent note - hover 📝 for full history",
   cadence: "Follow-up frequency in days",
   days: "Days since last movement",
   status: "Current task status (Open/Pending/Closed)",
@@ -39,7 +39,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true, defaultVisible: true },
-  { id: "notes", label: "Notes", width: 60, minWidth: 50, align: "center", defaultVisible: true },
+  { id: "lastUpdate", label: "Last Update", width: 180, minWidth: 120, align: "left", defaultVisible: true },
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
   { id: "days", label: "Days", width: 50, minWidth: 40, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
@@ -499,12 +499,12 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
     setDragOverCol(null);
   };
 
-  // Notes hover
+  // Notes hover - show full update history
   const handleNotesMouseEnter = (e: React.MouseEvent, task: Task) => {
     if (task.notes.length === 0) return;
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setTooltipPosition({ x: rect.left, y: rect.bottom + 8 });
-    setHoveredNotes({ taskId: task.id, notes: task.notes.slice(0, 5) });
+    setHoveredNotes({ taskId: task.id, notes: task.notes }); // All notes
   };
 
   const handleNotesMouseLeave = () => setHoveredNotes(null);
@@ -517,20 +517,25 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   return (
     <div className="relative">
-      {/* Notes tooltip */}
+      {/* Update History tooltip */}
       {hoveredNotes && (
         <div 
-          className="fixed z-[100] bg-slate-900 text-white rounded-lg shadow-xl p-3 max-w-sm"
-          style={{ left: tooltipPosition.x, top: tooltipPosition.y }}
+          className="fixed z-[100] bg-slate-900 text-white rounded-lg shadow-xl p-3 max-w-md min-w-[280px]"
+          style={{ left: Math.min(tooltipPosition.x, window.innerWidth - 320), top: tooltipPosition.y }}
         >
-          <div className="text-xs font-semibold text-teal-400 mb-2">Recent Notes</div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {hoveredNotes.notes.map((note) => (
-              <div key={note.id} className="border-b border-slate-700 pb-2 last:border-0">
-                <div className="text-[10px] text-slate-400 mb-0.5">
-                  {note.profiles?.full_name || note.profiles?.email || 'Unknown'} · {formatRelativeTime(note.created_at)}
+          <div className="text-xs font-semibold text-teal-400 mb-2 flex items-center gap-2">
+            <span>📋 Update History</span>
+            <span className="text-slate-500">({hoveredNotes.notes.length} total)</span>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {hoveredNotes.notes.map((note, idx) => (
+              <div key={note.id} className={`pb-2 ${idx < hoveredNotes.notes.length - 1 ? 'border-b border-slate-700' : ''}`}>
+                <div className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-2">
+                  <span className="font-medium text-slate-300">{note.profiles?.full_name || note.profiles?.email || 'Unknown'}</span>
+                  <span>·</span>
+                  <span>{new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                 </div>
-                <div className="text-xs text-slate-200 line-clamp-2">{note.content}</div>
+                <div className="text-xs text-slate-200">{note.content}</div>
               </div>
             ))}
           </div>
@@ -748,8 +753,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             key={col.id}
                             className={cellClasses}
                             onClick={(e) => isEditable && handleCellClick(e, task.id, col.id, index)}
-                            onMouseEnter={col.id === 'notes' ? (e) => handleNotesMouseEnter(e, task) : undefined}
-                            onMouseLeave={col.id === 'notes' ? handleNotesMouseLeave : undefined}
+                            onMouseEnter={col.id === 'lastUpdate' ? (e) => handleNotesMouseEnter(e, task) : undefined}
+                            onMouseLeave={col.id === 'lastUpdate' ? handleNotesMouseLeave : undefined}
                           >
                             {renderCell(col.id, task)}
                           </td>
@@ -814,10 +819,23 @@ function renderCell(columnId: string, task: Task) {
     }
     case "nextStep":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
-    case "notes":
-      const noteCount = task.notes?.length || 0;
-      if (noteCount === 0) return <span className="text-slate-300 text-xs">—</span>;
-      return <span className="inline-flex items-center gap-1 text-slate-500 hover:text-teal-500 cursor-pointer transition"><span className="text-sm">📝</span><span className="text-xs font-medium">{noteCount}</span></span>;
+    case "lastUpdate": {
+      const notes = task.notes || [];
+      if (notes.length === 0) return <span className="text-slate-400 dark:text-slate-500 text-xs">No updates yet</span>;
+      const latest = notes[0]; // Already sorted descending
+      const timeAgo = formatRelativeTime(latest.created_at);
+      return (
+        <div className="flex items-start gap-1.5">
+          <span className="text-sm cursor-pointer hover:scale-110 transition-transform">📝</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{latest.content}</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+              {latest.profiles?.full_name || latest.profiles?.email || 'Unknown'} · {timeAgo}
+            </div>
+          </div>
+        </div>
+      );
+    }
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;
     case "days":
