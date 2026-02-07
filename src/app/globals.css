@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Override Tailwind's dark mode to use class-based instead of prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Inter font for modern SaaS look */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
