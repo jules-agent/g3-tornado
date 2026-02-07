@@ -11,20 +11,24 @@ type ColumnConfig = {
   width: number;
   minWidth: number;
   align?: "left" | "center";
+  editable?: boolean;
 };
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "id", label: "ID", width: 56, minWidth: 50, align: "left" },
   { id: "task", label: "Task", width: 250, minWidth: 150, align: "left" },
-  { id: "project", label: "Project", width: 100, minWidth: 80, align: "left" },
+  { id: "project", label: "Project", width: 100, minWidth: 80, align: "left", editable: true },
   { id: "updated", label: "Updated", width: 80, minWidth: 60, align: "left" },
   { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left" },
   { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left" },
-  { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left" },
-  { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center" },
+  { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true },
+  { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true },
   { id: "days", label: "Days", width: 50, minWidth: 40, align: "center" },
-  { id: "status", label: "Status", width: 70, minWidth: 60, align: "center" },
+  { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true },
 ];
+
+// Columns that support bulk edit
+const BULK_EDITABLE_COLUMNS = ["project", "nextStep", "cadence", "status"];
 
 type Gate = {
   name: string;
@@ -53,46 +57,106 @@ type TaskTableProps = {
   total: number;
 };
 
+type SelectedCell = {
+  taskId: string;
+  columnId: string;
+};
+
 export function TaskTable({ tasks, total }: TaskTableProps) {
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [loaded, setLoaded] = useState(false);
   const [resizing, setResizing] = useState<{ id: string; startX: number; startWidth: number } | null>(null);
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  
+  // Cell-based selection (all cells must be in same column)
+  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([]);
+  const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  
+  // Bulk edit UI state
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [bulkEditValue, setBulkEditValue] = useState("");
 
-  // Handle row selection with shift+click for bulk select
-  const handleRowClick = (e: React.MouseEvent, taskId: string, index: number) => {
-    if (e.shiftKey && lastSelectedIndex !== null) {
-      // Shift+click: select range
-      const start = Math.min(lastSelectedIndex, index);
-      const end = Math.max(lastSelectedIndex, index);
-      const newSelected = new Set(selectedRows);
+  // Check if a cell is selected
+  const isCellSelected = (taskId: string, columnId: string) => {
+    return selectedCells.some(c => c.taskId === taskId && c.columnId === columnId);
+  };
+
+  // Handle cell click for selection
+  const handleCellClick = (e: React.MouseEvent, taskId: string, columnId: string, rowIndex: number) => {
+    // Only allow selection on editable columns
+    if (!BULK_EDITABLE_COLUMNS.includes(columnId)) {
+      // If clicking non-editable cell, just navigate or ignore
+      return;
+    }
+
+    e.stopPropagation();
+
+    if (e.shiftKey && lastSelectedIndex !== null && activeColumn === columnId) {
+      // Shift+click: select range in same column
+      const start = Math.min(lastSelectedIndex, rowIndex);
+      const end = Math.max(lastSelectedIndex, rowIndex);
+      const newCells: SelectedCell[] = [];
       for (let i = start; i <= end; i++) {
-        newSelected.add(tasks[i].id);
+        newCells.push({ taskId: tasks[i].id, columnId });
       }
-      setSelectedRows(newSelected);
+      setSelectedCells(newCells);
     } else if (e.ctrlKey || e.metaKey) {
-      // Ctrl/Cmd+click: toggle single
-      const newSelected = new Set(selectedRows);
-      if (newSelected.has(taskId)) {
-        newSelected.delete(taskId);
+      // Ctrl/Cmd+click: toggle cell
+      if (activeColumn && activeColumn !== columnId) {
+        // Switching columns - start fresh
+        setSelectedCells([{ taskId, columnId }]);
+        setActiveColumn(columnId);
       } else {
-        newSelected.add(taskId);
+        // Same column - toggle
+        const exists = isCellSelected(taskId, columnId);
+        if (exists) {
+          const filtered = selectedCells.filter(c => !(c.taskId === taskId && c.columnId === columnId));
+          setSelectedCells(filtered);
+          if (filtered.length === 0) setActiveColumn(null);
+        } else {
+          setSelectedCells([...selectedCells, { taskId, columnId }]);
+          setActiveColumn(columnId);
+        }
       }
-      setSelectedRows(newSelected);
-      setLastSelectedIndex(index);
+      setLastSelectedIndex(rowIndex);
     } else {
-      // Normal click: select single (clear others)
-      setSelectedRows(new Set([taskId]));
-      setLastSelectedIndex(index);
+      // Normal click: select single cell
+      setSelectedCells([{ taskId, columnId }]);
+      setActiveColumn(columnId);
+      setLastSelectedIndex(rowIndex);
     }
   };
 
+  // Clear selection
   const clearSelection = () => {
-    setSelectedRows(new Set());
+    setSelectedCells([]);
+    setActiveColumn(null);
     setLastSelectedIndex(null);
+    setShowBulkEdit(false);
+    setBulkEditValue("");
+  };
+
+  // Get column label
+  const getColumnLabel = (colId: string) => {
+    return columns.find(c => c.id === colId)?.label || colId;
+  };
+
+  // Apply bulk edit
+  const applyBulkEdit = async () => {
+    if (!activeColumn || selectedCells.length === 0) return;
+    
+    // TODO: Call API to update all selected tasks
+    console.log("Bulk edit:", {
+      column: activeColumn,
+      value: bulkEditValue,
+      taskIds: selectedCells.map(c => c.taskId)
+    });
+    
+    // For now, just clear selection
+    clearSelection();
+    // TODO: Trigger refresh
   };
 
   // Load from localStorage
@@ -101,12 +165,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Merge with defaults
         const merged = DEFAULT_COLUMNS.map((def) => {
           const saved = parsed.find((c: ColumnConfig) => c.id === def.id);
           return saved ? { ...def, width: saved.width } : def;
         });
-        // Restore order if saved
         if (parsed[0]?.order !== undefined) {
           merged.sort((a, b) => {
             const aOrder = parsed.find((c: ColumnConfig & { order?: number }) => c.id === a.id)?.order ?? 0;
@@ -220,30 +282,73 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   }
 
   return (
-    <div>
-      {/* Selection banner */}
-      {selectedRows.size > 0 && (
-        <div className="mb-2 px-3 py-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg flex items-center justify-between">
-          <span className="text-sm text-teal-800 dark:text-teal-200">
-            <span className="font-semibold">{selectedRows.size}</span> task{selectedRows.size > 1 ? "s" : ""} selected
-            <span className="text-teal-600 dark:text-teal-400 ml-2">(Shift+click to select range)</span>
-          </span>
-          <div className="flex gap-2">
-            <button 
-              onClick={clearSelection}
-              className="text-xs px-2 py-1 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-            >
-              Clear
-            </button>
-            <button className="text-xs px-2 py-1 rounded bg-teal-500 text-white hover:bg-teal-600">
-              Bulk Edit
-            </button>
+    <div className="relative">
+      {/* Floating action bar for bulk edit */}
+      {selectedCells.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="text-teal-400 font-bold text-lg">{selectedCells.length}</span>
+            <span className="text-slate-300">
+              cell{selectedCells.length > 1 ? "s" : ""} in <span className="font-semibold text-white">{getColumnLabel(activeColumn!)}</span>
+            </span>
           </div>
+          
+          <div className="h-6 w-px bg-slate-600" />
+          
+          {/* Edit input based on column type */}
+          {activeColumn === "status" ? (
+            <select
+              value={bulkEditValue}
+              onChange={(e) => setBulkEditValue(e.target.value)}
+              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none"
+            >
+              <option value="">Set status...</option>
+              <option value="open">Open</option>
+              <option value="close_requested">Pending Close</option>
+              <option value="closed">Closed</option>
+            </select>
+          ) : activeColumn === "cadence" ? (
+            <input
+              type="number"
+              min="1"
+              max="90"
+              placeholder="Days..."
+              value={bulkEditValue}
+              onChange={(e) => setBulkEditValue(e.target.value)}
+              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none w-24"
+            />
+          ) : (
+            <input
+              type="text"
+              placeholder={`Set ${getColumnLabel(activeColumn!)}...`}
+              value={bulkEditValue}
+              onChange={(e) => setBulkEditValue(e.target.value)}
+              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none w-48"
+            />
+          )}
+          
+          <button
+            onClick={applyBulkEdit}
+            disabled={!bulkEditValue}
+            className="bg-teal-500 hover:bg-teal-600 disabled:bg-slate-600 disabled:cursor-not-allowed px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+          >
+            Apply
+          </button>
+          
+          <button
+            onClick={clearSelection}
+            className="text-slate-400 hover:text-white px-2 py-1 text-sm transition"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Reset button */}
-      <div className="flex justify-end mb-1">
+      {/* Help text */}
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-[10px] text-slate-400">
+          💡 <span className="font-medium">Bulk edit:</span> Cmd+click cells in same column, then edit
+        </span>
         <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">
           Reset columns
         </button>
@@ -272,8 +377,12 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                     } ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""}`}
                     style={{ cursor: draggedCol ? "grabbing" : "grab" }}
                   >
-                    <span className="truncate block pr-2">{col.label}</span>
-                    {/* Resize handle */}
+                    <span className="truncate block pr-2">
+                      {col.label}
+                      {BULK_EDITABLE_COLUMNS.includes(col.id) && (
+                        <span className="ml-1 text-teal-500 opacity-50">•</span>
+                      )}
+                    </span>
                     <div
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10"
                       onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
@@ -287,11 +396,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {tasks.length > 0 ? (
                 tasks.map((task, index) => {
-                  const isSelected = selectedRows.has(task.id);
-                  let rowClasses = "table-row cursor-pointer";
-                  if (isSelected) {
-                    rowClasses += " ring-2 ring-teal-500 ring-inset bg-teal-50 dark:bg-teal-900/20";
-                  } else if (task.status === "closed") {
+                  let rowClasses = "table-row";
+                  if (task.status === "closed") {
                     rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400";
                   } else if (task.isOverdue) {
                     rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
@@ -302,16 +408,29 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                   }
 
                   return (
-                    <tr 
-                      key={task.id} 
-                      className={rowClasses}
-                      onClick={(e) => handleRowClick(e, task.id, index)}
-                    >
-                      {columns.map((col) => (
-                        <td key={col.id} className={`px-3 py-2 ${col.align === "center" ? "text-center" : ""}`}>
-                          {renderCell(col.id, task)}
-                        </td>
-                      ))}
+                    <tr key={task.id} className={rowClasses}>
+                      {columns.map((col) => {
+                        const isEditable = BULK_EDITABLE_COLUMNS.includes(col.id);
+                        const isSelected = isCellSelected(task.id, col.id);
+                        
+                        let cellClasses = `px-3 py-2 ${col.align === "center" ? "text-center" : ""}`;
+                        if (isEditable) {
+                          cellClasses += " cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors";
+                        }
+                        if (isSelected) {
+                          cellClasses += " ring-2 ring-teal-500 ring-inset bg-teal-100 dark:bg-teal-900/40";
+                        }
+
+                        return (
+                          <td
+                            key={col.id}
+                            className={cellClasses}
+                            onClick={(e) => isEditable && handleCellClick(e, task.id, col.id, index)}
+                          >
+                            {renderCell(col.id, task)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })
