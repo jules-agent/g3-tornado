@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   // Support both old format (column_layout) and new format (device, columns, scale)
   let updateData;
   
-  if (body.device && (body.columns || body.scale !== undefined)) {
+  if (body.device && (body.columns || body.scale !== undefined || body.visibleColumns)) {
     // New format: device-specific update
     // First get existing preferences
     const { data: profile } = await supabase
@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     // Merge with existing
     const devicePrefs = existing[body.device] || {};
     if (body.columns) devicePrefs.columns = body.columns;
+    if (body.visibleColumns) devicePrefs.visibleColumns = body.visibleColumns;
     if (body.scale !== undefined) devicePrefs.scale = body.scale;
     existing[body.device] = devicePrefs;
     

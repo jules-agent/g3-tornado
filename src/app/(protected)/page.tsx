@@ -10,6 +10,13 @@ type Gate = {
   completed: boolean;
 };
 
+type TaskNote = {
+  id: string;
+  content: string;
+  created_at: string;
+  profiles: { full_name: string | null; email: string } | null;
+};
+
 type Task = {
   id: string;
   description: string;
@@ -23,6 +30,7 @@ type Task = {
   next_step: string | null;
   projects: { id: string; name: string } | null;
   task_owners: { owner_id: string; owners: { id: string; name: string } | null }[] | null;
+  task_notes: TaskNote[] | null;
 };
 
 export default async function Home({
@@ -57,7 +65,8 @@ export default async function Home({
         gates,
         next_step,
         projects (id, name),
-        task_owners (owner_id, owners (id, name))
+        task_owners (owner_id, owners (id, name)),
+        task_notes (id, content, created_at, profiles (full_name, email))
       `
       )
       .order("task_number", { ascending: true }),
@@ -75,7 +84,11 @@ export default async function Home({
         ?.map((to) => to.owners?.name)
         .filter(Boolean)
         .join(", ") || "";
-    return { ...task, daysSinceMovement, isOverdue, ownerNames: owners };
+    // Sort notes by date descending
+    const notes = task.task_notes?.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ) || [];
+    return { ...task, daysSinceMovement, isOverdue, ownerNames: owners, notes };
   }) ?? [];
 
   // Filter tasks
