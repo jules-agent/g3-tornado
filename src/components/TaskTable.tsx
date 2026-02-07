@@ -1077,47 +1077,44 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                           
                           return (
                             <td key={col.id} className={cellClasses}>
-                              <div className="flex items-start gap-2">
-                                {/* Note icon with tooltip - only if has notes */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* Task description */}
+                                <Link href={`/tasks/${task.id}`} className="group">
+                                  <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>
+                                    {task.description}
+                                  </span>
+                                </Link>
+                                
+                                {/* Status tags */}
+                                {task.isStale && task.status !== "closed" && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>
+                                )}
+                                {task.is_blocked && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>
+                                )}
+                                
+                                {/* Note indicator - small badge if has notes */}
                                 {task.notes.length > 0 && (
                                   <span 
-                                    className="flex-shrink-0 text-slate-400 hover:text-teal-500 cursor-pointer mt-0.5"
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50"
                                     onMouseEnter={(e) => handleNotesMouseEnter(e, task)}
                                     onMouseLeave={handleNotesMouseLeave}
+                                    title={`${task.notes.length} note${task.notes.length > 1 ? 's' : ''}`}
                                   >
-                                    📝
+                                    💬 {task.notes.length}
                                   </span>
                                 )}
                                 
-                                {/* Task description and tags */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Link href={`/tasks/${task.id}`} className="group">
-                                      <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>
-                                        {task.description}
-                                      </span>
-                                    </Link>
-                                    
-                                    {/* Status tags */}
-                                    {task.isStale && task.status !== "closed" && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>
-                                    )}
-                                    {task.is_blocked && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>
-                                    )}
-                                    
-                                    {/* Cad/Aging gauge */}
-                                    <span 
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700"
-                                      title={`${task.daysSinceMovement} days since update / ${task.fu_cadence_days} day cadence`}
-                                    >
-                                      <span className={`w-2 h-2 rounded-full ${agingColor}`}></span>
-                                      <span className="text-slate-800 dark:text-slate-300">{task.daysSinceMovement}</span>
-                                      <span className="text-slate-600 dark:text-slate-400">/</span>
-                                      <span className="text-slate-700 dark:text-slate-400">{task.fu_cadence_days}</span>
-                                    </span>
-                                  </div>
-                                </div>
+                                {/* Cad/Aging gauge */}
+                                <span 
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700"
+                                  title={`${task.daysSinceMovement} days since update / ${task.fu_cadence_days} day cadence`}
+                                >
+                                  <span className={`w-2 h-2 rounded-full ${agingColor}`}></span>
+                                  <span className="text-slate-800 dark:text-slate-300">{task.daysSinceMovement}</span>
+                                  <span className="text-slate-600 dark:text-slate-400">/</span>
+                                  <span className="text-slate-700 dark:text-slate-400">{task.fu_cadence_days}</span>
+                                </span>
                               </div>
                             </td>
                           );
