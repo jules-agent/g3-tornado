@@ -167,9 +167,9 @@ export default async function Home({
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {/* Search and Filters */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <SearchBox />
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm text-sm">
           {filters.map((f) => (

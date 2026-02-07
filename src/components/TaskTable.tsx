@@ -15,6 +15,22 @@ type ColumnConfig = {
   defaultVisible?: boolean;
 };
 
+const COLUMN_TOOLTIPS: Record<string, string> = {
+  id: "Unique task identifier",
+  task: "Task description and title",
+  project: "Project this task belongs to",
+  updated: "Time since last activity or note",
+  currentGate: "Current approval gate owner",
+  nextGate: "Next person in the approval chain",
+  nextStep: "Next action to be taken",
+  notes: "Activity notes and status updates",
+  cadence: "Follow-up frequency in days",
+  days: "Days since last movement",
+  status: "Current task status (Open/Pending/Closed)",
+  owner: "Task owner(s) responsible",
+  blocked: "Whether task is blocked",
+};
+
 const ALL_COLUMNS: ColumnConfig[] = [
   { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: true },
   { id: "task", label: "Task", width: 250, minWidth: 150, align: "left", editable: true, defaultVisible: true },
@@ -581,8 +597,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+      {/* Toolbar - compact */}
+      <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
         <div className="flex items-center gap-2">
           {/* Profile selector */}
           <div className="relative" ref={profileMenuRef}>
@@ -697,6 +713,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                     onDrop={(e) => handleDrop(e, col.id)}
                     className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""}`}
                     style={{ cursor: isMobile ? 'default' : (draggedCol ? "grabbing" : "grab") }}
+                    title={COLUMN_TOOLTIPS[col.id] || col.label}
                   >
                     <span className="truncate block pr-2">
                       {col.label}

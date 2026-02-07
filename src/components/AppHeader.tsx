@@ -40,7 +40,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
         {/* Logo & Brand */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-3 group">
