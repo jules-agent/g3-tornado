@@ -41,6 +41,8 @@ CREATE TABLE owners (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL UNIQUE,
   email TEXT,
+  phone TEXT,
+  is_internal BOOLEAN DEFAULT true, -- true = UP/BP Employee, false = Outside Partner
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
