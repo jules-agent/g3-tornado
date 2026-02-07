@@ -522,26 +522,22 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
             )}
           </div>
 
-          {isMobile && (
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
-              <button
-                onClick={() => handleScaleChange(Math.max(20, scale - 10))}
-                disabled={scale <= 20}
-                className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
-              >−</button>
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-12 text-center">{scale}%</span>
-              <button
-                onClick={() => handleScaleChange(Math.min(200, scale + 10))}
-                disabled={scale >= 200}
-                className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
-              >+</button>
-            </div>
-          )}
+          {/* Zoom controls - always visible */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
+            <button
+              onClick={() => handleScaleChange(Math.max(20, scale - 10))}
+              disabled={scale <= 20}
+              className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300"
+            >−</button>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-12 text-center">{scale}%</span>
+            <button
+              onClick={() => handleScaleChange(Math.min(200, scale + 10))}
+              disabled={scale >= 200}
+              className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300"
+            >+</button>
+          </div>
           
           {saving && <span className="text-[10px] text-teal-500 animate-pulse">Saving...</span>}
-          <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-            {isMobile ? "📱 Mobile" : "💻 Desktop"}
-          </span>
           <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">Reset</button>
         </div>
       </div>
@@ -550,7 +546,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       <div 
         ref={tableRef}
         className="card overflow-hidden"
-        style={isMobile ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
+        style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
       >
         <div className="overflow-x-auto">
           <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) }}>
