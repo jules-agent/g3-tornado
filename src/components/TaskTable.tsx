@@ -198,8 +198,18 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   // Apply a profile to the current view
   const applyProfile = useCallback((profile: ViewProfile) => {
-    setVisibleColumnIds(profile.visibleColumns);
-    const visibleCols = ALL_COLUMNS.filter(c => profile.visibleColumns.includes(c.id));
+    // Ensure "notes" column is visible (was added later, may be missing from old profiles)
+    let visibleIds = profile.visibleColumns.length > 0 
+      ? profile.visibleColumns 
+      : ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id);
+    
+    // Add notes if missing from saved profile
+    if (!visibleIds.includes('notes')) {
+      visibleIds = [...visibleIds, 'notes'];
+    }
+    
+    setVisibleColumnIds(visibleIds);
+    const visibleCols = ALL_COLUMNS.filter(c => visibleIds.includes(c.id));
     const merged = visibleCols.map((def) => {
       const saved = profile.columns.find(c => c.id === def.id);
       return saved ? { ...def, width: saved.width } : def;
