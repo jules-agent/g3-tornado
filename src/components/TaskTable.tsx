@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef, useCallback } from "react";
 
-const STORAGE_KEY = "g3-column-layout";
+const STORAGE_KEY = "g3-view-preferences";
 
 type ColumnConfig = {
   id: string;
@@ -27,8 +27,9 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true },
 ];
 
-// Columns that support bulk edit
 const BULK_EDITABLE_COLUMNS = ["project", "nextStep", "cadence", "status"];
+
+const SCALE_OPTIONS = [50, 75, 100, 125, 150];
 
 type Gate = {
   name: string;
@@ -62,21 +63,44 @@ type SelectedCell = {
   columnId: string;
 };
 
+type ViewPreferences = {
+  desktop: { columns?: ColumnConfig[] } | null;
+  mobile: { columns?: ColumnConfig[]; scale?: number } | null;
+};
+
+// Hook to detect mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  
+  return isMobile;
+}
+
 export function TaskTable({ tasks, total }: TaskTableProps) {
+  const isMobile = useIsMobile();
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [scale, setScale] = useState(100);
   const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [resizing, setResizing] = useState<{ id: string; startX: number; startWidth: number } | null>(null);
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   
-  // Cell-based selection (all cells must be in same column)
+  // Cell-based selection
   const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([]);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-  
-  // Bulk edit UI state
-  const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [bulkEditValue, setBulkEditValue] = useState("");
+
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Check if a cell is selected
   const isCellSelected = (taskId: string, columnId: string) => {
@@ -85,16 +109,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   // Handle cell click for selection
   const handleCellClick = (e: React.MouseEvent, taskId: string, columnId: string, rowIndex: number) => {
-    // Only allow selection on editable columns
-    if (!BULK_EDITABLE_COLUMNS.includes(columnId)) {
-      // If clicking non-editable cell, just navigate or ignore
-      return;
-    }
-
+    if (!BULK_EDITABLE_COLUMNS.includes(columnId)) return;
     e.stopPropagation();
 
     if (e.shiftKey && lastSelectedIndex !== null && activeColumn === columnId) {
-      // Shift+click: select range in same column
       const start = Math.min(lastSelectedIndex, rowIndex);
       const end = Math.max(lastSelectedIndex, rowIndex);
       const newCells: SelectedCell[] = [];
@@ -103,13 +121,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       }
       setSelectedCells(newCells);
     } else if (e.ctrlKey || e.metaKey) {
-      // Ctrl/Cmd+click: toggle cell
       if (activeColumn && activeColumn !== columnId) {
-        // Switching columns - start fresh
         setSelectedCells([{ taskId, columnId }]);
         setActiveColumn(columnId);
       } else {
-        // Same column - toggle
         const exists = isCellSelected(taskId, columnId);
         if (exists) {
           const filtered = selectedCells.filter(c => !(c.taskId === taskId && c.columnId === columnId));
@@ -122,73 +137,112 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       }
       setLastSelectedIndex(rowIndex);
     } else {
-      // Normal click: select single cell
       setSelectedCells([{ taskId, columnId }]);
       setActiveColumn(columnId);
       setLastSelectedIndex(rowIndex);
     }
   };
 
-  // Clear selection
   const clearSelection = () => {
     setSelectedCells([]);
     setActiveColumn(null);
     setLastSelectedIndex(null);
-    setShowBulkEdit(false);
     setBulkEditValue("");
   };
 
-  // Get column label
   const getColumnLabel = (colId: string) => {
     return columns.find(c => c.id === colId)?.label || colId;
   };
 
-  // Apply bulk edit
   const applyBulkEdit = async () => {
     if (!activeColumn || selectedCells.length === 0) return;
-    
-    // TODO: Call API to update all selected tasks
-    console.log("Bulk edit:", {
-      column: activeColumn,
-      value: bulkEditValue,
-      taskIds: selectedCells.map(c => c.taskId)
-    });
-    
-    // For now, just clear selection
+    console.log("Bulk edit:", { column: activeColumn, value: bulkEditValue, taskIds: selectedCells.map(c => c.taskId) });
     clearSelection();
-    // TODO: Trigger refresh
   };
 
-  // Load from localStorage
+  // Load preferences from localStorage + server
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const merged = DEFAULT_COLUMNS.map((def) => {
-          const saved = parsed.find((c: ColumnConfig) => c.id === def.id);
-          return saved ? { ...def, width: saved.width } : def;
-        });
-        if (parsed[0]?.order !== undefined) {
-          merged.sort((a, b) => {
-            const aOrder = parsed.find((c: ColumnConfig & { order?: number }) => c.id === a.id)?.order ?? 0;
-            const bOrder = parsed.find((c: ColumnConfig & { order?: number }) => c.id === b.id)?.order ?? 0;
-            return aOrder - bOrder;
-          });
+    const loadPreferences = async () => {
+      try {
+        // Try localStorage first (faster)
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const prefs: ViewPreferences = JSON.parse(stored);
+          const devicePrefs = isMobile ? prefs.mobile : prefs.desktop;
+          if (devicePrefs?.columns) {
+            const merged = DEFAULT_COLUMNS.map((def) => {
+              const saved = devicePrefs.columns!.find((c: ColumnConfig) => c.id === def.id);
+              return saved ? { ...def, width: saved.width } : def;
+            });
+            setColumns(merged);
+          }
+          if (isMobile && prefs.mobile?.scale) {
+            setScale(prefs.mobile.scale);
+          }
         }
-        setColumns(merged);
-      }
-    } catch (e) {
-      console.error("Failed to load columns:", e);
-    }
-    setLoaded(true);
-  }, []);
 
-  // Save to localStorage
-  const saveColumns = useCallback((cols: ColumnConfig[]) => {
-    const toSave = cols.map((c, i) => ({ id: c.id, width: c.width, order: i }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  }, []);
+        // Then try server (authoritative)
+        const res = await fetch('/api/user/preferences');
+        if (res.ok) {
+          const { preferences } = await res.json();
+          if (preferences) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+            const devicePrefs = isMobile ? preferences.mobile : preferences.desktop;
+            if (devicePrefs?.columns) {
+              const merged = DEFAULT_COLUMNS.map((def) => {
+                const saved = devicePrefs.columns.find((c: ColumnConfig) => c.id === def.id);
+                return saved ? { ...def, width: saved.width } : def;
+              });
+              setColumns(merged);
+            }
+            if (isMobile && preferences.mobile?.scale) {
+              setScale(preferences.mobile.scale);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load preferences:", e);
+      }
+      setLoaded(true);
+    };
+    
+    loadPreferences();
+  }, [isMobile]);
+
+  // Save preferences
+  const savePreferences = useCallback(async (cols: ColumnConfig[], newScale?: number) => {
+    const device = isMobile ? 'mobile' : 'desktop';
+    const colsToSave = cols.map((c, i) => ({ id: c.id, width: c.width, order: i }));
+    
+    // Update localStorage
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const prefs: ViewPreferences = stored ? JSON.parse(stored) : { desktop: null, mobile: null };
+    if (device === 'mobile') {
+      prefs.mobile = { columns: colsToSave, scale: newScale ?? scale };
+    } else {
+      prefs.desktop = { columns: colsToSave };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+
+    // Save to server
+    setSaving(true);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device, columns: colsToSave, scale: newScale ?? scale })
+      });
+    } catch (e) {
+      console.error("Failed to save to server:", e);
+    }
+    setSaving(false);
+  }, [isMobile, scale]);
+
+  // Handle scale change
+  const handleScaleChange = (newScale: number) => {
+    setScale(newScale);
+    savePreferences(columns, newScale);
+  };
 
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, colId: string, currentWidth: number) => {
@@ -205,15 +259,12 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       const col = columns.find((c) => c.id === resizing.id);
       if (!col) return;
       const newWidth = Math.max(col.minWidth, resizing.startWidth + diff);
-      setColumns((prev) => {
-        const updated = prev.map((c) => (c.id === resizing.id ? { ...c, width: newWidth } : c));
-        return updated;
-      });
+      setColumns((prev) => prev.map((c) => (c.id === resizing.id ? { ...c, width: newWidth } : c)));
     };
 
     const handleUp = () => {
       setColumns((prev) => {
-        saveColumns(prev);
+        savePreferences(prev);
         return prev;
       });
       setResizing(null);
@@ -230,7 +281,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       document.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseup", handleUp);
     };
-  }, [resizing, columns, saveColumns]);
+  }, [resizing, columns, savePreferences]);
 
   // Drag & drop for reordering
   const handleDragStart = (e: React.DragEvent, colId: string) => {
@@ -247,9 +298,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   const handleDragOver = (e: React.DragEvent, colId: string) => {
     e.preventDefault();
-    if (colId !== draggedCol) {
-      setDragOverCol(colId);
-    }
+    if (colId !== draggedCol) setDragOverCol(colId);
   };
 
   const handleDrop = (e: React.DragEvent, targetId: string) => {
@@ -264,7 +313,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       const updated = [...prev];
       const [moved] = updated.splice(fromIdx, 1);
       updated.splice(toIdx, 0, moved);
-      saveColumns(updated);
+      savePreferences(updated);
       return updated;
     });
 
@@ -274,7 +323,14 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   const resetLayout = () => {
     setColumns(DEFAULT_COLUMNS);
+    setScale(100);
     localStorage.removeItem(STORAGE_KEY);
+    // Clear server-side too
+    fetch('/api/user/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device: isMobile ? 'mobile' : 'desktop', columns: null, scale: 100 })
+    });
   };
 
   if (!loaded) {
@@ -295,7 +351,6 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
           
           <div className="h-6 w-px bg-slate-600" />
           
-          {/* Edit input based on column type */}
           {activeColumn === "status" ? (
             <select
               value={bulkEditValue}
@@ -335,26 +390,68 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
             Apply
           </button>
           
-          <button
-            onClick={clearSelection}
-            className="text-slate-400 hover:text-white px-2 py-1 text-sm transition"
-          >
+          <button onClick={clearSelection} className="text-slate-400 hover:text-white px-2 py-1 text-sm transition">
             ✕
           </button>
         </div>
       )}
 
-      {/* Help text */}
-      <div className="flex justify-between items-center mb-1">
+      {/* Toolbar */}
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
         <span className="text-[10px] text-slate-400">
-          💡 <span className="font-medium">Bulk edit:</span> Cmd+click cells in same column, then edit
+          💡 <span className="font-medium">Bulk edit:</span> {isMobile ? "Long-press" : "Cmd+click"} cells in same column
         </span>
-        <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">
-          Reset columns
-        </button>
+        
+        <div className="flex items-center gap-3">
+          {/* Mobile zoom controls */}
+          {isMobile && (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
+              <button
+                onClick={() => handleScaleChange(Math.max(50, scale - 25))}
+                disabled={scale <= 50}
+                className="w-7 h-7 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
+              >
+                −
+              </button>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-10 text-center">
+                {scale}%
+              </span>
+              <button
+                onClick={() => handleScaleChange(Math.min(150, scale + 25))}
+                disabled={scale >= 150}
+                className="w-7 h-7 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+          )}
+          
+          {/* Save indicator */}
+          {saving && (
+            <span className="text-[10px] text-teal-500 animate-pulse">Saving...</span>
+          )}
+          
+          {/* Device indicator */}
+          <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+            {isMobile ? "📱 Mobile" : "💻 Desktop"} view
+          </span>
+          
+          <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">
+            Reset
+          </button>
+        </div>
       </div>
 
-      <div className="card overflow-hidden">
+      {/* Table container with scale transform for mobile */}
+      <div 
+        ref={tableRef}
+        className="card overflow-hidden"
+        style={isMobile ? { 
+          transformOrigin: 'top left',
+          transform: `scale(${scale / 100})`,
+          width: `${100 / (scale / 100)}%`
+        } : undefined}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) }}>
             <colgroup>
@@ -367,7 +464,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                 {columns.map((col) => (
                   <th
                     key={col.id}
-                    draggable
+                    draggable={!isMobile}
                     onDragStart={(e) => handleDragStart(e, col.id)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => handleDragOver(e, col.id)}
@@ -375,7 +472,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                     className={`relative px-3 py-2 font-semibold select-none ${
                       col.align === "center" ? "text-center" : "text-left"
                     } ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""}`}
-                    style={{ cursor: draggedCol ? "grabbing" : "grab" }}
+                    style={{ cursor: isMobile ? 'default' : (draggedCol ? "grabbing" : "grab") }}
                   >
                     <span className="truncate block pr-2">
                       {col.label}
@@ -383,12 +480,14 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                         <span className="ml-1 text-teal-500 opacity-50">•</span>
                       )}
                     </span>
-                    <div
-                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10"
-                      onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
-                    >
-                      <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
-                    </div>
+                    {!isMobile && (
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10"
+                        onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
+                      >
+                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
+                      </div>
+                    )}
                   </th>
                 ))}
               </tr>
