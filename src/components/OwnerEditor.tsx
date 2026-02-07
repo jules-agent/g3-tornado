@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 type Owner = {
   id: string;
   name: string;
+  is_internal: boolean;
 };
 
 type OwnerEditorProps = {
@@ -30,7 +31,8 @@ export function OwnerEditor({ taskId, onClose, onSave }: OwnerEditorProps) {
   useEffect(() => {
     async function loadData() {
       const [ownersResult, taskOwnersResult] = await Promise.all([
-        supabase.from("owners").select("id, name").order("name"),
+        // Only show UP/BP employees (is_internal = true), not outside partners
+        supabase.from("owners").select("id, name, is_internal").eq("is_internal", true).order("name"),
         supabase.from("task_owners").select("owner_id").eq("task_id", taskId)
       ]);
       setOwners(ownersResult.data || []);
@@ -65,8 +67,8 @@ export function OwnerEditor({ taskId, onClose, onSave }: OwnerEditorProps) {
     
     const { data, error } = await supabase
       .from("owners")
-      .insert({ name: newOwnerName.trim() })
-      .select("id, name")
+      .insert({ name: newOwnerName.trim(), is_internal: true })
+      .select("id, name, is_internal")
       .single();
     
     if (data && !error) {
