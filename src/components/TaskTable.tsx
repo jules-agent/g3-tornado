@@ -23,7 +23,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
   currentGate: "Current approval gate owner",
   nextGate: "Next person in the approval chain",
   nextStep: "Next action to be taken",
-  lastUpdate: "Most recent note - hover 📝 for full history",
+  notes: "Most recent note - hover 📝 for full history",
   cadence: "Follow-up frequency in days",
   days: "Days since last movement",
   status: "Current task status (Open/Pending/Closed)",
@@ -39,7 +39,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true, defaultVisible: true },
-  { id: "lastUpdate", label: "Last Update", width: 180, minWidth: 120, align: "left", defaultVisible: true },
+  { id: "notes", label: "Last Update", width: 180, minWidth: 120, align: "left", defaultVisible: true },
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
   { id: "days", label: "Days", width: 50, minWidth: 40, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
@@ -753,8 +753,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             key={col.id}
                             className={cellClasses}
                             onClick={(e) => isEditable && handleCellClick(e, task.id, col.id, index)}
-                            onMouseEnter={col.id === 'lastUpdate' ? (e) => handleNotesMouseEnter(e, task) : undefined}
-                            onMouseLeave={col.id === 'lastUpdate' ? handleNotesMouseLeave : undefined}
+                            onMouseEnter={col.id === 'notes' ? (e) => handleNotesMouseEnter(e, task) : undefined}
+                            onMouseLeave={col.id === 'notes' ? handleNotesMouseLeave : undefined}
                           >
                             {renderCell(col.id, task)}
                           </td>
@@ -819,7 +819,7 @@ function renderCell(columnId: string, task: Task) {
     }
     case "nextStep":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
-    case "lastUpdate": {
+    case "notes": {
       const notes = task.notes || [];
       if (notes.length === 0) return <span className="text-slate-400 dark:text-slate-500 text-xs">No updates yet</span>;
       const latest = notes[0]; // Already sorted descending
