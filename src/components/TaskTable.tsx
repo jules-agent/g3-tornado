@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { GateEditor } from "./GateEditor";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -187,6 +188,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   // Notes tooltip
   const [hoveredNotes, setHoveredNotes] = useState<{ taskId: string; notes: TaskNote[] } | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  
+  // Gate editor state
+  const [editingGate, setEditingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[] } | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
@@ -856,6 +860,44 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             </td>
                           );
                         }
+                        
+                        // Special handling for gate columns - clickable to open editor
+                        if (col.id === 'currentGate' || col.id === 'nextGate') {
+                          const gates = task.gates || [];
+                          const gateIndex = col.id === 'currentGate' 
+                            ? gates.findIndex(g => !g.completed)
+                            : (() => {
+                                const currentIdx = gates.findIndex(g => !g.completed);
+                                return currentIdx >= 0 ? gates.findIndex((g, i) => i > currentIdx && !g.completed) : -1;
+                              })();
+                          
+                          // For currentGate with no incomplete gate, allow adding gate 0
+                          // For nextGate with no next gate, allow adding the next gate after current
+                          const targetGateIndex = gateIndex >= 0 ? gateIndex : (col.id === 'currentGate' ? 0 : Math.max(0, gates.length));
+                          const gate = gateIndex >= 0 ? gates[gateIndex] : null;
+                          
+                          const isAmber = col.id === 'currentGate';
+                          const bgColor = isAmber ? 'bg-amber-50 border-amber-200' : 'bg-indigo-50 border-indigo-200';
+                          const textColor = isAmber ? 'text-amber-800' : 'text-indigo-800';
+                          const subColor = isAmber ? 'text-amber-600' : 'text-indigo-600';
+                          
+                          return (
+                            <td
+                              key={col.id}
+                              className="px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                              onClick={() => setEditingGate({ taskId: task.id, gateIndex: targetGateIndex, gates: gates })}
+                            >
+                              {gate ? (
+                                <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
+                                  <span className={`font-semibold truncate ${textColor}`}>{gate.owner_name}</span>
+                                  {gate.task_name && <span className={`truncate text-[10px] ${subColor}`}>{gate.task_name}</span>}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Add gate</span>
+                              )}
+                            </td>
+                          );
+                        }
 
                         return (
                           <td
@@ -881,6 +923,17 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       <div className="text-[11px] text-slate-400 text-right mt-1">
         {tasks.filter((t) => t.status !== "closed").length} of {total}
       </div>
+      
+      {/* Gate Editor Modal */}
+      {editingGate && (
+        <GateEditor
+          taskId={editingGate.taskId}
+          gateIndex={editingGate.gateIndex}
+          gates={editingGate.gates}
+          onClose={() => setEditingGate(null)}
+          onSave={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
