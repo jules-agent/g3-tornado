@@ -26,14 +26,15 @@ export async function GET() {
 
   // Handle legacy format (array) vs new format (object with desktop/mobile)
   const stored = profile?.column_layout;
-  let preferences = { desktop: null, mobile: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let preferences: { desktop: any; mobile: any } = { desktop: null, mobile: null };
   
   if (stored) {
     if (Array.isArray(stored)) {
       // Legacy: migrate to new format
       preferences = { desktop: { columns: stored }, mobile: { columns: stored, scale: 1.0 } };
     } else {
-      preferences = stored;
+      preferences = stored as { desktop: any; mobile: any };
     }
   }
 
