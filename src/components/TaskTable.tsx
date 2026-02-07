@@ -18,35 +18,33 @@ type ColumnConfig = {
 };
 
 const COLUMN_TOOLTIPS: Record<string, string> = {
-  id: "Unique task identifier",
   task: "Task description and title",
   project: "Project this task belongs to",
-  updated: "Time since last activity or note",
-  currentGate: "Current approval gate owner",
-  nextGate: "Next person in the approval chain",
+  currentGate: "Current gate: Owner / Task to complete",
+  nextGate: "Next gate: Owner / Task to complete",
   nextStep: "Next action to be taken",
   notes: "Most recent note - hover 📝 for full history",
   cadence: "Follow-up frequency in days",
-  days: "Days since last movement",
-  status: "Current task status (Open/Pending/Closed)",
+  aging: "Days since last update / Days since task created",
+  status: "Current task status (Open/Pending/Done)",
   owner: "Task owner(s) responsible",
-  blocked: "Whether task is blocked",
+  gated: "Waiting for a gate to pass",
+  id: "Unique task identifier",
 };
 
 const ALL_COLUMNS: ColumnConfig[] = [
-  { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: true },
   { id: "task", label: "Task", width: 250, minWidth: 150, align: "left", editable: true, defaultVisible: true },
   { id: "project", label: "Project", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: true },
-  { id: "updated", label: "Updated", width: 80, minWidth: 60, align: "left", defaultVisible: true },
-  { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
-  { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
+  { id: "currentGate", label: "Current Gate", width: 140, minWidth: 110, align: "left", editable: true, defaultVisible: true },
+  { id: "nextGate", label: "Next Gate", width: 140, minWidth: 110, align: "left", editable: true, defaultVisible: true },
   { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true, defaultVisible: true },
   { id: "notes", label: "Update", width: 200, minWidth: 150, align: "left", defaultVisible: true },
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
-  { id: "days", label: "Days", width: 50, minWidth: 40, align: "center", defaultVisible: true },
+  { id: "aging", label: "Aging", width: 70, minWidth: 60, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
   { id: "owner", label: "Owner", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: false },
-  { id: "blocked", label: "Blocked", width: 70, minWidth: 60, align: "center", defaultVisible: false },
+  { id: "gated", label: "Gated", width: 70, minWidth: 60, align: "center", defaultVisible: false },
+  { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: true },
 ];
 
 const BULK_EDITABLE_COLUMNS = ["task", "project", "currentGate", "nextGate", "nextStep", "cadence", "status", "owner"];
@@ -54,6 +52,7 @@ const BULK_EDITABLE_COLUMNS = ["task", "project", "currentGate", "nextGate", "ne
 type Gate = {
   name: string;
   owner_name: string;
+  task_name?: string;
   completed: boolean;
 };
 
@@ -71,11 +70,13 @@ type Task = {
   is_blocked: boolean;
   fu_cadence_days: number;
   daysSinceMovement: number;
+  daysSinceCreated: number;
   task_number: string | null;
   projects: { id: string; name: string } | null;
   ownerNames: string;
-  isOverdue: boolean;
+  isStale: boolean;
   last_movement_at: string;
+  created_at: string;
   gates: Gate[] | null;
   next_step: string | null;
   notes: TaskNote[];
@@ -798,8 +799,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
                   if (task.status === "closed") rowClasses += " bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
-                  else if (task.isOverdue) rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
-                  else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/30 dark:to-slate-800 border-l-4 border-l-amber-500";
+                  else if (task.isStale) rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/20 dark:to-slate-800 border-l-4 border-l-amber-400";
+                  else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-slate-50 to-white dark:from-slate-700/30 dark:to-slate-800 border-l-4 border-l-slate-400";
                   else rowClasses += " bg-white dark:bg-slate-800/40";
 
                   return (
@@ -886,34 +887,31 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
 function renderCell(columnId: string, task: Task) {
   switch (columnId) {
-    case "id":
-      return <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">{task.task_number || "—"}</Link>;
     case "task":
       return (
         <>
           <Link href={`/tasks/${task.id}`} className="group">
             <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
           </Link>
-          {task.isOverdue && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500 text-white">OVERDUE</span>}
-          {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">BLOCKED</span>}
+          {task.isStale && task.status !== "closed" && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>}
+          {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>}
         </>
       );
     case "project":
       return <span className="text-slate-700 dark:text-slate-200 truncate text-sm">{task.projects?.name ?? "—"}</span>;
-    case "updated": {
-      const diffDays = Math.floor((Date.now() - new Date(task.last_movement_at).getTime()) / 86400000);
-      let colorClass = "text-green-600", displayText = "Today";
-      if (diffDays === 1) displayText = "1d ago";
-      else if (diffDays > 1 && diffDays <= 3) { displayText = `${diffDays}d ago`; colorClass = "text-yellow-600"; }
-      else if (diffDays > 3) { displayText = `${diffDays}d ago`; colorClass = "text-red-600"; }
-      return <span className={`text-xs font-medium ${colorClass}`}>{displayText}</span>;
-    }
     case "currentGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);
       if (currentIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[currentIdx];
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium"><span className="opacity-60">{currentIdx + 1}/{gates.length}</span><span className="truncate">{gate.owner_name}</span></span>;
+      const ownerPart = gate.owner_name || "—";
+      const taskPart = gate.task_name || gate.name || "";
+      return (
+        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
+          <span className="font-semibold text-amber-800 truncate">{ownerPart}</span>
+          {taskPart && <span className="text-amber-600 truncate text-[10px]">{taskPart}</span>}
+        </span>
+      );
     }
     case "nextGate": {
       const gates = task.gates || [];
@@ -921,7 +919,14 @@ function renderCell(columnId: string, task: Task) {
       const nextIdx = currentIdx >= 0 ? gates.findIndex((g, i) => i > currentIdx && !g.completed) : -1;
       if (nextIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[nextIdx];
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-medium"><span className="opacity-60">{nextIdx + 1}/{gates.length}</span><span className="truncate">{gate.owner_name}</span></span>;
+      const ownerPart = gate.owner_name || "—";
+      const taskPart = gate.task_name || gate.name || "";
+      return (
+        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-xs" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
+          <span className="font-semibold text-indigo-800 truncate">{ownerPart}</span>
+          {taskPart && <span className="text-indigo-600 truncate text-[10px]">{taskPart}</span>}
+        </span>
+      );
     }
     case "nextStep":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
@@ -930,16 +935,29 @@ function renderCell(columnId: string, task: Task) {
       return null;
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;
-    case "days":
-      return <span className={`font-bold text-lg ${task.status === "closed" ? "text-emerald-500" : task.isOverdue ? "text-red-600" : task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-600" : "text-emerald-600"}`}>{task.daysSinceMovement}</span>;
+    case "aging": {
+      // Show days since last update / days since created
+      const updateColor = task.status === "closed" ? "text-emerald-500" : task.isStale ? "text-amber-600" : task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-500" : "text-emerald-600";
+      return (
+        <span className="flex flex-col items-center leading-tight" title={`${task.daysSinceMovement}d since update / ${task.daysSinceCreated}d since created`}>
+          <span className={`font-bold text-base ${updateColor}`}>{task.daysSinceMovement}</span>
+          <span className="text-slate-400 text-[10px]">/{task.daysSinceCreated}</span>
+        </span>
+      );
+    }
     case "status":
       if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200">DONE</span>;
       if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
       return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
     case "owner":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate">{task.ownerNames || "—"}</span>;
-    case "blocked":
-      return task.is_blocked ? <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700">YES</span> : <span className="text-slate-300 text-xs">—</span>;
+    case "gated": {
+      const gates = task.gates || [];
+      const hasOpenGate = gates.some(g => !g.completed);
+      return hasOpenGate ? <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-600">YES</span> : <span className="text-slate-300 text-xs">—</span>;
+    }
+    case "id":
+      return <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">{task.task_number || "—"}</Link>;
     default:
       return null;
   }

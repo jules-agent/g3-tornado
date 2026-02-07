@@ -17,7 +17,7 @@ type Task = {
   ownerNames: string;
   daysRemaining: number;
   cadenceDisplay: string;
-  isOverdue: boolean;
+  isStale: boolean;
 };
 
 type TaskTableClientProps = {
@@ -58,9 +58,9 @@ export function TaskTableClient({ tasks, userId }: TaskTableClientProps) {
             >
               {task.description}
             </Link>
-            {task.isOverdue && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500 text-white">
-                OVERDUE
+            {task.isStale && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                STALE
               </span>
             )}
             {task.is_blocked && (
@@ -95,8 +95,8 @@ export function TaskTableClient({ tasks, userId }: TaskTableClientProps) {
       case "days":
         const daysClass = task.status === "CLOSED"
           ? "text-slate-400"
-          : task.isOverdue
-            ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300"
+          : task.isStale
+            ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
             : task.daysRemaining <= 1
               ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
               : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300";
@@ -127,8 +127,8 @@ export function TaskTableClient({ tasks, userId }: TaskTableClientProps) {
   const getRowClassName = (row: Record<string, unknown>) => {
     const task = row as unknown as Task;
     let classes = "table-row";
-    if (task.isOverdue && task.status !== "CLOSED") {
-      classes += " bg-red-50/50 dark:bg-red-950/20";
+    if (task.isStale && task.status !== "CLOSED") {
+      classes += " bg-amber-50/50 dark:bg-amber-950/20";
     }
     return classes;
   };

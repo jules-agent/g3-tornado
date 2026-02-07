@@ -74,7 +74,7 @@ export default async function TaskDetailPage({
     (Date.now() - new Date(task.last_movement_at).getTime()) /
       (1000 * 60 * 60 * 24)
   );
-  const isOverdue = daysSinceMovement > task.fu_cadence_days;
+  const isStale = daysSinceMovement > task.fu_cadence_days;
 
   return (
     <div className="space-y-8">
@@ -142,10 +142,10 @@ export default async function TaskDetailPage({
                 </div>
                 <div
                   className={`mt-1 text-sm font-semibold ${
-                    isOverdue ? "text-rose-600" : "text-emerald-600"
+                    isStale ? "text-amber-600" : "text-emerald-600"
                   }`}
                 >
-                  {daysSinceMovement} days since update
+                  {daysSinceMovement} days since update {isStale && "(stale)"}
                 </div>
               </div>
             </div>

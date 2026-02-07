@@ -7,6 +7,7 @@ import { TaskTable } from "@/components/TaskTable";
 type Gate = {
   name: string;
   owner_name: string;
+  task_name?: string;
   completed: boolean;
 };
 
@@ -24,6 +25,7 @@ type Task = {
   is_blocked: boolean;
   fu_cadence_days: number;
   last_movement_at: string;
+  created_at: string;
   task_number: string | null;
   project_id: string;
   gates: Gate[] | null;
@@ -60,6 +62,7 @@ export default async function Home({
         is_blocked,
         fu_cadence_days,
         last_movement_at,
+        created_at,
         task_number,
         project_id,
         gates,
@@ -72,13 +75,18 @@ export default async function Home({
       .order("task_number", { ascending: true }),
   ]);
 
-  // Calculate days and overdue status for each task
+  // Calculate days and stale status for each task
   const tasksWithDays = (allTasks as Task[] | null)?.map((task) => {
     const daysSinceMovement = Math.floor(
       (Date.now() - new Date(task.last_movement_at).getTime()) /
         (1000 * 60 * 60 * 24)
     );
-    const isOverdue = task.status === "open" && daysSinceMovement > task.fu_cadence_days;
+    const daysSinceCreated = Math.floor(
+      (Date.now() - new Date(task.created_at).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+    // Stale = needs attention because cadence period has passed
+    const isStale = task.status === "open" && daysSinceMovement > task.fu_cadence_days;
     const owners =
       task.task_owners
         ?.map((to) => to.owners?.name)
@@ -88,7 +96,7 @@ export default async function Home({
     const notes = task.task_notes?.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     ) || [];
-    return { ...task, daysSinceMovement, isOverdue, ownerNames: owners, notes };
+    return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, notes };
   }) ?? [];
 
   // Filter tasks
@@ -103,8 +111,8 @@ export default async function Home({
     filteredTasks = filteredTasks.filter((t) => t.status === "closed");
   } else if (filter === "blocked") {
     filteredTasks = filteredTasks.filter((t) => t.is_blocked);
-  } else if (filter === "overdue") {
-    filteredTasks = filteredTasks.filter((t) => t.isOverdue);
+  } else if (filter === "stale") {
+    filteredTasks = filteredTasks.filter((t) => t.isStale);
   }
   
   if (projectFilter !== "all") {
@@ -128,14 +136,14 @@ export default async function Home({
     });
   }
 
-  // Sort - default by overdue first, then by days descending
+  // Sort - default by stale first, then by days descending
   const sort = params.sort || "priority";
   if (sort === "priority") {
     filteredTasks.sort((a, b) => {
-      // Overdue first
-      if (a.isOverdue && !b.isOverdue) return -1;
-      if (!a.isOverdue && b.isOverdue) return 1;
-      // Then blocked
+      // Stale first (needs attention)
+      if (a.isStale && !b.isStale) return -1;
+      if (!a.isStale && b.isStale) return 1;
+      // Then gated
       if (a.is_blocked && !b.is_blocked) return -1;
       if (!a.is_blocked && b.is_blocked) return 1;
       // Then by days descending
@@ -154,16 +162,16 @@ export default async function Home({
     total: allTasks?.length ?? 0,
     open: tasksWithDays.filter((t) => t.status === "open").length,
     closed: tasksWithDays.filter((t) => t.status === "closed").length,
-    blocked: tasksWithDays.filter((t) => t.is_blocked).length,
-    overdue: tasksWithDays.filter((t) => t.isOverdue).length,
+    gated: tasksWithDays.filter((t) => t.is_blocked).length,
+    stale: tasksWithDays.filter((t) => t.isStale).length,
   };
 
   const filters = [
     { key: "all", label: "All", count: stats.total },
     { key: "open", label: "Open", count: stats.open },
-    { key: "overdue", label: "Overdue", count: stats.overdue, color: "text-red-600" },
-    { key: "blocked", label: "Blocked", count: stats.blocked, color: "text-amber-600" },
-    { key: "closed", label: "Closed", count: stats.closed },
+    { key: "stale", label: "Stale", count: stats.stale, color: "text-amber-600" },
+    { key: "blocked", label: "Gated", count: stats.gated, color: "text-slate-600" },
+    { key: "closed", label: "Done", count: stats.closed },
   ];
 
   return (

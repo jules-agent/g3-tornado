@@ -1,0 +1,17 @@
+/Users/jules/.openclaw/workspace/g3-tornado/node_modules/@supabase/supabase-js/dist/index.cjs:196
+		if (!supabaseKey) throw new Error("supabaseKey is required.");
+		                  ^
+
+Error: supabaseKey is required.
+    at new SupabaseClient (/Users/jules/.openclaw/workspace/g3-tornado/node_modules/@supabase/supabase-js/dist/index.cjs:196:27)
+    at createClient (/Users/jules/.openclaw/workspace/g3-tornado/node_modules/@supabase/supabase-js/dist/index.cjs:388:9)
+    at [eval]:4:18
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:451:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:449:60)
+    at evalFunction (node:internal/process/execution:283:30)
+    at evalTypeScript (node:internal/process/execution:295:3)
+    at node:internal/main/eval_string:71:3
+
+Node.js v24.13.0

@@ -35,7 +35,7 @@ export default async function IssuesPage() {
   // Process tasks to identify issues
   const issues: {
     id: string;
-    type: "overdue" | "blocked" | "close_requested" | "stale";
+    type: "stale" | "gated" | "close_requested" | "inactive";
     severity: "critical" | "warning" | "info";
     title: string;
     description: string;
@@ -66,27 +66,27 @@ export default async function IssuesPage() {
     const lastActivity = lastNote?.created_at || task.created_at;
     const daysInactive = daysSince(lastActivity);
     
-    // Check for overdue (past follow-up cadence)
+    // Check for stale (past follow-up cadence, needs attention)
     if (daysInactive && daysInactive > task.fu_cadence_days) {
-      const daysOverdue = daysInactive - task.fu_cadence_days;
+      const daysPastCadence = daysInactive - task.fu_cadence_days;
       issues.push({
-        id: `overdue-${task.id}`,
-        type: "overdue",
-        severity: daysOverdue > 7 ? "critical" : "warning",
-        title: `Overdue: ${task.description.substring(0, 50)}...`,
-        description: `${daysOverdue} days past ${task.fu_cadence_days}-day follow-up cadence`,
+        id: `stale-${task.id}`,
+        type: "stale",
+        severity: daysPastCadence > 7 ? "critical" : "warning",
+        title: `Stale: ${task.description.substring(0, 50)}...`,
+        description: `${daysPastCadence} days past ${task.fu_cadence_days}-day follow-up cadence`,
         taskId: task.id,
         taskNumber: task.task_number,
         daysSince: daysInactive,
       });
     }
 
-    // Check for blocked tasks
+    // Check for gated tasks (waiting for a gate to pass)
     if (task.is_blocked) {
       issues.push({
-        id: `blocked-${task.id}`,
-        type: "blocked",
-        severity: "critical",
+        id: `gated-${task.id}`,
+        type: "gated",
+        severity: "warning",
         title: `Blocked: ${task.description.substring(0, 50)}...`,
         description: task.blocker_note || "No blocker details provided",
         taskId: task.id,
@@ -110,13 +110,13 @@ export default async function IssuesPage() {
       });
     }
 
-    // Check for stale tasks (no activity in 30+ days)
-    if (daysInactive && daysInactive > 30 && !task.is_blocked) {
+    // Check for inactive tasks (no activity in 30+ days, beyond stale)
+    if (daysInactive && daysInactive > 30 && !task.is_blocked && daysInactive <= task.fu_cadence_days) {
       issues.push({
-        id: `stale-${task.id}`,
-        type: "stale",
+        id: `inactive-${task.id}`,
+        type: "inactive",
         severity: "info",
-        title: `Stale: ${task.description.substring(0, 50)}...`,
+        title: `Inactive: ${task.description.substring(0, 50)}...`,
         description: `No activity in ${daysInactive} days`,
         taskId: task.id,
         taskNumber: task.task_number,
@@ -134,8 +134,8 @@ export default async function IssuesPage() {
   const warningCount = issues.filter((i) => i.severity === "warning").length;
   const infoCount = issues.filter((i) => i.severity === "info").length;
 
-  const blockedCount = issues.filter((i) => i.type === "blocked").length;
-  const overdueCount = issues.filter((i) => i.type === "overdue").length;
+  const gatedCount = issues.filter((i) => i.type === "gated").length;
+  const staleCount = issues.filter((i) => i.type === "stale").length;
   const closeRequestCount = issues.filter((i) => i.type === "close_requested").length;
 
   return (
@@ -179,14 +179,14 @@ export default async function IssuesPage() {
 
         {/* Issue Type Breakdown */}
         <div className="mb-8 flex flex-wrap gap-3">
-          {blockedCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700">
-              🚫 {blockedCount} Blocked
+          {staleCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700">
+              ⏰ {staleCount} Stale
             </span>
           )}
-          {overdueCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700">
-              ⏰ {overdueCount} Overdue
+          {gatedCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+              🚧 {gatedCount} Gated
             </span>
           )}
           {closeRequestCount > 0 && (
@@ -224,21 +224,11 @@ export default async function IssuesPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`text-lg ${
-                          issue.type === "blocked"
-                            ? ""
-                            : issue.type === "overdue"
-                            ? ""
-                            : issue.type === "close_requested"
-                            ? ""
-                            : ""
-                        }`}
-                      >
-                        {issue.type === "blocked" && "🚫"}
-                        {issue.type === "overdue" && "⏰"}
+                      <span className="text-lg">
+                        {issue.type === "stale" && "⏰"}
+                        {issue.type === "gated" && "🚧"}
                         {issue.type === "close_requested" && "✋"}
-                        {issue.type === "stale" && "💤"}
+                        {issue.type === "inactive" && "💤"}
                       </span>
                       <span
                         className={`text-xs font-semibold uppercase tracking-wide ${
