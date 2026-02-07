@@ -206,8 +206,9 @@ export default async function Home({
 
   return (
     <div className="space-y-1">
-      {/* Search and Filters */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Search and Filters - Sticky below header */}
+      <div className="sticky top-[57px] z-40 bg-white dark:bg-slate-900 py-2 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-b border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5">
         <SearchBox />
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm text-sm">
           {filters.map((f) => (
@@ -238,6 +239,7 @@ export default async function Home({
             ⚙️ Admin
           </Link>
         )}
+        </div>
       </div>
 
       {/* Table with resizable/reorderable columns */}
