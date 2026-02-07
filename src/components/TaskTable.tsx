@@ -180,6 +180,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   
+  // Mobile resize mode - tap column to select, then use +/- buttons
+  const [mobileResizeCol, setMobileResizeCol] = useState<string | null>(null);
+  
   // Cell selection state
   const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([]);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
@@ -872,30 +875,61 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => handleDragOver(e, col.id)}
                     onDrop={(e) => handleDrop(e, col.id)}
-                    className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""}`}
-                    style={{ cursor: isMobile ? 'default' : (draggedCol ? "grabbing" : "grab") }}
+                    className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""} ${mobileResizeCol === col.id ? "bg-teal-100 dark:bg-teal-900/50 ring-2 ring-teal-500" : ""}`}
+                    style={{ cursor: isMobile ? 'pointer' : (draggedCol ? "grabbing" : "grab") }}
                     title={COLUMN_TOOLTIPS[col.id] || col.label}
+                    onClick={isMobile ? () => setMobileResizeCol(mobileResizeCol === col.id ? null : col.id) : undefined}
                   >
-                    <span className="truncate block pr-2">
-                      {col.label}
-                      {BULK_EDITABLE_COLUMNS.includes(col.id) && <span className="ml-1 text-teal-500 opacity-50">•</span>}
-                    </span>
-                    {/* Column resize handle - larger touch target on mobile */}
-                    <div 
-                      className={`absolute right-0 top-0 bottom-0 cursor-col-resize hover:bg-teal-400/50 active:bg-teal-500/50 transition-colors z-10 ${isMobile ? 'w-6 -mr-3' : 'w-2'}`}
-                      onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
-                      onTouchStart={(e) => {
-                        const touch = e.touches[0];
-                        handleResizeStart({ clientX: touch.clientX, preventDefault: () => {} } as React.MouseEvent, col.id, col.width);
-                      }}
-                    >
-                      <div className={`absolute top-1/2 -translate-y-1/2 bg-slate-300 dark:bg-slate-600 ${isMobile ? 'right-2.5 w-1 h-6 rounded-full' : 'right-0.5 w-0.5 h-4'}`} />
-                    </div>
+                    {/* Mobile resize mode UI */}
+                    {isMobile && mobileResizeCol === col.id ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newWidth = Math.max(col.minWidth, col.width - 20);
+                            setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
+                            markUnsaved();
+                          }}
+                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-700 rounded-full shadow text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-100"
+                        >
+                          −
+                        </button>
+                        <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400">{col.width}px</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newWidth = col.width + 20;
+                            setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
+                            markUnsaved();
+                          }}
+                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-700 rounded-full shadow text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-100"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="truncate block pr-2">
+                          {col.label}
+                          {BULK_EDITABLE_COLUMNS.includes(col.id) && <span className="ml-1 text-teal-500 opacity-50">•</span>}
+                          {isMobile && <span className="ml-1 text-slate-400 text-[10px]">↔</span>}
+                        </span>
+                        {/* Desktop resize handle */}
+                        {!isMobile && (
+                          <div 
+                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 active:bg-teal-500/50 transition-colors z-10"
+                            onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
+                          >
+                            <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
+                          </div>
+                        )}
+                      </>
+                    )}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700" onClick={() => mobileResizeCol && setMobileResizeCol(null)}>
               {tasks.length > 0 ? (
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
