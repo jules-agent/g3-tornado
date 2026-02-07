@@ -100,6 +100,37 @@ body {
   background: #334155;
 }
 
+/* Urgent pulsing animation for "my stale" tasks */
+@keyframes pulse-urgent {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgba(254, 202, 202, 0.8); /* red-200 */
+  }
+  50% {
+    opacity: 0.85;
+    background-color: rgba(254, 226, 226, 0.6); /* red-100 */
+  }
+}
+
+.animate-pulse-urgent {
+  animation: pulse-urgent 2s ease-in-out infinite;
+}
+
+.dark .animate-pulse-urgent {
+  animation-name: pulse-urgent-dark;
+}
+
+@keyframes pulse-urgent-dark {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgba(127, 29, 29, 0.4); /* red-900 */
+  }
+  50% {
+    opacity: 0.85;
+    background-color: rgba(127, 29, 29, 0.2);
+  }
+}
+
 /* Button styling */
 .btn-primary {
   background: linear-gradient(135deg, var(--g3-cyan), var(--g3-teal));

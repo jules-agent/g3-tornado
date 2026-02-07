@@ -50,6 +50,15 @@ export default async function Home({
 
   const isAdmin = user?.email === "ben@unpluggedperformance.com";
 
+  // Get user's linked owner_id for "my tasks" highlighting
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("owner_id")
+    .eq("id", user?.id ?? "")
+    .maybeSingle();
+  
+  const userOwnerId = profile?.owner_id ?? null;
+
   const [{ data: projects }, { data: allTasks }] = await Promise.all([
     supabase.from("projects").select("id, name").order("name"),
     supabase
@@ -92,11 +101,14 @@ export default async function Home({
         ?.map((to) => to.owners?.name)
         .filter(Boolean)
         .join(", ") || "";
+    // Get owner IDs for "my tasks" check
+    const ownerIds = task.task_owners?.map((to) => to.owner_id).filter(Boolean) || [];
+    const isMyTask = userOwnerId ? ownerIds.includes(userOwnerId) : false;
     // Sort notes by date descending
     const notes = task.task_notes?.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     ) || [];
-    return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, notes };
+    return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, ownerIds, isMyTask, notes };
   }) ?? [];
 
   // Filter tasks
@@ -136,16 +148,34 @@ export default async function Home({
     });
   }
 
-  // Sort - default by stale first, then by days descending
+  // Sort - priority order:
+  // 1. My stale tasks (pulsing red) - top
+  // 2. Other stale tasks
+  // 3. Open tasks (not stale, not done)
+  // 4. Done tasks - always at bottom
   const sort = params.sort || "priority";
   if (sort === "priority") {
     filteredTasks.sort((a, b) => {
-      // Stale first (needs attention)
+      // Done tasks always at bottom
+      const aDone = a.status === "closed";
+      const bDone = b.status === "closed";
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+      
+      // My stale tasks at the very top
+      const aMyStale = a.isStale && a.isMyTask;
+      const bMyStale = b.isStale && b.isMyTask;
+      if (aMyStale && !bMyStale) return -1;
+      if (!aMyStale && bMyStale) return 1;
+      
+      // Other stale tasks next
       if (a.isStale && !b.isStale) return -1;
       if (!a.isStale && b.isStale) return 1;
+      
       // Then gated
       if (a.is_blocked && !b.is_blocked) return -1;
       if (!a.is_blocked && b.is_blocked) return 1;
+      
       // Then by days descending
       return b.daysSinceMovement - a.daysSinceMovement;
     });

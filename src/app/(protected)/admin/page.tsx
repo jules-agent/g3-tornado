@@ -30,7 +30,7 @@ export default async function AdminPage({
     { data: owners },
     { data: tasks },
   ] = await Promise.all([
-    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, email, full_name, role, owner_id, created_at").order("created_at", { ascending: false }),
     supabase.from("projects").select("*").order("name"),
     supabase.from("owners").select("*").order("name"),
     supabase.from("tasks").select("id, status"),

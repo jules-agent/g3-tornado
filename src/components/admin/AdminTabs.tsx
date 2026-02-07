@@ -9,6 +9,7 @@ type Profile = {
   email: string;
   full_name: string | null;
   role: string | null;
+  owner_id: string | null;
   created_at: string;
 };
 
@@ -66,7 +67,7 @@ export function AdminTabs({
 
       {/* Tab Content */}
       <div className="rounded border border-slate-200 bg-white">
-        {activeTab === "users" && <UsersTab profiles={profiles} />}
+        {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} />}
         {activeTab === "projects" && <ProjectsTab projects={projects} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
       </div>
@@ -74,13 +75,28 @@ export function AdminTabs({
   );
 }
 
-function UsersTab({ profiles }: { profiles: Profile[] }) {
+function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }) {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  const updateOwnerLink = async (userId: string, ownerId: string | null) => {
+    try {
+      const res = await fetch("/api/admin/link-owner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, ownerId }),
+      });
+      if (res.ok) {
+        router.refresh();
+      }
+    } catch {
+      console.error("Failed to link owner");
+    }
+  };
 
   const inviteUser = async () => {
     if (!inviteEmail) return;
@@ -181,13 +197,14 @@ function UsersTab({ profiles }: { profiles: Profile[] }) {
           <tr className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide">
             <th className="px-4 py-2 font-semibold">User</th>
             <th className="px-4 py-2 font-semibold w-32">Role</th>
+            <th className="px-4 py-2 font-semibold w-40">Linked Owner</th>
             <th className="px-4 py-2 font-semibold w-28">Joined</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {profiles.length === 0 ? (
             <tr>
-              <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+              <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
                 No users yet. Users are created when they sign up.
               </td>
             </tr>
@@ -212,6 +229,24 @@ function UsersTab({ profiles }: { profiles: Profile[] }) {
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
+                  </select>
+                </td>
+                <td className="px-4 py-2">
+                  <select
+                    value={profile.owner_id || ""}
+                    onChange={(e) => updateOwnerLink(profile.id, e.target.value || null)}
+                    className={`rounded px-2 py-1 text-xs font-semibold ${
+                      profile.owner_id
+                        ? "bg-teal-100 text-teal-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    <option value="">Not linked</option>
+                    {owners.map((owner) => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.name}
+                      </option>
+                    ))}
                   </select>
                 </td>
                 <td className="px-4 py-2 text-slate-500">

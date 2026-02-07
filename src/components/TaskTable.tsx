@@ -76,7 +76,9 @@ type Task = {
   task_number: string | null;
   projects: { id: string; name: string } | null;
   ownerNames: string;
+  ownerIds: string[];
   isStale: boolean;
+  isMyTask: boolean;
   last_movement_at: string;
   created_at: string;
   gates: Gate[] | null;
@@ -936,6 +938,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
                   if (task.status === "closed") rowClasses += " bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
+                  else if (task.isStale && task.isMyTask) rowClasses += " animate-pulse-urgent bg-gradient-to-r from-red-100 to-red-50 dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
                   else if (task.isStale) rowClasses += " bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/20 dark:to-slate-800 border-l-4 border-l-amber-400";
                   else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-700/30 dark:to-slate-800 border-l-4 border-l-slate-400";
                   else rowClasses += " bg-white dark:bg-slate-800/40";
@@ -1086,7 +1089,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                                 </Link>
                                 
                                 {/* Status tags */}
-                                {task.isStale && task.status !== "closed" && (
+                                {task.isStale && task.status !== "closed" && task.isMyTask && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">🔥 URGENT</span>
+                                )}
+                                {task.isStale && task.status !== "closed" && !task.isMyTask && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>
                                 )}
                                 {task.is_blocked && (
@@ -1231,7 +1237,8 @@ function renderCell(columnId: string, task: Task) {
           <Link href={`/tasks/${task.id}`} className="group">
             <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
           </Link>
-          {task.isStale && task.status !== "closed" && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>}
+          {task.isStale && task.status !== "closed" && task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">🔥 URGENT</span>}
+          {task.isStale && task.status !== "closed" && !task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>}
           {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>}
         </>
       );
