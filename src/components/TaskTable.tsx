@@ -599,21 +599,24 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
       {/* Toolbar - compact */}
       <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
-        <div className="flex items-center gap-2">
+        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+          💡 Cmd+click cells (• columns) to bulk edit
+        </span>
+        
+        <div className="flex items-center gap-1.5">
           {/* Profile selector */}
           <div className="relative" ref={profileMenuRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-sm"
+              className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1"
             >
-              <span>📋</span>
-              <span className="font-medium">{currentProfile.name}</span>
+              <span className="text-sm">📋</span>
+              <span>{currentProfile.name}</span>
               {hasUnsavedChanges && <span className="text-amber-500">•</span>}
-              {defaults[deviceType] === currentProfileId && <span className="text-[10px] text-teal-500">★</span>}
-              <span className="text-slate-400">▾</span>
+              {defaults[deviceType] === currentProfileId && <span className="text-teal-500">★</span>}
             </button>
             {showProfileMenu && (
-              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[220px]">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[220px]">
                 <div className="p-2 border-b border-slate-200 dark:border-slate-700">
                   <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 mb-1">Profiles</div>
                   {Object.values(allProfiles).map((profile) => (
@@ -654,16 +657,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
             )}
           </div>
 
-          <span className="text-[10px] text-slate-400">
-            💡 Cmd+click cells (• columns) to bulk edit
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2">
           {/* Column picker */}
           <div className="relative" ref={columnPickerRef}>
-            <button onClick={() => setShowColumnPicker(!showColumnPicker)} className="text-xs px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1">
-              <span>⚙️</span><span>Columns</span>
+            <button onClick={() => setShowColumnPicker(!showColumnPicker)} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1">
+              <span className="text-sm">⚙️</span><span>Columns</span>
             </button>
             {showColumnPicker && (
               <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 p-2 min-w-[180px]">
@@ -680,13 +677,13 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
           </div>
 
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
-            <button onClick={() => handleScaleChange(Math.max(20, scale - 10))} disabled={scale <= 20} className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300">−</button>
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-12 text-center">{scale}%</span>
-            <button onClick={() => handleScaleChange(Math.min(200, scale + 10))} disabled={scale >= 200} className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300">+</button>
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5">
+            <button onClick={() => handleScaleChange(Math.max(20, scale - 10))} disabled={scale <= 20} className="w-6 h-6 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30">−</button>
+            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 w-9 text-center">{scale}%</span>
+            <button onClick={() => handleScaleChange(Math.min(200, scale + 10))} disabled={scale >= 200} className="w-6 h-6 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30">+</button>
           </div>
           
-          {saving && <span className="text-[10px] text-teal-500 animate-pulse">Saving...</span>}
+          {saving && <span className="text-[10px] text-teal-500 animate-pulse">💾</span>}
         </div>
       </div>
 
@@ -732,7 +729,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
               {tasks.length > 0 ? (
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
-                  if (task.status === "closed") rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400";
+                  if (task.status === "closed") rowClasses += " bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
                   else if (task.isOverdue) rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
                   else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/30 dark:to-slate-800 border-l-4 border-l-amber-500";
                   else rowClasses += " bg-white dark:bg-slate-800/40";
@@ -784,7 +781,7 @@ function renderCell(columnId: string, task: Task) {
       return (
         <>
           <Link href={`/tasks/${task.id}`} className="group">
-            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
+            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
           </Link>
           {task.isOverdue && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500 text-white">OVERDUE</span>}
           {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">BLOCKED</span>}
@@ -824,9 +821,9 @@ function renderCell(columnId: string, task: Task) {
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;
     case "days":
-      return <span className={`font-bold text-lg ${task.status === "closed" ? "text-slate-400" : task.isOverdue ? "text-red-600" : task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-600" : "text-emerald-600"}`}>{task.daysSinceMovement}</span>;
+      return <span className={`font-bold text-lg ${task.status === "closed" ? "text-emerald-500" : task.isOverdue ? "text-red-600" : task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-600" : "text-emerald-600"}`}>{task.daysSinceMovement}</span>;
     case "status":
-      if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-slate-200 text-slate-600">CLOSED</span>;
+      if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200">DONE</span>;
       if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
       return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
     case "owner":

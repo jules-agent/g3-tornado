@@ -11,13 +11,12 @@
   --g3-teal: #14b8a6;
   --g3-blue: #3b82f6;
   
-  /* Light theme - clean white */
+  /* Light theme */
   --background: #ffffff;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #1e293b;
   --border: #e5e7eb;
-  --input: #ffffff;
   --muted: #6b7280;
   --accent: #06b6d4;
 }
@@ -28,7 +27,6 @@
   --card: #1e293b;
   --card-foreground: #f1f5f9;
   --border: #334155;
-  --input: #1e293b;
   --muted: #94a3b8;
   --accent: #22d3ee;
 }
@@ -41,86 +39,19 @@
 }
 
 body {
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--background);
+  color: var(--foreground);
   font-family: 'Inter', system-ui, sans-serif;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-.dark body {
-  background: #0f172a;
-  color: #f1f5f9;
-}
-
-/* Force light mode backgrounds when dark class is NOT present */
-html:not(.dark) body,
-html:not(.dark) .min-h-screen {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-}
-
-html:not(.dark) [class*="bg-slate-900"],
-html:not(.dark) [class*="bg-slate-800"],
-html:not(.dark) [class*="dark:bg-slate"] {
-  background-color: #ffffff !important;
-}
-
-html:not(.dark) [class*="bg-slate-800/40"],
-html:not(.dark) [class*="bg-slate-800/60"] {
-  background-color: #f8fafc !important;
-}
-
-/* Light mode table rows */
-html:not(.dark) .table-row {
-  background-color: #ffffff !important;
-}
-
-html:not(.dark) .table-row:hover {
-  background-color: #f9fafb !important;
-}
-
-/* Light mode table header */
-html:not(.dark) .table-header {
-  background-color: #f9fafb !important;
-}
-
-/* Light mode card */
-html:not(.dark) .card {
-  background-color: #ffffff !important;
-  border-color: #e5e7eb !important;
-}
-
-/* Light mode text - ensure all text is dark */
-html:not(.dark) .table-row,
-html:not(.dark) .table-row * {
-  color: #1e293b !important;
-}
-
-html:not(.dark) .table-row a,
-html:not(.dark) .table-row span {
-  color: #1e293b !important;
-}
-
-html:not(.dark) .table-row a:hover {
-  color: #0891b2 !important;
-}
-
-/* Light mode - fix gradient backgrounds for overdue/blocked rows */
-html:not(.dark) tr[class*="from-red"] {
-  background: linear-gradient(to right, #fef2f2, #ffffff) !important;
-}
-
-html:not(.dark) tr[class*="from-amber"] {
-  background: linear-gradient(to right, #fffbeb, #ffffff) !important;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 /* Card styling */
 .card {
   background: var(--card);
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  transition: background-color 0.3s, border-color 0.3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .dark .card {
@@ -144,51 +75,26 @@ html:not(.dark) tr[class*="from-amber"] {
   background-clip: text;
 }
 
-.page-title {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--foreground);
+/* Table styling */
+.table-header {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
 }
 
-/* Status badges */
-.status-open {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  color: #065f46;
+.dark .table-header {
+  background: #1e293b;
 }
 
-.dark .status-open {
-  background: linear-gradient(135deg, #064e3b, #065f46);
-  color: #6ee7b7;
+.table-row {
+  transition: background-color 0.1s;
 }
 
-.status-overdue {
-  background: linear-gradient(135deg, #fecaca, #fca5a5);
-  color: #991b1b;
+.table-row:hover {
+  background: #f9fafb;
 }
 
-.dark .status-overdue {
-  background: linear-gradient(135deg, #7f1d1d, #991b1b);
-  color: #fca5a5;
-}
-
-.status-blocked {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
-}
-
-.dark .status-blocked {
-  background: linear-gradient(135deg, #78350f, #92400e);
-  color: #fde68a;
-}
-
-.status-closed {
-  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-  color: #475569;
-}
-
-.dark .status-closed {
-  background: linear-gradient(135deg, #334155, #475569);
-  color: #cbd5e1;
+.dark .table-row:hover {
+  background: #334155;
 }
 
 /* Button styling */
@@ -205,28 +111,6 @@ html:not(.dark) tr[class*="from-amber"] {
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35);
-}
-
-/* Table styling */
-.table-header {
-  background: #f9fafb;
-  border-bottom: 2px solid var(--border);
-}
-
-.dark .table-header {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-}
-
-.table-row {
-  transition: all 0.15s;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.dark .table-row:hover {
-  background: #1e293b;
 }
 
 /* Scrollbar styling */
