@@ -191,6 +191,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   
   // Gate editor state
   const [editingGate, setEditingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[] } | null>(null);
+  
+  // Row actions menu state
+  const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
+  const rowMenuRef = useRef<HTMLDivElement>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
@@ -205,10 +209,14 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
       }
+      // Close row menu if clicking outside
+      if (rowMenuOpen && rowMenuRef.current && !rowMenuRef.current.contains(e.target as Node)) {
+        setRowMenuOpen(null);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [rowMenuOpen]);
 
   // Apply a profile to the current view
   const applyProfile = useCallback((profile: ViewProfile) => {
@@ -590,6 +598,40 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       cancelEditingNote();
     }
   };
+  
+  // Row action handlers
+  const handleCloseTask = async (taskId: string) => {
+    const supabase = createClient();
+    await supabase.from("tasks").update({ 
+      status: "closed", 
+      closed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq("id", taskId);
+    setRowMenuOpen(null);
+    router.refresh();
+  };
+  
+  const handleReopenTask = async (taskId: string) => {
+    const supabase = createClient();
+    await supabase.from("tasks").update({ 
+      status: "open", 
+      closed_at: null,
+      updated_at: new Date().toISOString()
+    }).eq("id", taskId);
+    setRowMenuOpen(null);
+    router.refresh();
+  };
+  
+  const handleRequestClose = async (taskId: string) => {
+    const supabase = createClient();
+    await supabase.from("tasks").update({ 
+      status: "close_requested", 
+      close_requested_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq("id", taskId);
+    setRowMenuOpen(null);
+    router.refresh();
+  };
 
   const currentProfile = allProfiles[currentProfileId] || DEFAULT_PROFILE;
 
@@ -799,12 +841,14 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
         style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
       >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) }}>
+          <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
             <colgroup>
+              <col style={{ width: 36 }} /> {/* Actions column */}
               {columns.map((col) => <col key={col.id} style={{ width: col.width }} />)}
             </colgroup>
             <thead>
               <tr className="table-header text-left text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-1 py-2 w-9"></th> {/* Actions header - empty */}
                 {columns.map((col) => (
                   <th
                     key={col.id}
@@ -847,6 +891,75 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
                   return (
                     <tr key={task.id} className={rowClasses}>
+                      {/* Row actions menu (3-dot) */}
+                      <td className="px-1 py-2 relative">
+                        <div ref={rowMenuOpen === task.id ? rowMenuRef : null}>
+                          <button
+                            onClick={() => setRowMenuOpen(rowMenuOpen === task.id ? null : task.id)}
+                            className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                              <circle cx="8" cy="3" r="1.5" />
+                              <circle cx="8" cy="8" r="1.5" />
+                              <circle cx="8" cy="13" r="1.5" />
+                            </svg>
+                          </button>
+                          {rowMenuOpen === task.id && (
+                            <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[160px] py-1">
+                              <Link
+                                href={`/tasks/${task.id}`}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                onClick={() => setRowMenuOpen(null)}
+                              >
+                                <span>📝</span> Edit Task
+                              </Link>
+                              <button
+                                onClick={() => startEditingNote(task.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-left"
+                              >
+                                <span>💬</span> Add Note
+                              </button>
+                              <button
+                                onClick={() => setEditingGate({ taskId: task.id, gateIndex: 0, gates: task.gates || [] })}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-left"
+                              >
+                                <span>🚧</span> Edit Gates
+                              </button>
+                              <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                              {task.status === "closed" ? (
+                                <button
+                                  onClick={() => handleReopenTask(task.id)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 text-left"
+                                >
+                                  <span>↩️</span> Reopen Task
+                                </button>
+                              ) : task.status === "close_requested" ? (
+                                <button
+                                  onClick={() => handleCloseTask(task.id)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-left"
+                                >
+                                  <span>✅</span> Approve Close
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleRequestClose(task.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-left"
+                                  >
+                                    <span>🙋</span> Request Close
+                                  </button>
+                                  <button
+                                    onClick={() => handleCloseTask(task.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-left"
+                                  >
+                                    <span>✅</span> Close Task
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       {columns.map((col) => {
                         const isEditable = BULK_EDITABLE_COLUMNS.includes(col.id);
                         const isSelected = isCellSelected(task.id, col.id);
@@ -951,7 +1064,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                   );
                 })
               ) : (
-                <tr><td colSpan={columns.length} className="px-4 py-12 text-center text-slate-400">No tasks match your filters</td></tr>
+                <tr><td colSpan={columns.length + 1} className="px-4 py-12 text-center text-slate-400">No tasks match your filters</td></tr>
               )}
             </tbody>
           </table>
