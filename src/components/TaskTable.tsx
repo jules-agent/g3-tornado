@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GateEditor } from "./GateEditor";
+import { OwnerEditor } from "./OwnerEditor";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -45,7 +46,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
   { id: "owner", label: "Owner", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: false },
   { id: "gated", label: "Gated", width: 70, minWidth: 60, align: "center", defaultVisible: false },
-  { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: true },
+  { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: false },
 ];
 
 const BULK_EDITABLE_COLUMNS = ["task", "project", "currentGate", "nextGate", "nextStep", "cadence", "status", "owner"];
@@ -191,6 +192,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   
   // Gate editor state
   const [editingGate, setEditingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[] } | null>(null);
+  
+  // Owner editor state
+  const [editingOwner, setEditingOwner] = useState<{ taskId: string; ownerIds: string[] } | null>(null);
   
   // Row actions menu state
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
@@ -1023,6 +1027,66 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                           );
                         }
                         
+                        // Special handling for task column - includes note icon and cad/aging gauge
+                        if (col.id === 'task') {
+                          // Calculate cad/aging colors
+                          const agingRatio = task.fu_cadence_days > 0 ? task.daysSinceMovement / task.fu_cadence_days : 0;
+                          const agingColor = task.status === "closed" 
+                            ? "bg-emerald-500" 
+                            : agingRatio > 1 
+                              ? "bg-amber-500" 
+                              : agingRatio > 0.75 
+                                ? "bg-amber-400" 
+                                : "bg-emerald-500";
+                          
+                          return (
+                            <td key={col.id} className={cellClasses}>
+                              <div className="flex items-start gap-2">
+                                {/* Note icon with tooltip - only if has notes */}
+                                {task.notes.length > 0 && (
+                                  <span 
+                                    className="flex-shrink-0 text-slate-400 hover:text-teal-500 cursor-pointer mt-0.5"
+                                    onMouseEnter={(e) => handleNotesMouseEnter(e, task)}
+                                    onMouseLeave={handleNotesMouseLeave}
+                                  >
+                                    📝
+                                  </span>
+                                )}
+                                
+                                {/* Task description and tags */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Link href={`/tasks/${task.id}`} className="group">
+                                      <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>
+                                        {task.description}
+                                      </span>
+                                    </Link>
+                                    
+                                    {/* Status tags */}
+                                    {task.isStale && task.status !== "closed" && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>
+                                    )}
+                                    {task.is_blocked && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>
+                                    )}
+                                    
+                                    {/* Cad/Aging gauge */}
+                                    <span 
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700"
+                                      title={`${task.daysSinceMovement} days since update / ${task.fu_cadence_days} day cadence`}
+                                    >
+                                      <span className={`w-2 h-2 rounded-full ${agingColor}`}></span>
+                                      <span className="text-slate-600 dark:text-slate-300">{task.daysSinceMovement}</span>
+                                      <span className="text-slate-400">/</span>
+                                      <span className="text-slate-500 dark:text-slate-400">{task.fu_cadence_days}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        }
+                        
                         // Special handling for gate columns - clickable to open editor
                         if (col.id === 'currentGate' || col.id === 'nextGate') {
                           const gates = task.gates || [];
@@ -1060,6 +1124,23 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             </td>
                           );
                         }
+                        
+                        // Special handling for owner column - clickable to open editor
+                        if (col.id === 'owner') {
+                          return (
+                            <td
+                              key={col.id}
+                              className="px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                              onClick={() => setEditingOwner({ taskId: task.id, ownerIds: [] })}
+                            >
+                              {task.ownerNames ? (
+                                <span className="text-slate-600 dark:text-slate-300 text-xs truncate">{task.ownerNames}</span>
+                              ) : (
+                                <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Assign</span>
+                              )}
+                            </td>
+                          );
+                        }
 
                         return (
                           <td
@@ -1093,6 +1174,15 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
           gateIndex={editingGate.gateIndex}
           gates={editingGate.gates}
           onClose={() => setEditingGate(null)}
+          onSave={() => router.refresh()}
+        />
+      )}
+      
+      {/* Owner Editor Modal */}
+      {editingOwner && (
+        <OwnerEditor
+          taskId={editingOwner.taskId}
+          onClose={() => setEditingOwner(null)}
           onSave={() => router.refresh()}
         />
       )}
