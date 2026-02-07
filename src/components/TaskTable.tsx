@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -39,7 +41,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "currentGate", label: "Current Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextGate", label: "Next Gate", width: 110, minWidth: 90, align: "left", editable: true, defaultVisible: true },
   { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true, defaultVisible: true },
-  { id: "notes", label: "Last Update", width: 180, minWidth: 120, align: "left", defaultVisible: true },
+  { id: "notes", label: "Update", width: 200, minWidth: 150, align: "left", defaultVisible: true },
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
   { id: "days", label: "Days", width: 50, minWidth: 40, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
@@ -141,6 +143,7 @@ const DEFAULT_PROFILE: ViewProfile = {
 };
 
 export function TaskTable({ tasks, total }: TaskTableProps) {
+  const router = useRouter();
   const isMobile = useIsMobile();
   const deviceType = isMobile ? 'mobile' : 'desktop';
   
@@ -162,6 +165,12 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Inline note editing
+  const [editingNoteTaskId, setEditingNoteTaskId] = useState<string | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const noteInputRef = useRef<HTMLInputElement>(null);
   
   // Resize/drag state
   const [resizing, setResizing] = useState<{ id: string; startX: number; startWidth: number } | null>(null);
@@ -511,13 +520,57 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   // Notes hover - show full update history
   const handleNotesMouseEnter = (e: React.MouseEvent, task: Task) => {
-    if (task.notes.length === 0) return;
+    if (task.notes.length === 0 || editingNoteTaskId === task.id) return;
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setTooltipPosition({ x: rect.left, y: rect.bottom + 8 });
     setHoveredNotes({ taskId: task.id, notes: task.notes }); // All notes
   };
 
   const handleNotesMouseLeave = () => setHoveredNotes(null);
+
+  // Inline note editing
+  const startEditingNote = (taskId: string) => {
+    setEditingNoteTaskId(taskId);
+    setEditingNoteValue('');
+    setHoveredNotes(null);
+    setTimeout(() => noteInputRef.current?.focus(), 50);
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteTaskId(null);
+    setEditingNoteValue('');
+  };
+
+  const saveNote = async (taskId: string) => {
+    if (!editingNoteValue.trim() || savingNote) return;
+    
+    setSavingNote(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("task_notes").insert({
+      task_id: taskId,
+      content: editingNoteValue.trim(),
+    });
+    
+    if (error) {
+      console.error("Failed to save note:", error);
+      setSavingNote(false);
+      return;
+    }
+    
+    setEditingNoteTaskId(null);
+    setEditingNoteValue('');
+    setSavingNote(false);
+    router.refresh();
+  };
+
+  const handleNoteKeyDown = (e: React.KeyboardEvent, taskId: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveNote(taskId);
+    } else if (e.key === 'Escape') {
+      cancelEditingNote();
+    }
+  };
 
   const currentProfile = allProfiles[currentProfileId] || DEFAULT_PROFILE;
 
@@ -758,13 +811,56 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                         if (isEditable) cellClasses += " cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors";
                         if (isSelected) cellClasses += " ring-2 ring-teal-500 ring-inset bg-teal-100 dark:bg-teal-900/40";
 
+                        // Special handling for notes column with inline editing
+                        if (col.id === 'notes') {
+                          const isEditing = editingNoteTaskId === task.id;
+                          return (
+                            <td
+                              key={col.id}
+                              className={`px-3 py-2 ${isEditing ? 'bg-teal-50 dark:bg-teal-900/30' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                              onClick={() => !isEditing && startEditingNote(task.id)}
+                              onMouseEnter={!isEditing ? (e) => handleNotesMouseEnter(e, task) : undefined}
+                              onMouseLeave={!isEditing ? handleNotesMouseLeave : undefined}
+                            >
+                              {isEditing ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    ref={noteInputRef}
+                                    type="text"
+                                    value={editingNoteValue}
+                                    onChange={(e) => setEditingNoteValue(e.target.value)}
+                                    onKeyDown={(e) => handleNoteKeyDown(e, task.id)}
+                                    onBlur={() => editingNoteValue.trim() ? saveNote(task.id) : cancelEditingNote()}
+                                    placeholder="Type update, Enter to save..."
+                                    className="flex-1 text-xs px-2 py-1 border border-teal-300 rounded bg-white dark:bg-slate-800 dark:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                    disabled={savingNote}
+                                  />
+                                  {savingNote && <span className="text-xs text-teal-500">💾</span>}
+                                </div>
+                              ) : (
+                                <div className="flex items-start gap-1.5">
+                                  <span className="text-sm flex-shrink-0">📝</span>
+                                  {task.notes.length > 0 ? (
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{task.notes[0].content}</div>
+                                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                        {task.notes[0].profiles?.full_name || task.notes[0].profiles?.email || 'Unknown'} · {formatRelativeTime(task.notes[0].created_at)}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 dark:text-slate-500 italic">Click to add update...</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        }
+
                         return (
                           <td
                             key={col.id}
                             className={cellClasses}
                             onClick={(e) => isEditable && handleCellClick(e, task.id, col.id, index)}
-                            onMouseEnter={col.id === 'notes' ? (e) => handleNotesMouseEnter(e, task) : undefined}
-                            onMouseLeave={col.id === 'notes' ? handleNotesMouseLeave : undefined}
                           >
                             {renderCell(col.id, task)}
                           </td>
@@ -829,23 +925,9 @@ function renderCell(columnId: string, task: Task) {
     }
     case "nextStep":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
-    case "notes": {
-      const notes = task.notes || [];
-      if (notes.length === 0) return <span className="text-slate-400 dark:text-slate-500 text-xs">No updates yet</span>;
-      const latest = notes[0]; // Already sorted descending
-      const timeAgo = formatRelativeTime(latest.created_at);
-      return (
-        <div className="flex items-start gap-1.5">
-          <span className="text-sm cursor-pointer hover:scale-110 transition-transform">📝</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{latest.content}</div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-              {latest.profiles?.full_name || latest.profiles?.email || 'Unknown'} · {timeAgo}
-            </div>
-          </div>
-        </div>
-      );
-    }
+    case "notes":
+      // Handled inline in table body for editing capability
+      return null;
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;
     case "days":
