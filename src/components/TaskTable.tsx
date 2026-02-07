@@ -525,15 +525,15 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
           {isMobile && (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
               <button
-                onClick={() => handleScaleChange(Math.max(50, scale - 25))}
-                disabled={scale <= 50}
-                className="w-7 h-7 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
+                onClick={() => handleScaleChange(Math.max(20, scale - 10))}
+                disabled={scale <= 20}
+                className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
               >−</button>
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-10 text-center">{scale}%</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-12 text-center">{scale}%</span>
               <button
-                onClick={() => handleScaleChange(Math.min(150, scale + 25))}
-                disabled={scale >= 150}
-                className="w-7 h-7 flex items-center justify-center text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
+                onClick={() => handleScaleChange(Math.min(200, scale + 10))}
+                disabled={scale >= 200}
+                className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30"
               >+</button>
             </div>
           )}
