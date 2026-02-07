@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 // Script to apply theme before React hydrates (prevents flash)
-// Default is AUTO mode - uses user's local time (dark 6pm-6am)
+// Default is AUTO mode - uses system preference (respects OS sunset settings)
 const themeScript = `
   (function() {
     try {
@@ -34,9 +34,8 @@ const themeScript = `
       } else if (theme === 'light') {
         isDark = false;
       } else {
-        // Auto: dark from 6pm to 6am based on user's local time
-        var hour = new Date().getHours();
-        isDark = hour < 6 || hour >= 18;
+        // Auto: follow system preference (respects OS dark mode / sunset settings)
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       }
       
       document.documentElement.classList.remove('dark');

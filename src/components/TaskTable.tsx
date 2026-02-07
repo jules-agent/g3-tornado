@@ -465,26 +465,40 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 
   useEffect(() => {
     if (!resizing) return;
-    const handleMove = (e: MouseEvent) => {
-      const diff = e.clientX - resizing.startX;
+    
+    const handleMove = (clientX: number) => {
+      const diff = clientX - resizing.startX;
       const col = columns.find((c) => c.id === resizing.id);
       if (!col) return;
       const newWidth = Math.max(col.minWidth, resizing.startWidth + diff);
       setColumns((prev) => prev.map((c) => (c.id === resizing.id ? { ...c, width: newWidth } : c)));
     };
+    
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      handleMove(e.touches[0].clientX);
+    };
+    
     const handleUp = () => {
       markUnsaved();
       setResizing(null);
     };
+    
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleUp);
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleUp);
+    
     return () => {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleUp);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleUp);
     };
   }, [resizing, columns, markUnsaved]);
 
@@ -689,39 +703,57 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
               {defaults[deviceType] === currentProfileId && <span className="text-teal-500">★</span>}
             </button>
             {showProfileMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[220px]">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[240px]">
+                {/* Device indicator */}
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 rounded-t-lg">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-lg">{isMobile ? '📱' : '💻'}</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      {isMobile ? 'Mobile' : 'Desktop'} View
+                    </span>
+                    {hasUnsavedChanges && (
+                      <span className="ml-auto text-amber-500 font-medium">• unsaved</span>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="p-2 border-b border-slate-200 dark:border-slate-700">
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 mb-1">Profiles</div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 mb-1">Saved Profiles</div>
                   {Object.values(allProfiles).map((profile) => (
                     <button
                       key={profile.id}
                       onClick={() => switchProfile(profile.id)}
-                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-left ${currentProfileId === profile.id ? 'bg-teal-50 dark:bg-teal-900/30' : ''}`}
+                      className={`w-full flex items-center justify-between px-2 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-left ${currentProfileId === profile.id ? 'bg-teal-50 dark:bg-teal-900/30' : ''}`}
                     >
                       <span className="text-sm text-slate-700 dark:text-slate-200">{profile.name}</span>
-                      <span className="flex items-center gap-1">
-                        {defaults[deviceType] === profile.id && <span className="text-[10px] text-teal-500">★ default</span>}
-                        {currentProfileId === profile.id && <span className="text-teal-500">✓</span>}
+                      <span className="flex items-center gap-1.5">
+                        {defaults[deviceType] === profile.id && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 rounded">
+                            {isMobile ? '📱' : '💻'} default
+                          </span>
+                        )}
+                        {currentProfileId === profile.id && <span className="text-teal-500 text-lg">✓</span>}
                       </span>
                     </button>
                   ))}
                 </div>
+                
                 <div className="p-2 space-y-1">
                   {hasUnsavedChanges && (
-                    <button onClick={saveCurrentProfile} className="w-full text-left px-2 py-1.5 text-sm text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded">
-                      💾 Save changes to "{currentProfile.name}"
+                    <button onClick={saveCurrentProfile} className="w-full text-left px-2 py-2 text-sm bg-teal-500 text-white hover:bg-teal-600 rounded font-medium">
+                      💾 Save to "{currentProfile.name}"
                     </button>
                   )}
-                  <button onClick={() => { setShowProfileMenu(false); setShowSaveDialog(true); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
-                    ➕ Save as new profile...
+                  <button onClick={() => { setShowProfileMenu(false); setShowSaveDialog(true); }} className="w-full text-left px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    ➕ Save as new {isMobile ? 'mobile' : 'desktop'} profile...
                   </button>
                   {defaults[deviceType] !== currentProfileId && (
-                    <button onClick={() => { setAsDefault(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
-                      ★ Set as {deviceType} default
+                    <button onClick={() => { setAsDefault(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                      ★ Set as {isMobile ? 'mobile' : 'desktop'} default
                     </button>
                   )}
                   {currentProfileId !== 'default' && (
-                    <button onClick={() => { deleteProfile(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
+                    <button onClick={() => { deleteProfile(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
                       🗑 Delete profile
                     </button>
                   )}
@@ -789,11 +821,17 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                       {col.label}
                       {BULK_EDITABLE_COLUMNS.includes(col.id) && <span className="ml-1 text-teal-500 opacity-50">•</span>}
                     </span>
-                    {!isMobile && (
-                      <div className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10" onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}>
-                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
-                      </div>
-                    )}
+                    {/* Column resize handle - larger touch target on mobile */}
+                    <div 
+                      className={`absolute right-0 top-0 bottom-0 cursor-col-resize hover:bg-teal-400/50 active:bg-teal-500/50 transition-colors z-10 ${isMobile ? 'w-6 -mr-3' : 'w-2'}`}
+                      onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        handleResizeStart({ clientX: touch.clientX, preventDefault: () => {} } as React.MouseEvent, col.id, col.width);
+                      }}
+                    >
+                      <div className={`absolute top-1/2 -translate-y-1/2 bg-slate-300 dark:bg-slate-600 ${isMobile ? 'right-2.5 w-1 h-6 rounded-full' : 'right-0.5 w-0.5 h-4'}`} />
+                    </div>
                   </th>
                 ))}
               </tr>

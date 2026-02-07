@@ -15,18 +15,29 @@ export function ThemeToggle() {
       setTheme(stored);
       applyTheme(stored);
     } else {
-      // Default to auto mode (follows user's local time)
       applyTheme('auto');
     }
+    
+    // Listen for system preference changes (when OS switches to dark mode)
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      const currentTheme = localStorage.getItem('g3-theme') as Theme | null;
+      if (!currentTheme || currentTheme === 'auto') {
+        applyTheme('auto');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const applyTheme = (newTheme: Theme) => {
     const root = document.documentElement;
     
     if (newTheme === 'auto') {
-      const hour = new Date().getHours();
-      const isDark = hour < 6 || hour >= 18; // Dark from 6pm to 6am
-      root.classList.toggle('dark', isDark);
+      // Follow system preference (respects OS dark mode / sunset settings)
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.toggle('dark', prefersDark);
     } else {
       root.classList.toggle('dark', newTheme === 'dark');
     }
@@ -39,6 +50,11 @@ export function ThemeToggle() {
   };
 
   if (!mounted) return null;
+
+  // Get current effective theme for display
+  const effectiveTheme = theme === 'auto' 
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
 
   return (
     <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
@@ -75,10 +91,10 @@ export function ThemeToggle() {
             ? 'bg-white dark:bg-slate-700 shadow-sm text-cyan-500'
             : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
         }`}
-        title="Auto (follows time of day)"
+        title={`Auto (follows system - currently ${effectiveTheme})`}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       </button>
     </div>
