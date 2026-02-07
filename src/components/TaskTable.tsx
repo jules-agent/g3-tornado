@@ -1017,7 +1017,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                       {columns.map((col) => {
                         const isEditable = BULK_EDITABLE_COLUMNS.includes(col.id);
                         const isSelected = isCellSelected(task.id, col.id);
-                        let cellClasses = `px-3 py-2 ${col.align === "center" ? "text-center" : ""}`;
+                        let cellClasses = `px-3 py-2 overflow-hidden ${col.align === "center" ? "text-center" : ""}`;
                         if (isEditable) cellClasses += " cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors";
                         if (isSelected) cellClasses += " ring-2 ring-teal-500 ring-inset bg-teal-100 dark:bg-teal-900/40";
 
@@ -1149,13 +1149,13 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                           return (
                             <td
                               key={col.id}
-                              className="px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                              className="px-3 py-2 overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                               onClick={() => setEditingGate({ taskId: task.id, gateIndex: targetGateIndex, gates: gates })}
                             >
                               {gate ? (
-                                <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
-                                  <span className={`font-semibold truncate ${textColor}`}>{gate.owner_name}</span>
-                                  {gate.task_name && <span className={`truncate text-[10px] ${subColor}`}>{gate.task_name}</span>}
+                                <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs max-w-full ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
+                                  <span className={`font-semibold truncate max-w-[120px] ${textColor}`}>{gate.owner_name}</span>
+                                  {gate.task_name && <span className={`truncate text-[10px] max-w-[120px] ${subColor}`}>{gate.task_name}</span>}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Add gate</span>
@@ -1169,11 +1169,11 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                           return (
                             <td
                               key={col.id}
-                              className="px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                              className="px-3 py-2 overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                               onClick={() => setEditingOwner({ taskId: task.id, ownerIds: [] })}
                             >
                               {task.ownerNames ? (
-                                <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{task.ownerNames}</span>
+                                <span className="text-slate-800 dark:text-slate-300 text-xs truncate block">{task.ownerNames}</span>
                               ) : (
                                 <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Assign</span>
                               )}
@@ -1252,9 +1252,9 @@ function renderCell(columnId: string, task: Task) {
       const ownerPart = gate.owner_name || "—";
       const taskPart = gate.task_name || gate.name || "";
       return (
-        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
-          <span className="font-semibold text-amber-800 truncate">{ownerPart}</span>
-          {taskPart && <span className="text-amber-600 truncate text-[10px]">{taskPart}</span>}
+        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
+          <span className="font-semibold text-amber-800 truncate max-w-[120px]">{ownerPart}</span>
+          {taskPart && <span className="text-amber-600 truncate text-[10px] max-w-[120px]">{taskPart}</span>}
         </span>
       );
     }
@@ -1267,9 +1267,9 @@ function renderCell(columnId: string, task: Task) {
       const ownerPart = gate.owner_name || "—";
       const taskPart = gate.task_name || gate.name || "";
       return (
-        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-xs" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
-          <span className="font-semibold text-indigo-800 truncate">{ownerPart}</span>
-          {taskPart && <span className="text-indigo-600 truncate text-[10px]">{taskPart}</span>}
+        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
+          <span className="font-semibold text-indigo-800 truncate max-w-[120px]">{ownerPart}</span>
+          {taskPart && <span className="text-indigo-600 truncate text-[10px] max-w-[120px]">{taskPart}</span>}
         </span>
       );
     }
