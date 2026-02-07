@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-// View preferences structure:
+// View preferences structure (v2 - named profiles):
 // {
-//   desktop: { columns: [...] },
-//   mobile: { columns: [...], scale: 1.0 }
+//   profiles: { [id]: { id, name, columns, visibleColumns, scale } },
+//   defaults: { desktop: profileId, mobile: profileId },
+//   lastUsed: { desktop: profileId, mobile: profileId }
 // }
 
 export async function GET() {
@@ -24,17 +25,42 @@ export async function GET() {
     .eq("id", user.id)
     .single();
 
-  // Handle legacy format (array) vs new format (object with desktop/mobile)
   const stored = profile?.column_layout;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let preferences: { desktop: any; mobile: any } = { desktop: null, mobile: null };
+  let preferences: any = null;
   
   if (stored) {
-    if (Array.isArray(stored)) {
-      // Legacy: migrate to new format
-      preferences = { desktop: { columns: stored }, mobile: { columns: stored, scale: 1.0 } };
-    } else {
-      preferences = stored as { desktop: any; mobile: any };
+    if (stored.profiles) {
+      // Already v2 format
+      preferences = stored;
+    } else if (Array.isArray(stored)) {
+      // Legacy v0: migrate to v2
+      const defaultProfile = {
+        id: 'default',
+        name: 'Default',
+        columns: stored,
+        visibleColumns: stored.map((c: { id: string }) => c.id),
+        scale: 100
+      };
+      preferences = {
+        profiles: { default: defaultProfile },
+        defaults: { desktop: 'default', mobile: 'default' },
+        lastUsed: { desktop: 'default', mobile: 'default' }
+      };
+    } else if (stored.desktop || stored.mobile) {
+      // Legacy v1: migrate to v2
+      const defaultProfile = {
+        id: 'default',
+        name: 'Default',
+        columns: stored.desktop?.columns || stored.mobile?.columns || [],
+        visibleColumns: stored.desktop?.visibleColumns || stored.mobile?.visibleColumns || [],
+        scale: stored.mobile?.scale || 100
+      };
+      preferences = {
+        profiles: { default: defaultProfile },
+        defaults: { desktop: 'default', mobile: 'default' },
+        lastUsed: { desktop: 'default', mobile: 'default' }
+      };
     }
   }
 
@@ -54,12 +80,13 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   
-  // Support both old format (column_layout) and new format (device, columns, scale)
   let updateData;
   
-  if (body.device && (body.columns || body.scale !== undefined || body.visibleColumns)) {
-    // New format: device-specific update
-    // First get existing preferences
+  if (body.viewPreferences) {
+    // v2 format: full view preferences object with named profiles
+    updateData = body.viewPreferences;
+  } else if (body.device && (body.columns || body.scale !== undefined || body.visibleColumns)) {
+    // Legacy v1 format: device-specific update (migrate to v2)
     const { data: profile } = await supabase
       .from("profiles")
       .select("column_layout")
@@ -67,17 +94,14 @@ export async function POST(request: Request) {
       .single();
     
     const existing = profile?.column_layout || { desktop: null, mobile: null };
-    
-    // Merge with existing
     const devicePrefs = existing[body.device] || {};
     if (body.columns) devicePrefs.columns = body.columns;
     if (body.visibleColumns) devicePrefs.visibleColumns = body.visibleColumns;
     if (body.scale !== undefined) devicePrefs.scale = body.scale;
     existing[body.device] = devicePrefs;
-    
     updateData = existing;
   } else if (body.column_layout) {
-    // Legacy format
+    // Legacy v0 format
     updateData = body.column_layout;
   } else {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

@@ -73,15 +73,18 @@ type SelectedCell = {
   columnId: string;
 };
 
-type DevicePrefs = {
-  columns?: Array<{ id: string; width: number; order: number }>;
-  visibleColumns?: string[];
-  scale?: number;
+type ViewProfile = {
+  id: string;
+  name: string;
+  columns: Array<{ id: string; width: number; order: number }>;
+  visibleColumns: string[];
+  scale: number;
 };
 
 type ViewPreferences = {
-  desktop: DevicePrefs | null;
-  mobile: DevicePrefs | null;
+  profiles: Record<string, ViewProfile>;
+  defaults: { desktop: string | null; mobile: string | null };
+  lastUsed: { desktop: string | null; mobile: string | null };
 };
 
 function useIsMobile() {
@@ -95,7 +98,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-// Format relative time
 function formatRelativeTime(dateStr: string) {
   const date = new Date(dateStr);
   const now = new Date();
@@ -110,45 +112,235 @@ function formatRelativeTime(dateStr: string) {
   return date.toLocaleDateString();
 }
 
+function generateId() {
+  return Math.random().toString(36).substring(2, 15);
+}
+
+const DEFAULT_PROFILE: ViewProfile = {
+  id: 'default',
+  name: 'Default',
+  columns: ALL_COLUMNS.filter(c => c.defaultVisible).map((c, i) => ({ id: c.id, width: c.width, order: i })),
+  visibleColumns: ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id),
+  scale: 100
+};
+
 export function TaskTable({ tasks, total }: TaskTableProps) {
   const isMobile = useIsMobile();
-  const [columns, setColumns] = useState<ColumnConfig[]>(() => 
-    ALL_COLUMNS.filter(c => c.defaultVisible)
-  );
-  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>(() =>
-    ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)
-  );
+  const deviceType = isMobile ? 'mobile' : 'desktop';
+  
+  // View profiles state
+  const [allProfiles, setAllProfiles] = useState<Record<string, ViewProfile>>({ default: DEFAULT_PROFILE });
+  const [currentProfileId, setCurrentProfileId] = useState<string>('default');
+  const [defaults, setDefaults] = useState<{ desktop: string | null; mobile: string | null }>({ desktop: null, mobile: null });
+  
+  // Current view state
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => ALL_COLUMNS.filter(c => c.defaultVisible));
+  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>(() => ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id));
   const [scale, setScale] = useState(100);
+  
+  // UI state
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Resize/drag state
   const [resizing, setResizing] = useState<{ id: string; startX: number; startWidth: number } | null>(null);
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   
+  // Cell selection state
   const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([]);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [bulkEditValue, setBulkEditValue] = useState("");
   
-  // Tooltip state for notes
+  // Notes tooltip
   const [hoveredNotes, setHoveredNotes] = useState<{ taskId: string; notes: TaskNote[] } | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   const tableRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close column picker when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (columnPickerRef.current && !columnPickerRef.current.contains(e.target as Node)) {
         setShowColumnPicker(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Apply a profile to the current view
+  const applyProfile = useCallback((profile: ViewProfile) => {
+    setVisibleColumnIds(profile.visibleColumns);
+    const visibleCols = ALL_COLUMNS.filter(c => profile.visibleColumns.includes(c.id));
+    const merged = visibleCols.map((def) => {
+      const saved = profile.columns.find(c => c.id === def.id);
+      return saved ? { ...def, width: saved.width } : def;
+    });
+    merged.sort((a, b) => {
+      const aOrder = profile.columns.find(c => c.id === a.id)?.order ?? 999;
+      const bOrder = profile.columns.find(c => c.id === b.id)?.order ?? 999;
+      return aOrder - bOrder;
+    });
+    setColumns(merged);
+    setScale(profile.scale);
+    setHasUnsavedChanges(false);
+  }, []);
+
+  // Load preferences from server
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        let prefs: ViewPreferences | null = null;
+        
+        if (stored) {
+          try { prefs = JSON.parse(stored); } catch {}
+        }
+
+        const res = await fetch('/api/user/preferences');
+        if (res.ok) {
+          const { preferences } = await res.json();
+          if (preferences?.profiles) {
+            prefs = preferences;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+          }
+        }
+        
+        if (prefs?.profiles) {
+          setAllProfiles(prefs.profiles);
+          setDefaults(prefs.defaults || { desktop: null, mobile: null });
+          
+          // Determine which profile to load
+          const defaultForDevice = prefs.defaults?.[deviceType];
+          const lastUsedForDevice = prefs.lastUsed?.[deviceType];
+          const profileToLoad = defaultForDevice || lastUsedForDevice || 'default';
+          
+          if (prefs.profiles[profileToLoad]) {
+            setCurrentProfileId(profileToLoad);
+            applyProfile(prefs.profiles[profileToLoad]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load preferences:", e);
+      }
+      setLoaded(true);
+    };
+    loadPreferences();
+  }, [deviceType, applyProfile]);
+
+  // Get current config as profile data
+  const getCurrentConfig = useCallback((): Omit<ViewProfile, 'id' | 'name'> => ({
+    columns: columns.map((c, i) => ({ id: c.id, width: c.width, order: i })),
+    visibleColumns: visibleColumnIds,
+    scale
+  }), [columns, visibleColumnIds, scale]);
+
+  // Save all preferences to server
+  const saveAllPreferences = useCallback(async (
+    profiles: Record<string, ViewProfile>,
+    newDefaults?: { desktop: string | null; mobile: string | null },
+    newLastUsed?: { desktop: string | null; mobile: string | null }
+  ) => {
+    const prefs: ViewPreferences = {
+      profiles,
+      defaults: newDefaults || defaults,
+      lastUsed: newLastUsed || { ...defaults, [deviceType]: currentProfileId }
+    };
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    
+    setSaving(true);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viewPreferences: prefs })
+      });
+    } catch (e) {
+      console.error("Failed to save:", e);
+    }
+    setSaving(false);
+  }, [defaults, deviceType, currentProfileId]);
+
+  // Save current view to current profile
+  const saveCurrentProfile = useCallback(() => {
+    const config = getCurrentConfig();
+    const updatedProfile = { ...allProfiles[currentProfileId], ...config };
+    const updatedProfiles = { ...allProfiles, [currentProfileId]: updatedProfile };
+    setAllProfiles(updatedProfiles);
+    setHasUnsavedChanges(false);
+    saveAllPreferences(updatedProfiles);
+  }, [allProfiles, currentProfileId, getCurrentConfig, saveAllPreferences]);
+
+  // Save as new profile
+  const saveAsNewProfile = useCallback(() => {
+    if (!newProfileName.trim()) return;
+    const id = generateId();
+    const config = getCurrentConfig();
+    const newProfile: ViewProfile = { id, name: newProfileName.trim(), ...config };
+    const updatedProfiles = { ...allProfiles, [id]: newProfile };
+    setAllProfiles(updatedProfiles);
+    setCurrentProfileId(id);
+    setHasUnsavedChanges(false);
+    setShowSaveDialog(false);
+    setNewProfileName('');
+    saveAllPreferences(updatedProfiles, undefined, { ...defaults, [deviceType]: id });
+  }, [newProfileName, getCurrentConfig, allProfiles, saveAllPreferences, defaults, deviceType]);
+
+  // Switch to a different profile
+  const switchProfile = useCallback((profileId: string) => {
+    if (allProfiles[profileId]) {
+      setCurrentProfileId(profileId);
+      applyProfile(allProfiles[profileId]);
+      setShowProfileMenu(false);
+      // Update last used
+      const lastUsed = { desktop: deviceType === 'desktop' ? profileId : defaults.desktop, mobile: deviceType === 'mobile' ? profileId : defaults.mobile };
+      saveAllPreferences(allProfiles, undefined, lastUsed as { desktop: string | null; mobile: string | null });
+    }
+  }, [allProfiles, applyProfile, saveAllPreferences, deviceType, defaults]);
+
+  // Set profile as default for current device
+  const setAsDefault = useCallback((profileId: string) => {
+    const newDefaults = { ...defaults, [deviceType]: profileId };
+    setDefaults(newDefaults);
+    saveAllPreferences(allProfiles, newDefaults);
+  }, [defaults, deviceType, allProfiles, saveAllPreferences]);
+
+  // Delete a profile
+  const deleteProfile = useCallback((profileId: string) => {
+    if (profileId === 'default') return; // Can't delete default
+    const { [profileId]: _, ...remaining } = allProfiles;
+    setAllProfiles(remaining);
+    if (currentProfileId === profileId) {
+      setCurrentProfileId('default');
+      applyProfile(remaining['default'] || DEFAULT_PROFILE);
+    }
+    // Clear from defaults if needed
+    const newDefaults = { ...defaults };
+    if (newDefaults.desktop === profileId) newDefaults.desktop = null;
+    if (newDefaults.mobile === profileId) newDefaults.mobile = null;
+    setDefaults(newDefaults);
+    saveAllPreferences(remaining, newDefaults);
+  }, [allProfiles, currentProfileId, defaults, applyProfile, saveAllPreferences]);
+
+  // Mark changes as unsaved
+  const markUnsaved = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
+
+  // Cell selection handlers
   const isCellSelected = (taskId: string, columnId: string) => {
     return selectedCells.some(c => c.taskId === taskId && c.columnId === columnId);
   };
@@ -195,9 +387,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
     setBulkEditValue("");
   };
 
-  const getColumnLabel = (colId: string) => {
-    return ALL_COLUMNS.find(c => c.id === colId)?.label || colId;
-  };
+  const getColumnLabel = (colId: string) => ALL_COLUMNS.find(c => c.id === colId)?.label || colId;
 
   const applyBulkEdit = async () => {
     if (!activeColumn || selectedCells.length === 0) return;
@@ -205,116 +395,28 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
     clearSelection();
   };
 
-  // Toggle column visibility
+  // Column visibility toggle
   const toggleColumn = (colId: string) => {
     setVisibleColumnIds(prev => {
-      const newVisible = prev.includes(colId)
-        ? prev.filter(id => id !== colId)
-        : [...prev, colId];
-      
-      // Update columns array based on visibility
+      const newVisible = prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId];
       const newColumns = ALL_COLUMNS.filter(c => newVisible.includes(c.id));
-      // Preserve widths from current columns
       const updatedColumns = newColumns.map(col => {
         const existing = columns.find(c => c.id === col.id);
         return existing ? { ...col, width: existing.width } : col;
       });
       setColumns(updatedColumns);
-      
-      // Save preferences
-      setTimeout(() => savePreferences(updatedColumns, undefined, newVisible), 0);
-      
+      markUnsaved();
       return newVisible;
     });
   };
 
-  // Load preferences
-  useEffect(() => {
-    const loadPreferences = async () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const prefs: ViewPreferences = JSON.parse(stored);
-          const devicePrefs = isMobile ? prefs.mobile : prefs.desktop;
-          if (devicePrefs) {
-            if (devicePrefs.visibleColumns) {
-              setVisibleColumnIds(devicePrefs.visibleColumns);
-              const visibleCols = ALL_COLUMNS.filter(c => devicePrefs.visibleColumns!.includes(c.id));
-              if (devicePrefs.columns) {
-                const merged = visibleCols.map((def) => {
-                  const saved = devicePrefs.columns!.find(c => c.id === def.id);
-                  return saved ? { ...def, width: saved.width } : def;
-                });
-                // Sort by saved order
-                merged.sort((a, b) => {
-                  const aOrder = devicePrefs.columns!.find(c => c.id === a.id)?.order ?? 999;
-                  const bOrder = devicePrefs.columns!.find(c => c.id === b.id)?.order ?? 999;
-                  return aOrder - bOrder;
-                });
-                setColumns(merged);
-              } else {
-                setColumns(visibleCols);
-              }
-            } else if (devicePrefs.columns) {
-              const merged = ALL_COLUMNS.filter(c => c.defaultVisible).map((def) => {
-                const saved = devicePrefs.columns!.find(c => c.id === def.id);
-                return saved ? { ...def, width: saved.width } : def;
-              });
-              setColumns(merged);
-            }
-            if (isMobile && devicePrefs.scale) {
-              setScale(devicePrefs.scale);
-            }
-          }
-        }
-
-        const res = await fetch('/api/user/preferences');
-        if (res.ok) {
-          const { preferences } = await res.json();
-          if (preferences) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load preferences:", e);
-      }
-      setLoaded(true);
-    };
-    loadPreferences();
-  }, [isMobile]);
-
-  const savePreferences = useCallback(async (cols: ColumnConfig[], newScale?: number, newVisibleCols?: string[]) => {
-    const device = isMobile ? 'mobile' : 'desktop';
-    const colsToSave = cols.map((c, i) => ({ id: c.id, width: c.width, order: i }));
-    const visible = newVisibleCols ?? visibleColumnIds;
-    
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const prefs: ViewPreferences = stored ? JSON.parse(stored) : { desktop: null, mobile: null };
-    if (device === 'mobile') {
-      prefs.mobile = { columns: colsToSave, visibleColumns: visible, scale: newScale ?? scale };
-    } else {
-      prefs.desktop = { columns: colsToSave, visibleColumns: visible };
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-
-    setSaving(true);
-    try {
-      await fetch('/api/user/preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device, columns: colsToSave, visibleColumns: visible, scale: newScale ?? scale })
-      });
-    } catch (e) {
-      console.error("Failed to save:", e);
-    }
-    setSaving(false);
-  }, [isMobile, scale, visibleColumnIds]);
-
+  // Scale change
   const handleScaleChange = (newScale: number) => {
     setScale(newScale);
-    savePreferences(columns, newScale);
+    markUnsaved();
   };
 
+  // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, colId: string, currentWidth: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -331,7 +433,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       setColumns((prev) => prev.map((c) => (c.id === resizing.id ? { ...c, width: newWidth } : c)));
     };
     const handleUp = () => {
-      setColumns((prev) => { savePreferences(prev); return prev; });
+      markUnsaved();
       setResizing(null);
     };
     document.body.style.cursor = "col-resize";
@@ -344,8 +446,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       document.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseup", handleUp);
     };
-  }, [resizing, columns, savePreferences]);
+  }, [resizing, columns, markUnsaved]);
 
+  // Drag handlers for column reorder
   const handleDragStart = (e: React.DragEvent, colId: string) => {
     e.dataTransfer.effectAllowed = "move";
     setDraggedCol(colId);
@@ -373,27 +476,14 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       const updated = [...prev];
       const [moved] = updated.splice(fromIdx, 1);
       updated.splice(toIdx, 0, moved);
-      savePreferences(updated);
+      markUnsaved();
       return updated;
     });
     setDraggedCol(null);
     setDragOverCol(null);
   };
 
-  const resetLayout = () => {
-    const defaultVisible = ALL_COLUMNS.filter(c => c.defaultVisible);
-    setColumns(defaultVisible);
-    setVisibleColumnIds(defaultVisible.map(c => c.id));
-    setScale(100);
-    localStorage.removeItem(STORAGE_KEY);
-    fetch('/api/user/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device: isMobile ? 'mobile' : 'desktop', columns: null, visibleColumns: null, scale: 100 })
-    });
-  };
-
-  // Notes hover handlers
+  // Notes hover
   const handleNotesMouseEnter = (e: React.MouseEvent, task: Task) => {
     if (task.notes.length === 0) return;
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -401,9 +491,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
     setHoveredNotes({ taskId: task.id, notes: task.notes.slice(0, 5) });
   };
 
-  const handleNotesMouseLeave = () => {
-    setHoveredNotes(null);
-  };
+  const handleNotesMouseLeave = () => setHoveredNotes(null);
+
+  const currentProfile = allProfiles[currentProfileId] || DEFAULT_PROFILE;
 
   if (!loaded) {
     return <div className="animate-pulse h-64 bg-slate-100 dark:bg-slate-800 rounded-lg" />;
@@ -431,9 +521,42 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
         </div>
       )}
 
+      {/* Save as dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-80 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Save View Profile</h3>
+            <input
+              type="text"
+              placeholder="Profile name..."
+              value={newProfileName}
+              onChange={(e) => setNewProfileName(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg mb-4 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && saveAsNewProfile()}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowSaveDialog(false); setNewProfileName(''); }}
+                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveAsNewProfile}
+                disabled={!newProfileName.trim()}
+                className="px-4 py-2 text-sm bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bulk edit action bar */}
       {selectedCells.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-teal-400 font-bold text-lg">{selectedCells.length}</span>
             <span className="text-slate-300">
@@ -442,103 +565,112 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
           </div>
           <div className="h-6 w-px bg-slate-600" />
           {activeColumn === "status" ? (
-            <select
-              value={bulkEditValue}
-              onChange={(e) => setBulkEditValue(e.target.value)}
-              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none"
-            >
+            <select value={bulkEditValue} onChange={(e) => setBulkEditValue(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600">
               <option value="">Set status...</option>
               <option value="open">Open</option>
               <option value="close_requested">Pending Close</option>
               <option value="closed">Closed</option>
             </select>
           ) : activeColumn === "cadence" ? (
-            <input
-              type="number"
-              min="1"
-              max="90"
-              placeholder="Days..."
-              value={bulkEditValue}
-              onChange={(e) => setBulkEditValue(e.target.value)}
-              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none w-24"
-            />
+            <input type="number" min="1" max="90" placeholder="Days..." value={bulkEditValue} onChange={(e) => setBulkEditValue(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 w-24" />
           ) : (
-            <input
-              type="text"
-              placeholder={`Set ${getColumnLabel(activeColumn!)}...`}
-              value={bulkEditValue}
-              onChange={(e) => setBulkEditValue(e.target.value)}
-              className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 focus:border-teal-500 focus:outline-none w-48"
-            />
+            <input type="text" placeholder={`Set ${getColumnLabel(activeColumn!)}...`} value={bulkEditValue} onChange={(e) => setBulkEditValue(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 w-48" />
           )}
-          <button
-            onClick={applyBulkEdit}
-            disabled={!bulkEditValue}
-            className="bg-teal-500 hover:bg-teal-600 disabled:bg-slate-600 disabled:cursor-not-allowed px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-          >
-            Apply
-          </button>
-          <button onClick={clearSelection} className="text-slate-400 hover:text-white px-2 py-1 text-sm transition">✕</button>
+          <button onClick={applyBulkEdit} disabled={!bulkEditValue} className="bg-teal-500 hover:bg-teal-600 disabled:bg-slate-600 px-4 py-1.5 rounded-lg text-sm font-semibold">Apply</button>
+          <button onClick={clearSelection} className="text-slate-400 hover:text-white px-2 py-1 text-sm">✕</button>
         </div>
       )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-        <span className="text-[10px] text-slate-400">
-          💡 <span className="font-medium">Bulk edit:</span> {isMobile ? "Long-press" : "Cmd+click"} cells (• columns)
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Profile selector */}
+          <div className="relative" ref={profileMenuRef}>
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-sm"
+            >
+              <span>📋</span>
+              <span className="font-medium">{currentProfile.name}</span>
+              {hasUnsavedChanges && <span className="text-amber-500">•</span>}
+              {defaults[deviceType] === currentProfileId && <span className="text-[10px] text-teal-500">★</span>}
+              <span className="text-slate-400">▾</span>
+            </button>
+            {showProfileMenu && (
+              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[220px]">
+                <div className="p-2 border-b border-slate-200 dark:border-slate-700">
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 mb-1">Profiles</div>
+                  {Object.values(allProfiles).map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => switchProfile(profile.id)}
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-left ${currentProfileId === profile.id ? 'bg-teal-50 dark:bg-teal-900/30' : ''}`}
+                    >
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{profile.name}</span>
+                      <span className="flex items-center gap-1">
+                        {defaults[deviceType] === profile.id && <span className="text-[10px] text-teal-500">★ default</span>}
+                        {currentProfileId === profile.id && <span className="text-teal-500">✓</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <div className="p-2 space-y-1">
+                  {hasUnsavedChanges && (
+                    <button onClick={saveCurrentProfile} className="w-full text-left px-2 py-1.5 text-sm text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded">
+                      💾 Save changes to "{currentProfile.name}"
+                    </button>
+                  )}
+                  <button onClick={() => { setShowProfileMenu(false); setShowSaveDialog(true); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    ➕ Save as new profile...
+                  </button>
+                  {defaults[deviceType] !== currentProfileId && (
+                    <button onClick={() => { setAsDefault(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                      ★ Set as {deviceType} default
+                    </button>
+                  )}
+                  {currentProfileId !== 'default' && (
+                    <button onClick={() => { deleteProfile(currentProfileId); setShowProfileMenu(false); }} className="w-full text-left px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
+                      🗑 Delete profile
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <span className="text-[10px] text-slate-400">
+            💡 Cmd+click cells (• columns) to bulk edit
+          </span>
+        </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Column picker */}
           <div className="relative" ref={columnPickerRef}>
-            <button
-              onClick={() => setShowColumnPicker(!showColumnPicker)}
-              className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1"
-            >
-              <span>⚙️</span>
-              <span>Columns</span>
+            <button onClick={() => setShowColumnPicker(!showColumnPicker)} className="text-xs px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center gap-1">
+              <span>⚙️</span><span>Columns</span>
             </button>
             {showColumnPicker && (
               <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 p-2 min-w-[180px]">
-                <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 py-1">Show/Hide Columns</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider px-2 py-1">Show/Hide</div>
                 {ALL_COLUMNS.map((col) => (
-                  <label
-                    key={col.id}
-                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={visibleColumnIds.includes(col.id)}
-                      onChange={() => toggleColumn(col.id)}
-                      className="rounded border-slate-300 text-teal-500 focus:ring-teal-500"
-                    />
+                  <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded cursor-pointer">
+                    <input type="checkbox" checked={visibleColumnIds.includes(col.id)} onChange={() => toggleColumn(col.id)} className="rounded border-slate-300 text-teal-500" />
                     <span className="text-sm text-slate-700 dark:text-slate-300">{col.label}</span>
-                    {BULK_EDITABLE_COLUMNS.includes(col.id) && (
-                      <span className="text-teal-500 text-xs">•</span>
-                    )}
+                    {BULK_EDITABLE_COLUMNS.includes(col.id) && <span className="text-teal-500 text-xs">•</span>}
                   </label>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Zoom controls - always visible */}
+          {/* Zoom controls */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1">
-            <button
-              onClick={() => handleScaleChange(Math.max(20, scale - 10))}
-              disabled={scale <= 20}
-              className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300"
-            >−</button>
+            <button onClick={() => handleScaleChange(Math.max(20, scale - 10))} disabled={scale <= 20} className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300">−</button>
             <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-12 text-center">{scale}%</span>
-            <button
-              onClick={() => handleScaleChange(Math.min(200, scale + 10))}
-              disabled={scale >= 200}
-              className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300"
-            >+</button>
+            <button onClick={() => handleScaleChange(Math.min(200, scale + 10))} disabled={scale >= 200} className="w-8 h-8 flex items-center justify-center text-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 active:bg-slate-300">+</button>
           </div>
           
           {saving && <span className="text-[10px] text-teal-500 animate-pulse">Saving...</span>}
-          <button onClick={resetLayout} className="text-[10px] text-slate-400 hover:text-teal-500 transition">Reset</button>
         </div>
       </div>
 
@@ -571,10 +703,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                       {BULK_EDITABLE_COLUMNS.includes(col.id) && <span className="ml-1 text-teal-500 opacity-50">•</span>}
                     </span>
                     {!isMobile && (
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10"
-                        onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}
-                      >
+                      <div className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-teal-400/50 transition-colors z-10" onMouseDown={(e) => handleResizeStart(e, col.id, col.width)}>
                         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-slate-300 dark:bg-slate-600" />
                       </div>
                     )}
@@ -586,15 +715,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
               {tasks.length > 0 ? (
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
-                  if (task.status === "closed") {
-                    rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400";
-                  } else if (task.isOverdue) {
-                    rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
-                  } else if (task.is_blocked) {
-                    rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/30 dark:to-slate-800 border-l-4 border-l-amber-500";
-                  } else {
-                    rowClasses += " bg-white dark:bg-slate-800/40";
-                  }
+                  if (task.status === "closed") rowClasses += " bg-slate-50/50 dark:bg-slate-800/60 text-slate-400";
+                  else if (task.isOverdue) rowClasses += " bg-gradient-to-r from-red-50 to-white dark:from-red-900/30 dark:to-slate-800 border-l-4 border-l-red-500";
+                  else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/30 dark:to-slate-800 border-l-4 border-l-amber-500";
+                  else rowClasses += " bg-white dark:bg-slate-800/40";
 
                   return (
                     <tr key={task.id} className={rowClasses}>
@@ -621,11 +745,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-400">
-                    No tasks match your filters
-                  </td>
-                </tr>
+                <tr><td colSpan={columns.length} className="px-4 py-12 text-center text-slate-400">No tasks match your filters</td></tr>
               )}
             </tbody>
           </table>
@@ -642,111 +762,60 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
 function renderCell(columnId: string, task: Task) {
   switch (columnId) {
     case "id":
-      return (
-        <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">
-          {task.task_number || "—"}
-        </Link>
-      );
-
+      return <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">{task.task_number || "—"}</Link>;
     case "task":
       return (
         <>
           <Link href={`/tasks/${task.id}`} className="group">
-            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>
-              {task.description}
-            </span>
+            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-slate-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
           </Link>
           {task.isOverdue && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500 text-white">OVERDUE</span>}
           {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">BLOCKED</span>}
         </>
       );
-
     case "project":
       return <span className="text-slate-700 dark:text-slate-200 truncate text-sm">{task.projects?.name ?? "—"}</span>;
-
     case "updated": {
-      const date = new Date(task.last_movement_at);
-      const now = new Date();
-      const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-      let colorClass = "text-green-600";
-      let displayText = "Today";
-      if (diffDays === 1) { displayText = "1d ago"; }
+      const diffDays = Math.floor((Date.now() - new Date(task.last_movement_at).getTime()) / 86400000);
+      let colorClass = "text-green-600", displayText = "Today";
+      if (diffDays === 1) displayText = "1d ago";
       else if (diffDays > 1 && diffDays <= 3) { displayText = `${diffDays}d ago`; colorClass = "text-yellow-600"; }
       else if (diffDays > 3) { displayText = `${diffDays}d ago`; colorClass = "text-red-600"; }
       return <span className={`text-xs font-medium ${colorClass}`}>{displayText}</span>;
     }
-
     case "currentGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);
       if (currentIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[currentIdx];
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium">
-          <span className="opacity-60">{currentIdx + 1}/{gates.length}</span>
-          <span className="truncate">{gate.owner_name}</span>
-        </span>
-      );
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium"><span className="opacity-60">{currentIdx + 1}/{gates.length}</span><span className="truncate">{gate.owner_name}</span></span>;
     }
-
     case "nextGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);
       const nextIdx = currentIdx >= 0 ? gates.findIndex((g, i) => i > currentIdx && !g.completed) : -1;
       if (nextIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[nextIdx];
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-medium">
-          <span className="opacity-60">{nextIdx + 1}/{gates.length}</span>
-          <span className="truncate">{gate.owner_name}</span>
-        </span>
-      );
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-medium"><span className="opacity-60">{nextIdx + 1}/{gates.length}</span><span className="truncate">{gate.owner_name}</span></span>;
     }
-
     case "nextStep":
-      return (
-        <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>
-          {task.next_step || "—"}
-        </span>
-      );
-
+      return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
     case "notes":
       const noteCount = task.notes?.length || 0;
       if (noteCount === 0) return <span className="text-slate-300 text-xs">—</span>;
-      return (
-        <span className="inline-flex items-center gap-1 text-slate-500 hover:text-teal-500 cursor-pointer transition">
-          <span className="text-sm">📝</span>
-          <span className="text-xs font-medium">{noteCount}</span>
-        </span>
-      );
-
+      return <span className="inline-flex items-center gap-1 text-slate-500 hover:text-teal-500 cursor-pointer transition"><span className="text-sm">📝</span><span className="text-xs font-medium">{noteCount}</span></span>;
     case "cadence":
       return <span className="text-slate-500 text-xs">{task.fu_cadence_days}d</span>;
-
     case "days":
-      return (
-        <span className={`font-bold text-lg ${
-          task.status === "closed" ? "text-slate-400" :
-          task.isOverdue ? "text-red-600" :
-          task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-600" : "text-emerald-600"
-        }`}>
-          {task.daysSinceMovement}
-        </span>
-      );
-
+      return <span className={`font-bold text-lg ${task.status === "closed" ? "text-slate-400" : task.isOverdue ? "text-red-600" : task.daysSinceMovement > task.fu_cadence_days * 0.75 ? "text-amber-600" : "text-emerald-600"}`}>{task.daysSinceMovement}</span>;
     case "status":
       if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-slate-200 text-slate-600">CLOSED</span>;
       if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
       return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
-
     case "owner":
       return <span className="text-slate-600 dark:text-slate-300 text-xs truncate">{task.ownerNames || "—"}</span>;
-
     case "blocked":
-      return task.is_blocked 
-        ? <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700">YES</span>
-        : <span className="text-slate-300 text-xs">—</span>;
-
+      return task.is_blocked ? <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700">YES</span> : <span className="text-slate-300 text-xs">—</span>;
     default:
       return null;
   }
