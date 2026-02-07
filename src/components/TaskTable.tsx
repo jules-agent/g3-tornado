@@ -865,7 +865,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
               {columns.map((col) => <col key={col.id} style={{ width: col.width }} />)}
             </colgroup>
             <thead>
-              <tr className="table-header text-left text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <tr className="table-header text-left text-xs text-slate-700 dark:text-slate-400 uppercase tracking-wider">
                 <th className="px-1 py-2 w-9"></th> {/* Actions header - empty */}
                 {columns.map((col) => (
                   <th
@@ -1049,13 +1049,13 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                                   <span className="text-sm flex-shrink-0">📝</span>
                                   {task.notes.length > 0 ? (
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2">{task.notes[0].content}</div>
-                                      <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
+                                      <div className="text-xs text-slate-800 dark:text-slate-300 line-clamp-2">{task.notes[0].content}</div>
+                                      <div className="text-[10px] text-slate-600 dark:text-slate-500 mt-0.5">
                                         {task.notes[0].profiles?.full_name || task.notes[0].profiles?.email || 'Unknown'} · {formatRelativeTime(task.notes[0].created_at)}
                                       </div>
                                     </div>
                                   ) : (
-                                    <span className="text-xs text-slate-500 dark:text-slate-500 italic">Click to add update...</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-500 italic">Click to add update...</span>
                                   )}
                                 </div>
                               )}
@@ -1112,9 +1112,9 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                                       title={`${task.daysSinceMovement} days since update / ${task.fu_cadence_days} day cadence`}
                                     >
                                       <span className={`w-2 h-2 rounded-full ${agingColor}`}></span>
-                                      <span className="text-slate-700 dark:text-slate-300">{task.daysSinceMovement}</span>
-                                      <span className="text-slate-500 dark:text-slate-400">/</span>
-                                      <span className="text-slate-600 dark:text-slate-400">{task.fu_cadence_days}</span>
+                                      <span className="text-slate-800 dark:text-slate-300">{task.daysSinceMovement}</span>
+                                      <span className="text-slate-600 dark:text-slate-400">/</span>
+                                      <span className="text-slate-700 dark:text-slate-400">{task.fu_cadence_days}</span>
                                     </span>
                                   </div>
                                 </div>
@@ -1170,7 +1170,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                               onClick={() => setEditingOwner({ taskId: task.id, ownerIds: [] })}
                             >
                               {task.ownerNames ? (
-                                <span className="text-slate-600 dark:text-slate-300 text-xs truncate">{task.ownerNames}</span>
+                                <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{task.ownerNames}</span>
                               ) : (
                                 <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Assign</span>
                               )}
@@ -1270,7 +1270,7 @@ function renderCell(columnId: string, task: Task) {
       );
     }
     case "nextStep":
-      return <span className="text-slate-600 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
+      return <span className="text-slate-800 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
     case "notes":
       // Handled inline in table body for editing capability
       return null;
@@ -1282,7 +1282,7 @@ function renderCell(columnId: string, task: Task) {
       return (
         <span className="flex flex-col items-center leading-tight" title={`${task.daysSinceMovement}d since update / ${task.daysSinceCreated}d since created`}>
           <span className={`font-bold text-base ${updateColor}`}>{task.daysSinceMovement}</span>
-          <span className="text-slate-500 dark:text-slate-400 text-[10px]">/{task.daysSinceCreated}</span>
+          <span className="text-slate-600 dark:text-slate-400 text-[10px]">/{task.daysSinceCreated}</span>
         </span>
       );
     }
@@ -1291,14 +1291,14 @@ function renderCell(columnId: string, task: Task) {
       if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
       return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
     case "owner":
-      return <span className="text-slate-600 dark:text-slate-300 text-xs truncate">{task.ownerNames || "—"}</span>;
+      return <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{task.ownerNames || "—"}</span>;
     case "gated": {
       const gates = task.gates || [];
       const hasOpenGate = gates.some(g => !g.completed);
       return hasOpenGate ? <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-600">YES</span> : <span className="text-slate-300 text-xs">—</span>;
     }
     case "id":
-      return <Link href={`/tasks/${task.id}`} className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">{task.task_number || "—"}</Link>;
+      return <Link href={`/tasks/${task.id}`} className="text-slate-800 dark:text-slate-300 hover:text-cyan-600 font-mono text-xs font-medium">{task.task_number || "—"}</Link>;
     default:
       return null;
   }
