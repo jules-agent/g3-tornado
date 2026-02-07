@@ -230,13 +230,24 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       visibleIds = [...visibleIds, 'notes'];
     }
     
+    // Migrate: Move ID to the end if it's at the beginning (old layout)
+    const idIndex = visibleIds.indexOf('id');
+    if (idIndex === 0 || idIndex === 1) {
+      visibleIds = [...visibleIds.filter(id => id !== 'id'), 'id'];
+    }
+    
     setVisibleColumnIds(visibleIds);
     const visibleCols = ALL_COLUMNS.filter(c => visibleIds.includes(c.id));
     const merged = visibleCols.map((def) => {
       const saved = profile.columns.find(c => c.id === def.id);
       return saved ? { ...def, width: saved.width } : def;
     });
+    
+    // Re-sort to put ID at end if it was migrated
     merged.sort((a, b) => {
+      // ID always goes last
+      if (a.id === 'id') return 1;
+      if (b.id === 'id') return -1;
       const aOrder = profile.columns.find(c => c.id === a.id)?.order ?? 999;
       const bOrder = profile.columns.find(c => c.id === b.id)?.order ?? 999;
       return aOrder - bOrder;
