@@ -875,37 +875,39 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => handleDragOver(e, col.id)}
                     onDrop={(e) => handleDrop(e, col.id)}
-                    className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""} ${mobileResizeCol === col.id ? "bg-teal-100 dark:bg-teal-900/50 ring-2 ring-teal-500" : ""}`}
+                    className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""} ${mobileResizeCol === col.id ? "bg-teal-100 dark:bg-teal-900/50 ring-2 ring-teal-500 z-40 overflow-visible" : "overflow-hidden"}`}
                     style={{ cursor: isMobile ? 'pointer' : (draggedCol ? "grabbing" : "grab") }}
                     title={COLUMN_TOOLTIPS[col.id] || col.label}
                     onClick={isMobile ? () => setMobileResizeCol(mobileResizeCol === col.id ? null : col.id) : undefined}
                   >
-                    {/* Mobile resize mode UI */}
+                    {/* Mobile resize mode UI - centered with high z-index to overlay adjacent columns when needed */}
                     {isMobile && mobileResizeCol === col.id ? (
-                      <div className="flex items-center justify-between gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newWidth = Math.max(col.minWidth, col.width - 20);
-                            setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
-                            markUnsaved();
-                          }}
-                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-700 rounded-full shadow text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-100"
-                        >
-                          −
-                        </button>
-                        <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400">{col.width}px</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newWidth = col.width + 20;
-                            setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
-                            markUnsaved();
-                          }}
-                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-700 rounded-full shadow text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-100"
-                        >
-                          +
-                        </button>
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-teal-300 dark:border-teal-600 whitespace-nowrap">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newWidth = Math.max(col.minWidth, col.width - 20);
+                              setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
+                              markUnsaved();
+                            }}
+                            className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-full text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-600"
+                          >
+                            −
+                          </button>
+                          <span className="text-xs font-mono text-teal-600 dark:text-teal-400 min-w-[40px] text-center">{col.width}px</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newWidth = col.width + 20;
+                              setColumns(prev => prev.map(c => c.id === col.id ? { ...c, width: newWidth } : c));
+                              markUnsaved();
+                            }}
+                            className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-full text-lg font-bold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-600"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <>
