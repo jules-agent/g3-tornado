@@ -1154,8 +1154,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             >
                               {gate ? (
                                 <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs max-w-full ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
-                                  <span className={`font-semibold truncate max-w-[120px] ${textColor}`}>{gate.owner_name}</span>
-                                  {gate.task_name && <span className={`truncate text-[10px] max-w-[120px] ${subColor}`}>{gate.task_name}</span>}
+                                  <span className={`font-semibold break-words ${textColor}`}>{gate.owner_name}</span>
+                                  {gate.task_name && <span className={`break-words text-[10px] ${subColor}`}>{gate.task_name}</span>}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Add gate</span>
@@ -1243,7 +1243,7 @@ function renderCell(columnId: string, task: Task) {
         </>
       );
     case "project":
-      return <span className="text-slate-700 dark:text-slate-200 truncate text-sm">{task.projects?.name ?? "—"}</span>;
+      return <span className="text-slate-700 dark:text-slate-200 break-words text-sm">{task.projects?.name ?? "—"}</span>;
     case "currentGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);
@@ -1253,8 +1253,8 @@ function renderCell(columnId: string, task: Task) {
       const taskPart = gate.task_name || gate.name || "";
       return (
         <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
-          <span className="font-semibold text-amber-800 truncate max-w-[120px]">{ownerPart}</span>
-          {taskPart && <span className="text-amber-600 truncate text-[10px] max-w-[120px]">{taskPart}</span>}
+          <span className="font-semibold text-amber-800 break-words">{ownerPart}</span>
+          {taskPart && <span className="text-amber-600 break-words text-[10px]">{taskPart}</span>}
         </span>
       );
     }
@@ -1268,13 +1268,13 @@ function renderCell(columnId: string, task: Task) {
       const taskPart = gate.task_name || gate.name || "";
       return (
         <span className="inline-flex flex-col px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
-          <span className="font-semibold text-indigo-800 truncate max-w-[120px]">{ownerPart}</span>
-          {taskPart && <span className="text-indigo-600 truncate text-[10px] max-w-[120px]">{taskPart}</span>}
+          <span className="font-semibold text-indigo-800 break-words">{ownerPart}</span>
+          {taskPart && <span className="text-indigo-600 break-words text-[10px]">{taskPart}</span>}
         </span>
       );
     }
     case "nextStep":
-      return <span className="text-slate-800 dark:text-slate-300 text-xs truncate" title={task.next_step || ""}>{task.next_step || "—"}</span>;
+      return <span className="text-slate-800 dark:text-slate-300 text-xs break-words">{task.next_step || "—"}</span>;
     case "notes":
       // Handled inline in table body for editing capability
       return null;
