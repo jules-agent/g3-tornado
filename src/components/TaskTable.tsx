@@ -936,8 +936,8 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                 tasks.map((task, index) => {
                   let rowClasses = "table-row";
                   if (task.status === "closed") rowClasses += " bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
-                  else if (task.isStale) rowClasses += " bg-amber-50/80 dark:bg-gradient-to-r dark:from-amber-900/20 dark:to-slate-800 border-l-4 border-l-amber-400";
-                  else if (task.is_blocked) rowClasses += " bg-slate-100/70 dark:bg-gradient-to-r dark:from-slate-700/30 dark:to-slate-800 border-l-4 border-l-slate-400";
+                  else if (task.isStale) rowClasses += " bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/20 dark:to-slate-800 border-l-4 border-l-amber-400";
+                  else if (task.is_blocked) rowClasses += " bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-700/30 dark:to-slate-800 border-l-4 border-l-slate-400";
                   else rowClasses += " bg-white dark:bg-slate-800/40";
 
                   return (
