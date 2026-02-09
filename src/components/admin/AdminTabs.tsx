@@ -929,7 +929,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Owners</h2>
         <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); resetForm(); }}
+          onClick={() => { setShowAdd(!showAdd); resetForm(); }}
           className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Add Owner
