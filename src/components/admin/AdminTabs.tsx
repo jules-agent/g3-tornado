@@ -25,16 +25,11 @@ type Owner = {
   name: string;
   email: string | null;
   phone: string | null;
+  is_up_employee: boolean;
+  is_bp_employee: boolean;
+  is_upfit_employee: boolean;
+  is_third_party_vendor: boolean;
   created_by_email: string | null;
-  created_at: string;
-};
-
-type Vendor = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
   created_at: string;
 };
 
@@ -54,21 +49,18 @@ export function AdminTabs({
   profiles,
   projects,
   owners,
-  vendors = [],
   activityLogs = [],
 }: {
   activeTab: string;
   profiles: Profile[];
   projects: Project[];
   owners: Owner[];
-  vendors?: Vendor[];
   activityLogs?: ActivityLog[];
 }) {
   const tabs = [
     { key: "users", label: "Users", count: profiles.length, href: "/admin?tab=users" },
     { key: "projects", label: "Projects", count: projects.length, href: "/admin?tab=projects" },
     { key: "owners", label: "Owners", count: owners.length, href: "/admin?tab=owners" },
-    { key: "vendors", label: "Vendors", count: vendors.length, href: "/admin?tab=vendors" },
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
   ];
 
@@ -96,7 +88,6 @@ export function AdminTabs({
         {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} />}
         {activeTab === "projects" && <ProjectsTab projects={projects} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
-        {activeTab === "vendors" && <VendorsTab vendors={vendors} />}
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
       </div>
     </div>
@@ -535,36 +526,120 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
   );
 }
 
+// Owner badges component for displaying employee/vendor status
+function OwnerBadges({ owner }: { owner: Owner }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {owner.is_up_employee && (
+        <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+          UP
+        </span>
+      )}
+      {owner.is_bp_employee && (
+        <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+          BP
+        </span>
+      )}
+      {owner.is_upfit_employee && (
+        <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+          UF
+        </span>
+      )}
+      {owner.is_third_party_vendor && (
+        <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+          Vendor
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Contact icons for email and phone
+function ContactIcons({ owner }: { owner: Owner }) {
+  return (
+    <span className="ml-2 text-slate-400">
+      {owner.email && <span title={owner.email}>📧</span>}
+      {owner.phone && <span title={owner.phone} className="ml-1">📞</span>}
+    </span>
+  );
+}
+
 function OwnersTab({ owners }: { owners: Owner[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [isUpEmployee, setIsUpEmployee] = useState(false);
+  const [isBpEmployee, setIsBpEmployee] = useState(false);
+  const [isUpfitEmployee, setIsUpfitEmployee] = useState(false);
+  const [isThirdPartyVendor, setIsThirdPartyVendor] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
+
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setPhone("");
+    setIsUpEmployee(false);
+    setIsBpEmployee(false);
+    setIsUpfitEmployee(false);
+    setIsThirdPartyVendor(false);
+    setError("");
+  };
+
+  const handleVendorChange = (checked: boolean) => {
+    if (checked) {
+      // If vendor is checked, uncheck all employee flags
+      setIsUpEmployee(false);
+      setIsBpEmployee(false);
+      setIsUpfitEmployee(false);
+    }
+    setIsThirdPartyVendor(checked);
+  };
+
+  const handleEmployeeChange = (setter: (v: boolean) => void, checked: boolean) => {
+    if (checked) {
+      // If any employee flag is checked, uncheck vendor
+      setIsThirdPartyVendor(false);
+    }
+    setter(checked);
+  };
 
   const saveOwner = async (ownerId?: string) => {
     if (!name.trim()) return;
     setLoading(true);
+    setError("");
 
     try {
       const res = await fetch("/api/admin/owners", {
         method: ownerId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: ownerId, name, email: email || null, phone: phone || null }),
+        body: JSON.stringify({ 
+          id: ownerId, 
+          name, 
+          email: email || null, 
+          phone: phone || null,
+          is_up_employee: isUpEmployee,
+          is_bp_employee: isBpEmployee,
+          is_upfit_employee: isUpfitEmployee,
+          is_third_party_vendor: isThirdPartyVendor,
+        }),
       });
       
+      const data = await res.json();
+      
       if (res.ok) {
-        setName("");
-        setEmail("");
-        setPhone("");
+        resetForm();
         setShowAdd(false);
         setEditingId(null);
         router.refresh();
+      } else {
+        setError(data.error || "Failed to save owner");
       }
     } catch {
-      console.error("Failed to save owner");
+      setError("Failed to save owner");
     }
     setLoading(false);
   };
@@ -585,14 +660,21 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setName(owner.name);
     setEmail(owner.email || "");
     setPhone(owner.phone || "");
+    setIsUpEmployee(owner.is_up_employee || false);
+    setIsBpEmployee(owner.is_bp_employee || false);
+    setIsUpfitEmployee(owner.is_upfit_employee || false);
+    setIsThirdPartyVendor(owner.is_third_party_vendor || false);
+    setError("");
   };
+
+  const isEmployeeChecked = isUpEmployee || isBpEmployee || isUpfitEmployee;
 
   return (
     <div>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Owners</h2>
         <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setEmail(""); setPhone(""); }}
+          onClick={() => { setShowAdd(!showAdd); setEditingId(null); resetForm(); }}
           className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Add Owner
@@ -601,44 +683,110 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
       {showAdd && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1">Name</label>
+          <div className="space-y-3">
+            {/* Row 1: Name */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Owner Name *</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Owner name"
+                className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                placeholder="Full name or company name"
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1">Email (optional)</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="owner@example.com"
-              />
+
+            {/* Row 2: Employee checkboxes */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-2">Employee of:</label>
+              <div className="flex flex-wrap gap-4">
+                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isUpEmployee}
+                    onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)}
+                    disabled={isThirdPartyVendor}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-slate-700 dark:text-slate-300">Unplugged Performance (UP)</span>
+                </label>
+                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isBpEmployee}
+                    onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)}
+                    disabled={isThirdPartyVendor}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-700 dark:text-slate-300">Bulletproof (BP)</span>
+                </label>
+                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isUpfitEmployee}
+                    onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)}
+                    disabled={isThirdPartyVendor}
+                    className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                </label>
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="(555) 123-4567"
-              />
+
+            {/* Row 3: Vendor checkbox */}
+            <div>
+              <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={isThirdPartyVendor}
+                  onChange={(e) => handleVendorChange(e.target.checked)}
+                  disabled={isEmployeeChecked}
+                  className="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                />
+                <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
+                <span className="text-xs text-slate-400">(if checked, company checkboxes are disabled)</span>
+              </label>
             </div>
-            <button
-              onClick={() => saveOwner()}
-              disabled={loading || !name.trim()}
-              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {loading ? "..." : "Add"}
-            </button>
+
+            {/* Row 4: Contact info */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs text-slate-500 mb-1">Email (optional)</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                  placeholder="owner@example.com"
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <p className="text-xs text-red-600">{error}</p>
+            )}
+
+            {/* Submit button */}
+            <div>
+              <button
+                onClick={() => saveOwner()}
+                disabled={loading || !name.trim()}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Add Owner"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -647,6 +795,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             <th className="px-4 py-2 font-semibold">Name</th>
+            <th className="px-4 py-2 font-semibold">Classification</th>
             <th className="px-4 py-2 font-semibold">Email</th>
             <th className="px-4 py-2 font-semibold">Phone</th>
             <th className="px-4 py-2 font-semibold">Created By</th>
@@ -657,7 +806,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
           {owners.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+              <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                 No owners yet. Add your first owner above.
               </td>
             </tr>
@@ -666,57 +815,126 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <tr key={owner.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                 {editingId === owner.id ? (
                   <>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                        placeholder="Optional"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                        placeholder="Optional"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {owner.created_by_email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(owner.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => saveOwner(owner.id)}
-                        className="text-emerald-600 hover:text-emerald-800 mr-2"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        Cancel
-                      </button>
+                    <td className="px-4 py-2" colSpan={7}>
+                      <div className="space-y-3 bg-slate-100 dark:bg-slate-800 p-3 rounded">
+                        {/* Row 1: Name */}
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Owner Name *</label>
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                          />
+                        </div>
+
+                        {/* Row 2: Employee checkboxes */}
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-2">Employee of:</label>
+                          <div className="flex flex-wrap gap-4">
+                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                              <input
+                                type="checkbox"
+                                checked={isUpEmployee}
+                                onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)}
+                                disabled={isThirdPartyVendor}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-slate-700 dark:text-slate-300">Unplugged Performance (UP)</span>
+                            </label>
+                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                              <input
+                                type="checkbox"
+                                checked={isBpEmployee}
+                                onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)}
+                                disabled={isThirdPartyVendor}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                              <span className="text-slate-700 dark:text-slate-300">Bulletproof (BP)</span>
+                            </label>
+                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
+                              <input
+                                type="checkbox"
+                                checked={isUpfitEmployee}
+                                onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)}
+                                disabled={isThirdPartyVendor}
+                                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Row 3: Vendor checkbox */}
+                        <div>
+                          <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
+                            <input
+                              type="checkbox"
+                              checked={isThirdPartyVendor}
+                              onChange={(e) => handleVendorChange(e.target.checked)}
+                              disabled={isEmployeeChecked}
+                              className="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                            />
+                            <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
+                          </label>
+                        </div>
+
+                        {/* Row 4: Contact info */}
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs text-slate-500 mb-1">Email (optional)</label>
+                            <input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
+                            <input
+                              type="tel"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Error message */}
+                        {error && (
+                          <p className="text-xs text-red-600">{error}</p>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveOwner(owner.id)}
+                            disabled={loading || !name.trim()}
+                            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {loading ? "..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => { setEditingId(null); resetForm(); }}
+                            className="rounded bg-slate-200 dark:bg-slate-600 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
-                      {owner.name}
+                    <td className="px-4 py-2">
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        {owner.name}
+                      </span>
+                      <ContactIcons owner={owner} />
+                    </td>
+                    <td className="px-4 py-2">
+                      <OwnerBadges owner={owner} />
                     </td>
                     <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                       {owner.email || "—"}
@@ -739,242 +957,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                       </button>
                       <button
                         onClick={() => deleteOwner(owner.id)}
-                        className="text-red-400 hover:text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function VendorsTab({ vendors }: { vendors: Vendor[] }) {
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [company, setCompany] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  const saveVendor = async (vendorId?: string) => {
-    if (!name.trim()) return;
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/vendors", {
-        method: vendorId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: vendorId, name, email, phone, company }),
-      });
-      
-      if (res.ok) {
-        setName("");
-        setEmail("");
-        setPhone("");
-        setCompany("");
-        setShowAdd(false);
-        setEditingId(null);
-        router.refresh();
-      }
-    } catch {
-      console.error("Failed to save vendor");
-    }
-    setLoading(false);
-  };
-
-  const deleteVendor = async (vendorId: string) => {
-    if (!confirm("Delete this vendor?")) return;
-    
-    try {
-      await fetch(`/api/vendors?id=${vendorId}`, { method: "DELETE" });
-      router.refresh();
-    } catch {
-      console.error("Failed to delete vendor");
-    }
-  };
-
-  const startEdit = (vendor: Vendor) => {
-    setEditingId(vendor.id);
-    setName(vendor.name);
-    setEmail(vendor.email || "");
-    setPhone(vendor.phone || "");
-    setCompany(vendor.company || "");
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
-        <h2 className="font-semibold text-slate-900 dark:text-white">Vendors</h2>
-        <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setEmail(""); setPhone(""); setCompany(""); }}
-          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
-        >
-          + Add Vendor
-        </button>
-      </div>
-
-      {showAdd && (
-        <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
-          <div className="flex flex-wrap gap-2 items-end">
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs text-slate-500 mb-1">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Vendor name"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs text-slate-500 mb-1">Company</label>
-              <input
-                type="text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Company name"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs text-slate-500 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="vendor@example.com"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs text-slate-500 mb-1">Phone</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <button
-              onClick={() => saveVendor()}
-              disabled={loading || !name.trim()}
-              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {loading ? "..." : "Add"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            <th className="px-4 py-2 font-semibold">Name</th>
-            <th className="px-4 py-2 font-semibold">Company</th>
-            <th className="px-4 py-2 font-semibold">Email</th>
-            <th className="px-4 py-2 font-semibold">Phone</th>
-            <th className="px-4 py-2 font-semibold w-28">Created</th>
-            <th className="px-4 py-2 font-semibold w-20">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-          {vendors.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                No vendors yet. Add your first vendor above.
-              </td>
-            </tr>
-          ) : (
-            vendors.map((vendor) => (
-              <tr key={vendor.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                {editingId === vendor.id ? (
-                  <>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500">
-                      {new Date(vendor.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => saveVendor(vendor.id)}
-                        className="text-emerald-600 hover:text-emerald-800 mr-2"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        Cancel
-                      </button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
-                      {vendor.name}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {vendor.company || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {vendor.email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {vendor.phone || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(vendor.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => startEdit(vendor)}
-                        className="text-slate-400 hover:text-slate-600 mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteVendor(vendor.id)}
                         className="text-red-400 hover:text-red-600"
                       >
                         Delete
@@ -1035,6 +1017,8 @@ function ActivityLogTab({ logs }: { logs: ActivityLog[] }) {
         return "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300";
       case "impersonated":
         return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
+      case "migrated_from_vendor":
+        return "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300";
       default:
         return "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
     }
@@ -1103,7 +1087,7 @@ function ActivityLogTab({ logs }: { logs: ActivityLog[] }) {
                   {new Date(log.created_at).toLocaleString()}
                 </td>
                 <td className="px-4 py-2">
-                  {log.action !== "deleted" && ["owner", "vendor", "project"].includes(log.entity_type) && (
+                  {log.action !== "deleted" && ["owner", "project"].includes(log.entity_type) && (
                     <button
                       onClick={() => deleteEntity(log)}
                       disabled={deleting === log.id}

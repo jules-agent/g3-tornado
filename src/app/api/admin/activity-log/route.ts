@@ -88,6 +88,9 @@ export async function DELETE(request: Request) {
   
   switch (entityType) {
     case "owner":
+      // First remove owner from all tasks
+      await supabase.from("task_owners").delete().eq("owner_id", entityId);
+      
       const { error: ownerError } = await supabase
         .from("owners")
         .delete()
@@ -95,12 +98,11 @@ export async function DELETE(request: Request) {
       deleteError = ownerError;
       break;
     case "vendor":
-      const { error: vendorError } = await supabase
-        .from("vendors")
-        .delete()
-        .eq("id", entityId);
-      deleteError = vendorError;
-      break;
+      // Vendors table has been deprecated - vendors are now stored in owners table
+      // with is_third_party_vendor = true
+      return NextResponse.json({ 
+        error: "Vendors have been migrated to owners. Please manage vendors via the Owners tab." 
+      }, { status: 400 });
     case "user":
       // Don't delete the profile, just log it
       // Actual user deletion requires admin key
