@@ -897,7 +897,7 @@ export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
       <div 
         ref={tableRef}
         className="card"
-        style={{ ...(scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : {}), overflowX: 'auto', overflowY: 'clip' as 'visible' }}
+        style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
       >
         <div>
           <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
@@ -905,9 +905,9 @@ export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
               <col style={{ width: 36 }} /> {/* Actions column */}
               {columns.map((col) => <col key={col.id} style={{ width: col.width }} />)}
             </colgroup>
-            <thead className="sticky top-[68px] z-20">
+            <thead>
               <tr className="table-header text-left text-xs text-slate-700 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/80">
-                <th className="px-1 py-2 w-9"></th> {/* Actions header - empty */}
+                <th className="px-1 py-2 w-9 sticky top-[68px] z-20 bg-slate-50 dark:bg-slate-800/80"></th> {/* Actions header - empty */}
                 {columns.map((col) => (
                   <th
                     key={col.id}
@@ -916,7 +916,7 @@ export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => handleDragOver(e, col.id)}
                     onDrop={(e) => handleDrop(e, col.id)}
-                    className={`relative px-3 py-2 font-semibold select-none ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""} ${mobileResizeCol === col.id ? "bg-teal-100 dark:bg-teal-900/50 ring-2 ring-teal-500 z-40 overflow-visible" : "overflow-hidden"}`}
+                    className={`relative px-3 py-2 font-semibold select-none sticky top-[68px] z-20 bg-slate-50 dark:bg-slate-800/80 ${col.align === "center" ? "text-center" : "text-left"} ${dragOverCol === col.id ? "bg-teal-100 dark:bg-teal-900/30" : ""} ${mobileResizeCol === col.id ? "bg-teal-100 dark:bg-teal-900/50 ring-2 ring-teal-500 z-40 overflow-visible" : "overflow-hidden"}`}
                     style={{ cursor: isMobile ? 'pointer' : (draggedCol ? "grabbing" : "grab") }}
                     title={COLUMN_TOOLTIPS[col.id] || col.label}
                     onClick={isMobile ? () => setMobileResizeCol(mobileResizeCol === col.id ? null : col.id) : undefined}
