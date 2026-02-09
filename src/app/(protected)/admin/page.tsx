@@ -53,6 +53,10 @@ export default async function AdminPage({
       name, 
       email, 
       phone, 
+      is_up_employee,
+      is_bp_employee,
+      is_upfit_employee,
+      is_third_party_vendor,
       created_by_email, 
       created_at
     `).order("name"),

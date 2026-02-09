@@ -236,12 +236,17 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
     setLoading(false);
   };
 
-  const copyInviteLink = (invite: PendingInvite) => {
+  const copyInviteLink = async (invite: PendingInvite) => {
     const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(invite.email)}&invite=${invite.invite_token}`;
-    navigator.clipboard.writeText(signupUrl);
-    setMessage("Invite link copied to clipboard!");
+    try {
+      await navigator.clipboard.writeText(signupUrl);
+      setMessage("Invite link copied to clipboard!");
+    } catch {
+      // Fallback: show the link in message so user can copy manually
+      setMessage(`Invite link: ${signupUrl}`);
+    }
     setInviteMenuOpen(null);
-    setTimeout(() => setMessage(""), 3000);
+    setTimeout(() => setMessage(""), 10000);
   };
 
   const resendInvite = async (invite: PendingInvite) => {
@@ -377,7 +382,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
@@ -491,7 +496,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
               📧 Pending Invitations ({pendingInvites.length})
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
@@ -815,7 +820,6 @@ function ContactIcons({ owner }: { owner: Owner }) {
 
 function OwnersTab({ owners }: { owners: Owner[] }) {
   const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -840,7 +844,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   const handleVendorChange = (checked: boolean) => {
     if (checked) {
-      // If vendor is checked, uncheck all employee flags
       setIsUpEmployee(false);
       setIsBpEmployee(false);
       setIsUpfitEmployee(false);
@@ -850,23 +853,21 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   const handleEmployeeChange = (setter: (v: boolean) => void, checked: boolean) => {
     if (checked) {
-      // If any employee flag is checked, uncheck vendor
       setIsThirdPartyVendor(false);
     }
     setter(checked);
   };
 
-  const saveOwner = async (ownerId?: string) => {
+  const saveOwner = async () => {
     if (!name.trim()) return;
     setLoading(true);
     setError("");
 
     try {
       const res = await fetch("/api/admin/owners", {
-        method: ownerId ? "PUT" : "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          id: ownerId, 
           name, 
           email: email || null, 
           phone: phone || null,
@@ -882,7 +883,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       if (res.ok) {
         resetForm();
         setShowAdd(false);
-        setEditingId(null);
         router.refresh();
       } else {
         setError(data.error || "Failed to save owner");
@@ -891,6 +891,24 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       setError("Failed to save owner");
     }
     setLoading(false);
+  };
+
+  const toggleFlag = async (ownerId: string, field: string, value: boolean) => {
+    try {
+      const res = await fetch("/api/admin/owners/toggle-flag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownerId, field, value }),
+      });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update");
+      }
+    } catch {
+      alert("Failed to update flag");
+    }
   };
 
   const deleteOwner = async (ownerId: string) => {
@@ -902,18 +920,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     } catch {
       console.error("Failed to delete owner");
     }
-  };
-
-  const startEdit = (owner: Owner) => {
-    setEditingId(owner.id);
-    setName(owner.name);
-    setEmail(owner.email || "");
-    setPhone(owner.phone || "");
-    setIsUpEmployee(owner.is_up_employee || false);
-    setIsBpEmployee(owner.is_bp_employee || false);
-    setIsUpfitEmployee(owner.is_upfit_employee || false);
-    setIsThirdPartyVendor(owner.is_third_party_vendor || false);
-    setError("");
   };
 
   const isEmployeeChecked = isUpEmployee || isBpEmployee || isUpfitEmployee;
@@ -1040,184 +1046,81 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
         </div>
       )}
 
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            <th className="px-4 py-2 font-semibold">Name</th>
-            <th className="px-4 py-2 font-semibold">Classification</th>
-            <th className="px-4 py-2 font-semibold">Email</th>
-            <th className="px-4 py-2 font-semibold">Phone</th>
-            <th className="px-4 py-2 font-semibold">Created By</th>
-            <th className="px-4 py-2 font-semibold w-28">Created</th>
-            <th className="px-4 py-2 font-semibold w-20">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-          {owners.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                No owners yet. Add your first owner above.
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <th className="px-4 py-2 font-semibold">Name</th>
+              <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
+              <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
+              <th className="px-3 py-2 font-semibold text-center w-14">UF</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
+              <th className="px-4 py-2 font-semibold">Email</th>
+              <th className="px-4 py-2 font-semibold">Phone</th>
+              <th className="px-4 py-2 font-semibold w-20">Actions</th>
             </tr>
-          ) : (
-            owners.map((owner) => (
-              <tr key={owner.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                {editingId === owner.id ? (
-                  <>
-                    <td className="px-4 py-2" colSpan={7}>
-                      <div className="space-y-3 bg-slate-100 dark:bg-slate-800 p-3 rounded">
-                        {/* Row 1: Name */}
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-1">Owner Name *</label>
-                          <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                          />
-                        </div>
-
-                        {/* Row 2: Employee checkboxes */}
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-2">Employee of:</label>
-                          <div className="flex flex-wrap gap-4">
-                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                              <input
-                                type="checkbox"
-                                checked={isUpEmployee}
-                                onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)}
-                                disabled={isThirdPartyVendor}
-                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-slate-700 dark:text-slate-300">Unplugged Performance (UP)</span>
-                            </label>
-                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                              <input
-                                type="checkbox"
-                                checked={isBpEmployee}
-                                onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)}
-                                disabled={isThirdPartyVendor}
-                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                              />
-                              <span className="text-slate-700 dark:text-slate-300">Bulletproof (BP)</span>
-                            </label>
-                            <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                              <input
-                                type="checkbox"
-                                checked={isUpfitEmployee}
-                                onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)}
-                                disabled={isThirdPartyVendor}
-                                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                              />
-                              <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Row 3: Vendor checkbox */}
-                        <div>
-                          <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
-                            <input
-                              type="checkbox"
-                              checked={isThirdPartyVendor}
-                              onChange={(e) => handleVendorChange(e.target.checked)}
-                              disabled={isEmployeeChecked}
-                              className="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
-                            />
-                            <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
-                          </label>
-                        </div>
-
-                        {/* Row 4: Contact info */}
-                        <div className="flex flex-wrap gap-3">
-                          <div className="flex-1 min-w-[200px]">
-                            <label className="block text-xs text-slate-500 mb-1">Email (optional)</label>
-                            <input
-                              type="email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-[200px]">
-                            <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
-                            <input
-                              type="tel"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Error message */}
-                        {error && (
-                          <p className="text-xs text-red-600">{error}</p>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => saveOwner(owner.id)}
-                            disabled={loading || !name.trim()}
-                            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            {loading ? "..." : "Save"}
-                          </button>
-                          <button
-                            onClick={() => { setEditingId(null); resetForm(); }}
-                            className="rounded bg-slate-200 dark:bg-slate-600 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-500"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-4 py-2">
-                      <span className="font-medium text-slate-900 dark:text-white">
-                        {owner.name}
-                      </span>
-                      <ContactIcons owner={owner} />
-                    </td>
-                    <td className="px-4 py-2">
-                      <OwnerBadges owner={owner} />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {owner.email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {owner.phone || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {owner.created_by_email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(owner.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => startEdit(owner)}
-                        className="text-slate-400 hover:text-slate-600 mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteOwner(owner.id)}
-                        className="text-red-400 hover:text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </>
-                )}
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            {owners.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                  No owners yet. Add your first owner above.
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              owners.map((owner) => (
+                <tr key={owner.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-4 py-2">
+                    <span className="font-medium text-slate-900 dark:text-white">{owner.name}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={owner.is_up_employee || false}
+                      onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={owner.is_bp_employee || false}
+                      onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={owner.is_upfit_employee || false}
+                      onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)}
+                      className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={owner.is_third_party_vendor || false}
+                      onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)}
+                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{owner.email || "—"}</td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{owner.phone || "—"}</td>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => deleteOwner(owner.id)}
+                      className="text-red-400 hover:text-red-600 text-xs"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
