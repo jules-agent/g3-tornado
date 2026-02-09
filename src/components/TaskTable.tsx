@@ -857,10 +857,10 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       {/* Table */}
       <div 
         ref={tableRef}
-        className="card overflow-hidden"
+        className="card"
         style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
       >
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
             <colgroup>
               <col style={{ width: 36 }} /> {/* Actions column */}
@@ -959,7 +959,7 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
                             </svg>
                           </button>
                           {rowMenuOpen === task.id && (
-                            <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[160px] py-1">
+                            <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl z-[9999] min-w-[160px] py-1 opacity-100">
                               <Link
                                 href={`/tasks/${task.id}`}
                                 className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"

@@ -102,6 +102,8 @@ function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null);
   const router = useRouter();
 
   const updateOwnerLink = async (userId: string, ownerId: string | null) => {
@@ -191,6 +193,36 @@ function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }
     setImpersonating(null);
   };
 
+  const resetPassword = async (userId: string, action: "send_email" | "manual_reset") => {
+    setLoading(true);
+    setMessage("");
+    setResetResult(null);
+
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (action === "manual_reset" && data.tempPassword) {
+          setResetResult({ userId, password: data.tempPassword });
+          setMessage(`Temporary password set: ${data.tempPassword}`);
+        } else {
+          setMessage(data.message || "Password reset email sent!");
+        }
+        setUserMenuOpen(null);
+      } else {
+        setMessage(data.error || "Failed to reset password");
+      }
+    } catch {
+      setMessage("Error resetting password");
+    }
+    setLoading(false);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
@@ -258,6 +290,27 @@ function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }
         </div>
       )}
 
+      {resetResult && (
+        <div className="border-b border-slate-100 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+            ✅ Temporary password for {profiles.find(p => p.id === resetResult.userId)?.email}:
+          </p>
+          <p className="text-sm font-mono text-emerald-900 dark:text-emerald-100 mt-1 bg-white dark:bg-slate-800 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-700">
+            {resetResult.password}
+          </p>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(resetResult.password);
+              setMessage("Password copied to clipboard!");
+              setTimeout(() => setMessage(""), 2000);
+            }}
+            className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 mt-2"
+          >
+            📋 Copy to clipboard
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -320,15 +373,42 @@ function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }
                   <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                     {new Date(profile.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 relative">
                     <button
-                      onClick={() => startImpersonation(profile.id)}
-                      disabled={impersonating === profile.id}
-                      className="rounded bg-purple-100 dark:bg-purple-900/50 px-2 py-1 text-xs font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/50 disabled:opacity-50"
-                      title="Login as this user"
+                      onClick={() => setUserMenuOpen(userMenuOpen === profile.id ? null : profile.id)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-2 py-1 text-xs"
                     >
-                      {impersonating === profile.id ? "..." : "👤 Login as"}
+                      ⋮
                     </button>
+                    {userMenuOpen === profile.id && (
+                      <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[9999] min-w-[200px] py-1">
+                        <button
+                          onClick={() => {
+                            startImpersonation(profile.id);
+                            setUserMenuOpen(null);
+                          }}
+                          disabled={impersonating === profile.id}
+                          className="w-full text-left px-3 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 disabled:opacity-50"
+                        >
+                          👤 Login as User
+                        </button>
+                        <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                        <button
+                          onClick={() => resetPassword(profile.id, "send_email")}
+                          disabled={loading}
+                          className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+                        >
+                          📧 Send Reset Email
+                        </button>
+                        <button
+                          onClick={() => resetPassword(profile.id, "manual_reset")}
+                          disabled={loading}
+                          className="w-full text-left px-3 py-2 text-sm text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-50"
+                        >
+                          🔑 Reset Password (Manual)
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
