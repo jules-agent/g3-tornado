@@ -41,6 +41,7 @@ export default async function AdminPage({
     { data: owners },
     { data: activityLogs },
     { data: tasks },
+    { data: pendingInvites },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -52,10 +53,6 @@ export default async function AdminPage({
       name, 
       email, 
       phone, 
-      is_up_employee,
-      is_bp_employee,
-      is_upfit_employee,
-      is_third_party_vendor,
       created_by_email, 
       created_at
     `).order("name"),
@@ -75,20 +72,15 @@ export default async function AdminPage({
       .order("created_at", { ascending: false })
       .limit(100),
     supabase.from("tasks").select("id, status"),
+    supabase.from("pending_invites")
+      .select("id, email, role, invite_token, expires_at, accepted_at, created_at")
+      .order("created_at", { ascending: false }),
   ]);
-
-  // Count employees vs vendors in owners
-  const employeeCount = owners?.filter(o => 
-    o.is_up_employee || o.is_bp_employee || o.is_upfit_employee
-  ).length || 0;
-  const vendorCount = owners?.filter(o => o.is_third_party_vendor).length || 0;
 
   const stats = {
     users: profiles?.length || 0,
     projects: projects?.length || 0,
     owners: owners?.length || 0,
-    employees: employeeCount,
-    vendors: vendorCount,
     tasks: tasks?.length || 0,
     openTasks: tasks?.filter((t) => t.status === "open").length || 0,
   };
@@ -100,7 +92,7 @@ export default async function AdminPage({
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Admin Panel</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {stats.users} users · {stats.projects} projects · {stats.owners} owners ({stats.employees} employees, {stats.vendors} vendors) · {stats.tasks} tasks
+            {stats.users} users · {stats.projects} projects · {stats.owners} owners · {stats.tasks} tasks
           </p>
         </div>
         <Link
@@ -118,6 +110,7 @@ export default async function AdminPage({
         projects={projects || []}
         owners={owners || []}
         activityLogs={activityLogs || []}
+        pendingInvites={pendingInvites || []}
       />
     </div>
   );

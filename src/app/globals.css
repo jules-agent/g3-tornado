@@ -101,14 +101,14 @@ body {
 }
 
 /* Urgent pulsing animation for "my stale" tasks */
+/* NOTE: Do NOT use opacity in this animation - it creates a stacking context
+   that traps z-index of dropdown menus inside the row */
 @keyframes pulse-urgent {
   0%, 100% {
-    opacity: 1;
     background-color: rgba(254, 202, 202, 0.8); /* red-200 */
   }
   50% {
-    opacity: 0.85;
-    background-color: rgba(254, 226, 226, 0.6); /* red-100 */
+    background-color: rgba(254, 226, 226, 0.3); /* red-100 faded */
   }
 }
 
@@ -122,12 +122,10 @@ body {
 
 @keyframes pulse-urgent-dark {
   0%, 100% {
-    opacity: 1;
     background-color: rgba(127, 29, 29, 0.4); /* red-900 */
   }
   50% {
-    opacity: 0.85;
-    background-color: rgba(127, 29, 29, 0.2);
+    background-color: rgba(127, 29, 29, 0.15);
   }
 }
 

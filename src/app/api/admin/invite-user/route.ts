@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   // Store in a pending_invites table or just return success with instructions
   // Since we don't have admin API access, we'll just return the invite link
 
-  const signupUrl = `https://g3-tornado.vercel.app/signup?email=${encodeURIComponent(email)}&role=${role}`;
+  const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(email)}&role=${role}`;
 
   return NextResponse.json({
     success: true,

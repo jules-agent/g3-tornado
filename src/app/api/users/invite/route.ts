@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   // Build signup URL with invite token
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://g3-tornado.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.g3tornado.com";
   const signupUrl = `${baseUrl}/signup?email=${encodeURIComponent(email)}&invite=${inviteToken}${linkToOwnerId ? `&owner=${linkToOwnerId}` : ""}`;
 
   // Log the invite action

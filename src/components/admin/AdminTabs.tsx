@@ -25,11 +25,21 @@ type Owner = {
   name: string;
   email: string | null;
   phone: string | null;
-  is_up_employee: boolean;
-  is_bp_employee: boolean;
-  is_upfit_employee: boolean;
-  is_third_party_vendor: boolean;
+  is_up_employee?: boolean;
+  is_bp_employee?: boolean;
+  is_upfit_employee?: boolean;
+  is_third_party_vendor?: boolean;
   created_by_email: string | null;
+  created_at: string;
+};
+
+type PendingInvite = {
+  id: string;
+  email: string;
+  role: string;
+  invite_token: string;
+  expires_at: string;
+  accepted_at: string | null;
   created_at: string;
 };
 
@@ -50,12 +60,14 @@ export function AdminTabs({
   projects,
   owners,
   activityLogs = [],
+  pendingInvites = [],
 }: {
   activeTab: string;
   profiles: Profile[];
   projects: Project[];
   owners: Owner[];
   activityLogs?: ActivityLog[];
+  pendingInvites?: PendingInvite[];
 }) {
   const tabs = [
     { key: "users", label: "Users", count: profiles.length, href: "/admin?tab=users" },
@@ -85,7 +97,7 @@ export function AdminTabs({
 
       {/* Tab Content */}
       <div className="rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-        {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} />}
+        {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} pendingInvites={pendingInvites} />}
         {activeTab === "projects" && <ProjectsTab projects={projects} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
@@ -94,7 +106,7 @@ export function AdminTabs({
   );
 }
 
-function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }) {
+function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile[]; owners: Owner[]; pendingInvites?: PendingInvite[] }) {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("user");
@@ -416,6 +428,113 @@ function UsersTab({ profiles, owners }: { profiles: Profile[]; owners: Owner[] }
           </tbody>
         </table>
       </div>
+
+      {/* Pending Invitations Section */}
+      {pendingInvites.length > 0 && (
+        <div className="mt-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+              📧 Pending Invitations ({pendingInvites.length})
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  <th className="px-4 py-2 font-semibold">Email</th>
+                  <th className="px-4 py-2 font-semibold w-20">Role</th>
+                  <th className="px-4 py-2 font-semibold w-24">Status</th>
+                  <th className="px-4 py-2 font-semibold w-28">Invited</th>
+                  <th className="px-4 py-2 font-semibold w-28">Expires</th>
+                  <th className="px-4 py-2 font-semibold w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {pendingInvites.map((invite) => {
+                  const isExpired = new Date(invite.expires_at) < new Date();
+                  const isAccepted = !!invite.accepted_at;
+                  const status = isAccepted ? "accepted" : isExpired ? "expired" : "pending";
+                  
+                  return (
+                    <tr key={invite.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-4 py-2 text-slate-900 dark:text-white font-medium">
+                        {invite.email}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                          invite.role === "admin" 
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
+                        }`}>
+                          {invite.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                          status === "accepted" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" :
+                          status === "expired" ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" :
+                          "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                        }`}>
+                          {status === "accepted" ? "✅ Accepted" : status === "expired" ? "⏰ Expired" : "⏳ Pending"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                        {new Date(invite.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                        {new Date(invite.expires_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2">
+                        {status === "pending" && (
+                          <button
+                            onClick={() => {
+                              const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(invite.email)}&invite=${invite.invite_token}`;
+                              navigator.clipboard.writeText(signupUrl);
+                              setMessage("Invite link copied to clipboard!");
+                              setTimeout(() => setMessage(""), 3000);
+                            }}
+                            className="rounded bg-blue-100 dark:bg-blue-900/50 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                          >
+                            📋 Copy Link
+                          </button>
+                        )}
+                        {status === "expired" && (
+                          <button
+                            onClick={async () => {
+                              setLoading(true);
+                              try {
+                                const res = await fetch("/api/users/invite", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ email: invite.email, role: invite.role }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  setMessage(`New invite created! Link: ${data.signupUrl}`);
+                                  router.refresh();
+                                } else {
+                                  setMessage(data.error || "Failed to resend invite");
+                                }
+                              } catch {
+                                setMessage("Error resending invite");
+                              }
+                              setLoading(false);
+                            }}
+                            disabled={loading}
+                            className="rounded bg-amber-100 dark:bg-amber-900/50 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/50 disabled:opacity-50"
+                          >
+                            🔄 Resend
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
