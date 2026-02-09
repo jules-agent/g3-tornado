@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GateEditor } from "./GateEditor";
 import { OwnerEditor } from "./OwnerEditor";
@@ -89,6 +89,7 @@ type Task = {
 type TaskTableProps = {
   tasks: Task[];
   total: number;
+  allTasks?: Task[];
 };
 
 type SelectedCell = {
@@ -147,7 +148,7 @@ const DEFAULT_PROFILE: ViewProfile = {
   scale: 100
 };
 
-export function TaskTable({ tasks, total }: TaskTableProps) {
+export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const deviceType = isMobile ? 'mobile' : 'desktop';
@@ -208,6 +209,32 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Top 5 projects by open task count (for current user)
+  const top5Projects = useMemo(() => {
+    const source = allTasks || tasks;
+    const openTasks = source.filter(t => t.status === "open" && t.isMyTask);
+    const counts: Record<string, { name: string; id: string; count: number }> = {};
+    for (const t of openTasks) {
+      const pid = t.projects?.id;
+      const pname = t.projects?.name;
+      if (!pid || !pname) continue;
+      if (!counts[pid]) counts[pid] = { name: pname, id: pid, count: 0 };
+      counts[pid].count++;
+    }
+    // If user has no open tasks, fall back to all open tasks
+    if (Object.keys(counts).length === 0) {
+      const allOpen = source.filter(t => t.status === "open");
+      for (const t of allOpen) {
+        const pid = t.projects?.id;
+        const pname = t.projects?.name;
+        if (!pid || !pname) continue;
+        if (!counts[pid]) counts[pid] = { name: pname, id: pid, count: 0 };
+        counts[pid].count++;
+      }
+    }
+    return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [allTasks, tasks]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -747,10 +774,22 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       )}
 
       {/* Toolbar - compact */}
-      <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">
-          💡 Cmd+click cells (• columns) to bulk edit
-        </span>
+      <div className="sticky top-[40px] z-30 bg-white dark:bg-slate-900 flex flex-wrap justify-between items-center gap-1 mb-1 py-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+            💡 Cmd+click cells (• columns) to bulk edit
+          </span>
+          {top5Projects.length > 0 && (
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-[10px] text-slate-400">|</span>
+              {top5Projects.map((p) => (
+                <Link key={p.id} href={`/?filter=open&project=${p.id}`} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition whitespace-nowrap">
+                  {p.name} <span className="text-slate-400">({p.count})</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
         
         <div className="flex items-center gap-1.5">
           {/* Profile selector */}
@@ -858,15 +897,15 @@ export function TaskTable({ tasks, total }: TaskTableProps) {
       <div 
         ref={tableRef}
         className="card"
-        style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
+        style={{ ...(scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : {}), overflowX: 'auto', overflowY: 'clip' as 'visible' }}
       >
-        <div className="overflow-x-auto overflow-y-visible">
+        <div>
           <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
             <colgroup>
               <col style={{ width: 36 }} /> {/* Actions column */}
               {columns.map((col) => <col key={col.id} style={{ width: col.width }} />)}
             </colgroup>
-            <thead>
+            <thead className="sticky top-[68px] z-20">
               <tr className="table-header text-left text-xs text-slate-700 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-800/80">
                 <th className="px-1 py-2 w-9"></th> {/* Actions header - empty */}
                 {columns.map((col) => (

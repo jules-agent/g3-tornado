@@ -206,8 +206,8 @@ export default async function Home({
 
   return (
     <div className="space-y-1">
-      {/* Search and Filters */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Search and Filters - sticky */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 pb-1 flex flex-wrap items-center gap-1.5">
         <SearchBox />
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm text-sm">
           {filters.map((f) => (
@@ -241,7 +241,7 @@ export default async function Home({
       </div>
 
       {/* Table with resizable/reorderable columns */}
-      <TaskTable tasks={filteredTasks} total={stats.total} />
+      <TaskTable tasks={filteredTasks} total={stats.total} allTasks={tasksWithDays} />
     </div>
   );
 }
