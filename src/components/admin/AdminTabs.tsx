@@ -157,15 +157,15 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
       const data = await res.json();
       
       if (res.ok) {
-        setMessage(`Invite created! Share this link: ${data.signupUrl}`);
+        setMessage(data.message || `Invite sent to ${inviteEmail}`);
         setInviteEmail("");
         setLinkToOwner("");
         router.refresh();
       } else {
-        setMessage(data.error || "Failed to invite user");
+        setMessage(`❌ ${data.error || "Failed to invite user"}`);
       }
     } catch {
-      setMessage("Error sending invitation");
+      setMessage("❌ Error sending invitation");
     }
     setLoading(false);
   };
@@ -292,21 +292,22 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
   const resendInvite = async (invite: PendingInvite) => {
     setLoading(true);
     setInviteMenuOpen(null);
+    setMessage("");
     try {
       const res = await fetch("/api/users/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: invite.email, role: invite.role }),
+        body: JSON.stringify({ email: invite.email, role: invite.role, resend: true }),
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`Invite resent to ${invite.email}!`);
+        setMessage(data.message || `Invite resent to ${invite.email}`);
         router.refresh();
       } else {
-        setMessage(data.error || "Failed to resend invite");
+        setMessage(`❌ ${data.error || "Failed to resend invite"}`);
       }
     } catch {
-      setMessage("Error resending invite");
+      setMessage("❌ Error resending invite");
     }
     setLoading(false);
   };
