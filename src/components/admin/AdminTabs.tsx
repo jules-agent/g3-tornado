@@ -355,6 +355,14 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
         </div>
       </div>
 
+      {/* Global status message */}
+      {message && !showCreateUser && !showInvite && (
+        <div className={`px-4 py-2 text-sm font-medium border-b ${message.includes("❌") || message.includes("Error") || message.includes("Failed") ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800" : message.includes("⚠️") ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"}`}>
+          {message}
+          <button onClick={() => setMessage("")} className="ml-3 text-xs opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
+
       {showCreateUser && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
           <div className="flex flex-wrap gap-2 items-end">
