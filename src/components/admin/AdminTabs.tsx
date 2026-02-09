@@ -115,6 +115,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
   const [message, setMessage] = useState("");
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState<string | null>(null);
+  const [inviteMenuOpen, setInviteMenuOpen] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null);
   const router = useRouter();
 
@@ -231,6 +232,59 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
       }
     } catch {
       setMessage("Error resetting password");
+    }
+    setLoading(false);
+  };
+
+  const copyInviteLink = (invite: PendingInvite) => {
+    const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(invite.email)}&invite=${invite.invite_token}`;
+    navigator.clipboard.writeText(signupUrl);
+    setMessage("Invite link copied to clipboard!");
+    setInviteMenuOpen(null);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  const resendInvite = async (invite: PendingInvite) => {
+    setLoading(true);
+    setInviteMenuOpen(null);
+    try {
+      const res = await fetch("/api/users/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: invite.email, role: invite.role }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`Invite resent to ${invite.email}!`);
+        router.refresh();
+      } else {
+        setMessage(data.error || "Failed to resend invite");
+      }
+    } catch {
+      setMessage("Error resending invite");
+    }
+    setLoading(false);
+  };
+
+  const cancelInvite = async (invite: PendingInvite) => {
+    if (!confirm(`Cancel invitation for ${invite.email}?`)) return;
+    setLoading(true);
+    setInviteMenuOpen(null);
+    try {
+      const res = await fetch("/api/admin/cancel-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteId: invite.id }),
+      });
+      if (res.ok) {
+        setMessage(`Invitation for ${invite.email} cancelled.`);
+        router.refresh();
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "Failed to cancel invite");
+      }
+    } catch {
+      setMessage("Error cancelling invite");
     }
     setLoading(false);
   };
@@ -484,47 +538,43 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
                       <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                         {new Date(invite.expires_at).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-2">
-                        {status === "pending" && (
-                          <button
-                            onClick={() => {
-                              const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(invite.email)}&invite=${invite.invite_token}`;
-                              navigator.clipboard.writeText(signupUrl);
-                              setMessage("Invite link copied to clipboard!");
-                              setTimeout(() => setMessage(""), 3000);
-                            }}
-                            className="rounded bg-blue-100 dark:bg-blue-900/50 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50"
-                          >
-                            📋 Copy Link
-                          </button>
-                        )}
-                        {status === "expired" && (
-                          <button
-                            onClick={async () => {
-                              setLoading(true);
-                              try {
-                                const res = await fetch("/api/users/invite", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ email: invite.email, role: invite.role }),
-                                });
-                                const data = await res.json();
-                                if (res.ok) {
-                                  setMessage(`New invite created! Link: ${data.signupUrl}`);
-                                  router.refresh();
-                                } else {
-                                  setMessage(data.error || "Failed to resend invite");
-                                }
-                              } catch {
-                                setMessage("Error resending invite");
-                              }
-                              setLoading(false);
-                            }}
-                            disabled={loading}
-                            className="rounded bg-amber-100 dark:bg-amber-900/50 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/50 disabled:opacity-50"
-                          >
-                            🔄 Resend
-                          </button>
+                      <td className="px-4 py-2 relative">
+                        <button
+                          onClick={() => setInviteMenuOpen(inviteMenuOpen === invite.id ? null : invite.id)}
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-2 py-1 text-xs"
+                        >
+                          ⋮
+                        </button>
+                        {inviteMenuOpen === invite.id && (
+                          <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[9999] min-w-[200px] py-1">
+                            <button
+                              onClick={() => copyInviteLink(invite)}
+                              className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            >
+                              📋 Copy Invite Link
+                            </button>
+                            {!isAccepted && (
+                              <button
+                                onClick={() => resendInvite(invite)}
+                                disabled={loading}
+                                className="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50"
+                              >
+                                🔄 Resend Invitation
+                              </button>
+                            )}
+                            {!isAccepted && (
+                              <>
+                                <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                                <button
+                                  onClick={() => cancelInvite(invite)}
+                                  disabled={loading}
+                                  className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
+                                >
+                                  ❌ Cancel Invitation
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
