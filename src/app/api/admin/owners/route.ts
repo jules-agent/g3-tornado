@@ -2,16 +2,24 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 async function checkAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.email === "ben@unpluggedperformance.com";
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { isAdmin: false, user: null };
+  
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  
+  const isAdmin = profile?.role === "admin" || user.email === "ben@unpluggedperformance.com";
+  return { isAdmin, user };
 }
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const { isAdmin, user } = await checkAdmin(supabase);
 
-  if (!(await checkAdmin(supabase))) {
+  if (!isAdmin || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +31,13 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("owners")
-    .insert({ name, email, phone })
+    .insert({ 
+      name, 
+      email, 
+      phone,
+      created_by: user.id,
+      created_by_email: user.email,
+    })
     .select()
     .single();
 
@@ -36,8 +50,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const supabase = await createClient();
+  const { isAdmin, user } = await checkAdmin(supabase);
 
-  if (!(await checkAdmin(supabase))) {
+  if (!isAdmin || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -58,13 +73,24 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Log the update
+  await supabase.from("activity_log").insert({
+    action: "updated",
+    entity_type: "owner",
+    entity_id: id,
+    entity_name: name,
+    created_by: user.id,
+    created_by_email: user.email,
+  });
+
   return NextResponse.json(data);
 }
 
 export async function DELETE(request: Request) {
   const supabase = await createClient();
+  const { isAdmin, user } = await checkAdmin(supabase);
 
-  if (!(await checkAdmin(supabase))) {
+  if (!isAdmin || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -75,6 +101,13 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "ID is required" }, { status: 400 });
   }
 
+  // Get owner name for logging
+  const { data: owner } = await supabase
+    .from("owners")
+    .select("name")
+    .eq("id", id)
+    .single();
+
   // First remove owner from all tasks
   await supabase.from("task_owners").delete().eq("owner_id", id);
 
@@ -84,6 +117,16 @@ export async function DELETE(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Log the deletion
+  await supabase.from("activity_log").insert({
+    action: "deleted",
+    entity_type: "owner",
+    entity_id: id,
+    entity_name: owner?.name || "Unknown",
+    created_by: user.id,
+    created_by_email: user.email,
+  });
 
   return NextResponse.json({ success: true });
 }

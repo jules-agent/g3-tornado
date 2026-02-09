@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 
 export default async function ProtectedLayout({
   children,
@@ -30,6 +31,7 @@ export default async function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors">
+      <ImpersonationBanner />
       <AppHeader user={headerUser} />
       <main className="w-full px-4 py-2 sm:px-6 lg:px-8">
         {children}

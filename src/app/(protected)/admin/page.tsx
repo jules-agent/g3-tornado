@@ -15,7 +15,18 @@ export default async function AdminPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAdmin = user?.email === "ben@unpluggedperformance.com";
+  if (!user) {
+    redirect("/login");
+  }
+
+  // Check if user is admin by role in profiles table
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.role === "admin" || user.email === "ben@unpluggedperformance.com";
 
   if (!isAdmin) {
     redirect("/");
@@ -28,11 +39,32 @@ export default async function AdminPage({
     { data: profiles },
     { data: projects },
     { data: owners },
+    { data: vendors },
+    { data: activityLogs },
     { data: tasks },
   ] = await Promise.all([
-    supabase.from("profiles").select("id, email, full_name, role, owner_id, created_at").order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("id, email, full_name, role, owner_id, created_at")
+      .order("created_at", { ascending: false }),
     supabase.from("projects").select("*").order("name"),
-    supabase.from("owners").select("*").order("name"),
+    supabase.from("owners").select("id, name, email, phone, created_by_email, created_at").order("name"),
+    supabase.from("vendors").select("*").order("name"),
+    supabase
+      .from("activity_log")
+      .select(`
+        id,
+        action,
+        entity_type,
+        entity_id,
+        entity_name,
+        created_by,
+        created_by_email,
+        created_at,
+        creator:profiles!activity_log_created_by_fkey(id, email, full_name)
+      `)
+      .order("created_at", { ascending: false })
+      .limit(100),
     supabase.from("tasks").select("id, status"),
   ]);
 
@@ -40,6 +72,7 @@ export default async function AdminPage({
     users: profiles?.length || 0,
     projects: projects?.length || 0,
     owners: owners?.length || 0,
+    vendors: vendors?.length || 0,
     tasks: tasks?.length || 0,
     openTasks: tasks?.filter((t) => t.status === "open").length || 0,
   };
@@ -49,14 +82,14 @@ export default async function AdminPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Admin Panel</h1>
-          <p className="text-xs text-slate-500">
-            {stats.users} users · {stats.projects} projects · {stats.owners} owners · {stats.tasks} tasks
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Admin Panel</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {stats.users} users · {stats.projects} projects · {stats.owners} owners · {stats.vendors} vendors · {stats.tasks} tasks
           </p>
         </div>
         <Link
           href="/"
-          className="text-xs text-slate-500 hover:text-slate-900"
+          className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
         >
           ← Dashboard
         </Link>
@@ -68,6 +101,8 @@ export default async function AdminPage({
         profiles={profiles || []}
         projects={projects || []}
         owners={owners || []}
+        vendors={vendors || []}
+        activityLogs={activityLogs || []}
       />
     </div>
   );
