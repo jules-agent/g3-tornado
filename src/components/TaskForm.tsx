@@ -7,11 +7,18 @@ import { createClient } from "@/lib/supabase/client";
 type Project = {
   id: string;
   name: string;
+  is_up?: boolean;
+  is_bp?: boolean;
+  is_upfit?: boolean;
 };
 
 type Owner = {
   id: string;
   name: string;
+  is_up_employee?: boolean;
+  is_bp_employee?: boolean;
+  is_upfit_employee?: boolean;
+  is_third_party_vendor?: boolean;
 };
 
 type TaskFormProps = {
@@ -74,6 +81,34 @@ export default function TaskForm({
   const ownerLookup = useMemo(() => {
     return new Map(owners.map((owner) => [owner.id, owner.name]));
   }, [owners]);
+
+  // Filter owners based on selected project's business units
+  const { employees: filteredEmployees, vendors: filteredVendors } = useMemo(() => {
+    const selectedProject = projects.find(p => p.id === projectId);
+    const hasAnyFlag = selectedProject?.is_up || selectedProject?.is_bp || selectedProject?.is_upfit;
+
+    // If project has no company flags set, show all owners
+    if (!hasAnyFlag) {
+      const emps = owners.filter(o => !o.is_third_party_vendor);
+      const vends = owners.filter(o => o.is_third_party_vendor);
+      return { employees: emps, vendors: vends };
+    }
+
+    // Filter: show employees of matching companies + all vendors
+    const employees = owners.filter(o => {
+      if (o.is_third_party_vendor) return false;
+      if (selectedProject?.is_up && o.is_up_employee) return true;
+      if (selectedProject?.is_bp && o.is_bp_employee) return true;
+      if (selectedProject?.is_upfit && o.is_upfit_employee) return true;
+      // If owner has no flags at all, include them
+      if (!o.is_up_employee && !o.is_bp_employee && !o.is_upfit_employee && !o.is_third_party_vendor) return true;
+      return false;
+    });
+
+    const vendors = owners.filter(o => o.is_third_party_vendor);
+
+    return { employees, vendors };
+  }, [owners, projects, projectId]);
 
   const handleOwnerToggle = (ownerId: string) => {
     setOwnerIds((prev) =>
@@ -443,7 +478,7 @@ export default function TaskForm({
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-sm font-semibold text-slate-900">Owners</div>
             <div className="mt-3 space-y-2">
-              {owners.map((owner) => (
+              {filteredEmployees.map((owner) => (
                 <label
                   key={owner.id}
                   className="flex items-center gap-2 text-sm text-slate-600"
@@ -457,7 +492,26 @@ export default function TaskForm({
                   <span>{owner.name}</span>
                 </label>
               ))}
-              {owners.length === 0 && (
+              {filteredVendors.length > 0 && filteredEmployees.length > 0 && (
+                <div className="border-t border-slate-200 my-2 pt-2">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">3rd Party Vendors</div>
+                </div>
+              )}
+              {filteredVendors.map((owner) => (
+                <label
+                  key={owner.id}
+                  className="flex items-center gap-2 text-sm text-slate-600"
+                >
+                  <input
+                    type="checkbox"
+                    checked={ownerIds.includes(owner.id)}
+                    onChange={() => handleOwnerToggle(owner.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-slate-900"
+                  />
+                  <span>{owner.name}</span>
+                </label>
+              ))}
+              {filteredEmployees.length === 0 && filteredVendors.length === 0 && (
                 <div className="text-sm text-slate-400">No owners available.</div>
               )}
             </div>

@@ -17,6 +17,9 @@ type Project = {
   id: string;
   name: string;
   description: string | null;
+  is_up?: boolean;
+  is_bp?: boolean;
+  is_upfit?: boolean;
   created_at: string;
 };
 
@@ -716,48 +719,54 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isUp, setIsUp] = useState(false);
+  const [isBp, setIsBp] = useState(false);
+  const [isUpfit, setIsUpfit] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const resetForm = () => {
+    setName(""); setDescription(""); setIsUp(false); setIsBp(false); setIsUpfit(false);
+  };
 
   const saveProject = async (projectId?: string) => {
     if (!name.trim()) return;
     setLoading(true);
-
     try {
       const res = await fetch("/api/admin/projects", {
         method: projectId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: projectId, name, description }),
+        body: JSON.stringify({ id: projectId, name, description, is_up: isUp, is_bp: isBp, is_upfit: isUpfit }),
       });
-      
-      if (res.ok) {
-        setName("");
-        setDescription("");
-        setShowAdd(false);
-        setEditingId(null);
-        router.refresh();
-      }
-    } catch {
-      console.error("Failed to save project");
-    }
+      if (res.ok) { resetForm(); setShowAdd(false); setEditingId(null); router.refresh(); }
+    } catch { console.error("Failed to save project"); }
     setLoading(false);
+  };
+
+  const toggleProjectFlag = async (projectId: string, field: string, value: boolean) => {
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: projectId, [field]: value }),
+      });
+      if (res.ok) router.refresh();
+    } catch { console.error("Failed to update"); }
   };
 
   const deleteProject = async (projectId: string) => {
     if (!confirm("Delete this project? Tasks will become unassigned.")) return;
-    
-    try {
-      await fetch(`/api/admin/projects?id=${projectId}`, { method: "DELETE" });
-      router.refresh();
-    } catch {
-      console.error("Failed to delete project");
-    }
+    try { await fetch(`/api/admin/projects?id=${projectId}`, { method: "DELETE" }); router.refresh(); }
+    catch { console.error("Failed to delete project"); }
   };
 
   const startEdit = (project: Project) => {
     setEditingId(project.id);
     setName(project.name);
     setDescription(project.description || "");
+    setIsUp(project.is_up || false);
+    setIsBp(project.is_bp || false);
+    setIsUpfit(project.is_upfit || false);
   };
 
   return (
@@ -765,7 +774,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Projects</h2>
         <button
-          onClick={() => { setShowAdd(!showAdd); setEditingId(null); setName(""); setDescription(""); }}
+          onClick={() => { setShowAdd(!showAdd); setEditingId(null); resetForm(); }}
           className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
         >
           + Add Project
@@ -774,125 +783,121 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
 
       {showAdd && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Project name"
-              />
+          <div className="space-y-3">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Name *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="Project name" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Description</label>
+                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="Brief description" />
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="block text-xs text-slate-500 mb-1">Description (optional)</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Brief description"
-              />
+            <div>
+              <label className="block text-xs text-slate-500 mb-2">Business Unit(s):</label>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUp} onChange={(e) => setIsUp(e.target.checked)} className="rounded border-slate-300 text-blue-600" />
+                  <span className="text-slate-700 dark:text-slate-300">UP</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBp} onChange={(e) => setIsBp(e.target.checked)} className="rounded border-slate-300 text-emerald-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BP</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
+                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                </label>
+              </div>
             </div>
-            <button
-              onClick={() => saveProject()}
-              disabled={loading || !name.trim()}
-              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {loading ? "..." : "Add"}
+            <button onClick={() => saveProject()} disabled={loading || !name.trim()} className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+              {loading ? "Saving..." : "Add Project"}
             </button>
           </div>
         </div>
       )}
 
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            <th className="px-4 py-2 font-semibold">Project</th>
-            <th className="px-4 py-2 font-semibold">Description</th>
-            <th className="px-4 py-2 font-semibold w-28">Created</th>
-            <th className="px-4 py-2 font-semibold w-20">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-          {projects.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                No projects yet. Add your first project above.
-              </td>
+      {editingId && (
+        <div className="border-b border-slate-100 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/10 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">✏️ Editing: {name}</p>
+          <div className="space-y-3">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Name *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Description</label>
+                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-2">Business Unit(s):</label>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUp} onChange={(e) => setIsUp(e.target.checked)} className="rounded border-slate-300 text-blue-600" />
+                  <span className="text-slate-700 dark:text-slate-300">UP</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBp} onChange={(e) => setIsBp(e.target.checked)} className="rounded border-slate-300 text-emerald-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BP</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
+                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => saveProject(editingId)} disabled={loading || !name.trim()} className="rounded bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50">{loading ? "..." : "Save"}</button>
+              <button onClick={() => { setEditingId(null); resetForm(); }} className="rounded bg-slate-200 dark:bg-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-visible">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <th className="px-4 py-2 font-semibold">Project</th>
+              <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
+              <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
+              <th className="px-3 py-2 font-semibold text-center w-14">UF</th>
+              <th className="px-4 py-2 font-semibold">Description</th>
+              <th className="px-4 py-2 font-semibold w-28">Created</th>
+              <th className="px-4 py-2 font-semibold w-20">Actions</th>
             </tr>
-          ) : (
-            projects.map((project) => (
-              <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                {editingId === project.id ? (
-                  <>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(project.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => saveProject(project.id)}
-                        className="text-emerald-600 hover:text-emerald-800 mr-2"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        Cancel
-                      </button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
-                      {project.name}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {project.description || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(project.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => startEdit(project)}
-                        className="text-slate-400 hover:text-slate-600 mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteProject(project.id)}
-                        className="text-red-400 hover:text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            {projects.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
+            ) : (
+              projects.map((project) => (
+                <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">{project.name}</td>
+                  <td className="px-3 py-2 text-center">
+                    <input type="checkbox" checked={project.is_up || false} onChange={(e) => toggleProjectFlag(project.id, "is_up", e.target.checked)} className="rounded border-slate-300 text-blue-600 cursor-pointer" />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input type="checkbox" checked={project.is_bp || false} onChange={(e) => toggleProjectFlag(project.id, "is_bp", e.target.checked)} className="rounded border-slate-300 text-emerald-600 cursor-pointer" />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input type="checkbox" checked={project.is_upfit || false} onChange={(e) => toggleProjectFlag(project.id, "is_upfit", e.target.checked)} className="rounded border-slate-300 text-purple-600 cursor-pointer" />
+                  </td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{project.description || "—"}</td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{new Date(project.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-2">
+                    <button onClick={() => startEdit(project)} className="text-slate-400 hover:text-slate-600 mr-2">Edit</button>
+                    <button onClick={() => deleteProject(project.id)} className="text-red-400 hover:text-red-600">Delete</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

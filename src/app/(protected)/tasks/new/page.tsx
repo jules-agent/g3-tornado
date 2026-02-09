@@ -6,8 +6,8 @@ export default async function NewTaskPage() {
   const supabase = await createClient();
 
   const [{ data: projects }, { data: owners }] = await Promise.all([
-    supabase.from("projects").select("id, name").order("name"),
-    supabase.from("owners").select("id, name").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit").order("name"),
+    supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").order("name"),
   ]);
 
   return (
