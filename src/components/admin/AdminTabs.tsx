@@ -108,9 +108,14 @@ export function AdminTabs({
 
 function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile[]; owners: Owner[]; pendingInvites?: PendingInvite[] }) {
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("user");
   const [linkToOwner, setLinkToOwner] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createFullName, setCreateFullName] = useState("");
+  const [createRole, setCreateRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [impersonating, setImpersonating] = useState<string | null>(null);
@@ -161,6 +166,41 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
       }
     } catch {
       setMessage("Error sending invitation");
+    }
+    setLoading(false);
+  };
+
+  const createUser = async () => {
+    if (!createEmail || !createPassword) return;
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: createEmail,
+          password: createPassword,
+          fullName: createFullName || undefined,
+          role: createRole,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage(`✅ User ${createEmail} created successfully!`);
+        setCreateEmail("");
+        setCreatePassword("");
+        setCreateFullName("");
+        setCreateRole("user");
+        setShowCreateUser(false);
+        router.refresh();
+      } else {
+        setMessage(data.error || "Failed to create user");
+      }
+    } catch {
+      setMessage("Error creating user");
     }
     setLoading(false);
   };
@@ -298,13 +338,81 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
     <div>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Users</h2>
-        <button
-          onClick={() => setShowInvite(!showInvite)}
-          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
-        >
-          + Invite User
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowCreateUser(!showCreateUser); setShowInvite(false); }}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 transition"
+          >
+            + Create User
+          </button>
+          <button
+            onClick={() => { setShowInvite(!showInvite); setShowCreateUser(false); }}
+            className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
+          >
+            + Invite User
+          </button>
+        </div>
       </div>
+
+      {showCreateUser && (
+        <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-xs text-slate-500 mb-1">Email *</label>
+              <input
+                type="email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                placeholder="user@example.com"
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-xs text-slate-500 mb-1">Password *</label>
+              <input
+                type="text"
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm font-mono"
+                placeholder="Min 8 characters"
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-xs text-slate-500 mb-1">Full Name</label>
+              <input
+                type="text"
+                value={createFullName}
+                onChange={(e) => setCreateFullName(e.target.value)}
+                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="w-28">
+              <label className="block text-xs text-slate-500 mb-1">Role</label>
+              <select
+                value={createRole}
+                onChange={(e) => setCreateRole(e.target.value)}
+                className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button
+              onClick={createUser}
+              disabled={loading || !createEmail || !createPassword || createPassword.length < 8}
+              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {loading ? "..." : "Create"}
+            </button>
+          </div>
+          {message && (
+            <p className={`text-xs mt-2 break-all ${message.includes("Error") || message.includes("Failed") ? "text-red-600" : "text-emerald-600"}`}>
+              {message}
+            </p>
+          )}
+        </div>
+      )}
 
       {showInvite && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
@@ -818,6 +926,42 @@ function ContactIcons({ owner }: { owner: Owner }) {
   );
 }
 
+function EditableCell({ value, onSave, placeholder, type = "text" }: { value: string; onSave: (v: string) => void; placeholder?: string; type?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (editing) {
+    return (
+      <input
+        type={type}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft !== value) onSave(draft);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { if (draft !== value) onSave(draft); setEditing(false); }
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+        autoFocus
+        className="w-full rounded border border-teal-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-teal-400"
+        placeholder={placeholder}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => { setDraft(value); setEditing(true); }}
+      className="cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded px-1.5 py-0.5 -mx-1.5 block min-h-[20px]"
+      title="Click to edit"
+    >
+      {value || <span className="text-slate-300 dark:text-slate-600 italic">{placeholder || "—"}</span>}
+    </span>
+  );
+}
+
 function OwnersTab({ owners }: { owners: Owner[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
@@ -829,67 +973,72 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const [isThirdPartyVendor, setIsThirdPartyVendor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState<string | null>(null);
+  const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const router = useRouter();
 
   const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPhone("");
-    setIsUpEmployee(false);
-    setIsBpEmployee(false);
-    setIsUpfitEmployee(false);
-    setIsThirdPartyVendor(false);
+    setName(""); setEmail(""); setPhone("");
+    setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); setIsThirdPartyVendor(false);
     setError("");
   };
 
   const handleVendorChange = (checked: boolean) => {
-    if (checked) {
-      setIsUpEmployee(false);
-      setIsBpEmployee(false);
-      setIsUpfitEmployee(false);
-    }
+    if (checked) { setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); }
     setIsThirdPartyVendor(checked);
   };
 
   const handleEmployeeChange = (setter: (v: boolean) => void, checked: boolean) => {
-    if (checked) {
-      setIsThirdPartyVendor(false);
-    }
+    if (checked) setIsThirdPartyVendor(false);
     setter(checked);
   };
 
   const saveOwner = async () => {
     if (!name.trim()) return;
-    setLoading(true);
-    setError("");
-
+    setLoading(true); setError("");
     try {
       const res = await fetch("/api/admin/owners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name, 
-          email: email || null, 
-          phone: phone || null,
-          is_up_employee: isUpEmployee,
-          is_bp_employee: isBpEmployee,
-          is_upfit_employee: isUpfitEmployee,
-          is_third_party_vendor: isThirdPartyVendor,
-        }),
+        body: JSON.stringify({ name, email: email || null, phone: phone || null, is_up_employee: isUpEmployee, is_bp_employee: isBpEmployee, is_upfit_employee: isUpfitEmployee, is_third_party_vendor: isThirdPartyVendor }),
       });
-      
       const data = await res.json();
-      
-      if (res.ok) {
-        resetForm();
-        setShowAdd(false);
-        router.refresh();
-      } else {
-        setError(data.error || "Failed to save owner");
-      }
-    } catch {
-      setError("Failed to save owner");
-    }
+      if (res.ok) { resetForm(); setShowAdd(false); router.refresh(); }
+      else setError(data.error || "Failed to save owner");
+    } catch { setError("Failed to save owner"); }
+    setLoading(false);
+  };
+
+  const updateOwnerField = async (ownerId: string, field: string, value: string) => {
+    try {
+      // Get owner current data for the PUT
+      const owner = owners.find(o => o.id === ownerId);
+      if (!owner) return;
+      const res = await fetch("/api/admin/owners", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: ownerId, name: field === "name" ? value : owner.name, email: field === "email" ? (value || null) : owner.email, phone: field === "phone" ? (value || null) : owner.phone }),
+      });
+      if (res.ok) router.refresh();
+      else { const data = await res.json(); alert(data.error || "Failed to update"); }
+    } catch { alert("Failed to update"); }
+  };
+
+  const saveEditingOwner = async () => {
+    if (!editingOwner || !editName.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/owners", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingOwner.id, name: editName, email: editEmail || null, phone: editPhone || null }),
+      });
+      if (res.ok) { setEditingOwner(null); router.refresh(); }
+      else { const data = await res.json(); alert(data.error || "Failed to update"); }
+    } catch { alert("Failed to update"); }
     setLoading(false);
   };
 
@@ -900,26 +1049,24 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ownerId, field, value }),
       });
-      if (res.ok) {
-        router.refresh();
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to update");
-      }
-    } catch {
-      alert("Failed to update flag");
-    }
+      if (res.ok) router.refresh();
+      else { const data = await res.json(); alert(data.error || "Failed to update"); }
+    } catch { alert("Failed to update flag"); }
   };
 
   const deleteOwner = async (ownerId: string) => {
     if (!confirm("Delete this owner? They will be removed from all tasks.")) return;
-    
-    try {
-      await fetch(`/api/admin/owners?id=${ownerId}`, { method: "DELETE" });
-      router.refresh();
-    } catch {
-      console.error("Failed to delete owner");
-    }
+    setOwnerMenuOpen(null);
+    try { await fetch(`/api/admin/owners?id=${ownerId}`, { method: "DELETE" }); router.refresh(); }
+    catch { console.error("Failed to delete owner"); }
+  };
+
+  const startEdit = (owner: Owner) => {
+    setEditingOwner(owner);
+    setEditName(owner.name);
+    setEditEmail(owner.email || "");
+    setEditPhone(owner.phone || "");
+    setOwnerMenuOpen(null);
   };
 
   const isEmployeeChecked = isUpEmployee || isBpEmployee || isUpfitEmployee;
@@ -939,114 +1086,77 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       {showAdd && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
           <div className="space-y-3">
-            {/* Row 1: Name */}
             <div>
               <label className="block text-xs text-slate-500 mb-1">Owner Name *</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                placeholder="Full name or company name"
-              />
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="Full name or company name" />
             </div>
-
-            {/* Row 2: Employee checkboxes */}
             <div>
               <label className="block text-xs text-slate-500 mb-2">Employee of:</label>
               <div className="flex flex-wrap gap-4">
                 <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={isUpEmployee}
-                    onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)}
-                    disabled={isThirdPartyVendor}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-slate-700 dark:text-slate-300">Unplugged Performance (UP)</span>
+                  <input type="checkbox" checked={isUpEmployee} onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-blue-600" />
+                  <span className="text-slate-700 dark:text-slate-300">UP</span>
                 </label>
                 <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={isBpEmployee}
-                    onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)}
-                    disabled={isThirdPartyVendor}
-                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-slate-700 dark:text-slate-300">Bulletproof (BP)</span>
+                  <input type="checkbox" checked={isBpEmployee} onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-emerald-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BP</span>
                 </label>
                 <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={isUpfitEmployee}
-                    onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)}
-                    disabled={isThirdPartyVendor}
-                    className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                  />
+                  <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-purple-600" />
                   <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
                 </label>
               </div>
             </div>
-
-            {/* Row 3: Vendor checkbox */}
-            <div>
-              <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
-                <input
-                  type="checkbox"
-                  checked={isThirdPartyVendor}
-                  onChange={(e) => handleVendorChange(e.target.checked)}
-                  disabled={isEmployeeChecked}
-                  className="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
-                />
-                <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
-                <span className="text-xs text-slate-400">(if checked, company checkboxes are disabled)</span>
-              </label>
-            </div>
-
-            {/* Row 4: Contact info */}
+            <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
+              <input type="checkbox" checked={isThirdPartyVendor} onChange={(e) => handleVendorChange(e.target.checked)} disabled={isEmployeeChecked} className="rounded border-slate-300 text-orange-600" />
+              <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
+            </label>
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs text-slate-500 mb-1">Email (optional)</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                  placeholder="owner@example.com"
-                />
+                <label className="block text-xs text-slate-500 mb-1">Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="owner@example.com" />
               </div>
               <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs text-slate-500 mb-1">Phone (optional)</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm"
-                  placeholder="(555) 123-4567"
-                />
+                <label className="block text-xs text-slate-500 mb-1">Phone</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="(555) 123-4567" />
               </div>
             </div>
-
-            {/* Error message */}
-            {error && (
-              <p className="text-xs text-red-600">{error}</p>
-            )}
-
-            {/* Submit button */}
-            <div>
-              <button
-                onClick={() => saveOwner()}
-                disabled={loading || !name.trim()}
-                className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {loading ? "Saving..." : "Add Owner"}
-              </button>
-            </div>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <button onClick={() => saveOwner()} disabled={loading || !name.trim()} className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+              {loading ? "Saving..." : "Add Owner"}
+            </button>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      {/* Edit Owner Modal */}
+      {editingOwner && (
+        <div className="border-b border-slate-100 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/10 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">✏️ Editing: {editingOwner.name}</p>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-slate-500 mb-1">Name *</label>
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" />
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-slate-500 mb-1">Email</label>
+              <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-xs text-slate-500 mb-1">Phone</label>
+              <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" />
+            </div>
+            <button onClick={saveEditingOwner} disabled={loading || !editName.trim()} className="rounded bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50">
+              {loading ? "..." : "Save"}
+            </button>
+            <button onClick={() => setEditingOwner(null)} className="rounded bg-slate-200 dark:bg-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
@@ -1057,63 +1167,62 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>
-              <th className="px-4 py-2 font-semibold w-20">Actions</th>
+              <th className="px-4 py-2 font-semibold w-16">⋮</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {owners.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                  No owners yet. Add your first owner above.
-                </td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
               </tr>
             ) : (
               owners.map((owner) => (
                 <tr key={owner.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-4 py-2">
-                    <span className="font-medium text-slate-900 dark:text-white">{owner.name}</span>
+                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
+                    <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={owner.is_up_employee || false}
-                      onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
+                    <input type="checkbox" checked={owner.is_up_employee || false} onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={owner.is_bp_employee || false}
-                      onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)}
-                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                    />
+                    <input type="checkbox" checked={owner.is_bp_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={owner.is_upfit_employee || false}
-                      onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)}
-                      className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                    />
+                    <input type="checkbox" checked={owner.is_upfit_employee || false} onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={owner.is_third_party_vendor || false}
-                      onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)}
-                      className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
-                    />
+                    <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />
                   </td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{owner.email || "—"}</td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{owner.phone || "—"}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                    <EditableCell value={owner.email || ""} onSave={(v) => updateOwnerField(owner.id, "email", v)} placeholder="Add email" type="email" />
+                  </td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                    <EditableCell value={owner.phone || ""} onSave={(v) => updateOwnerField(owner.id, "phone", v)} placeholder="Add phone" type="tel" />
+                  </td>
+                  <td className="px-4 py-2 relative">
                     <button
-                      onClick={() => deleteOwner(owner.id)}
-                      className="text-red-400 hover:text-red-600 text-xs"
+                      onClick={() => setOwnerMenuOpen(ownerMenuOpen === owner.id ? null : owner.id)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-2 py-1 text-xs"
                     >
-                      Delete
+                      ⋮
                     </button>
+                    {ownerMenuOpen === owner.id && (
+                      <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[9999] min-w-[160px] py-1">
+                        <button
+                          onClick={() => startEdit(owner)}
+                          className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        >
+                          ✏️ Edit All Fields
+                        </button>
+                        <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                        <button
+                          onClick={() => deleteOwner(owner.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                        >
+                          🗑️ Delete Owner
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
