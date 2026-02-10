@@ -20,6 +20,8 @@ type Project = {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  visibility?: string;
+  created_by?: string;
   created_at: string;
 };
 
@@ -862,6 +864,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               <th className="px-4 py-2 font-semibold">Project</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">Type</th>
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
@@ -872,11 +875,19 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {projects.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
             ) : (
               projects.map((project) => (
                 <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                   <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">{project.name}</td>
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      onClick={() => toggleProjectFlag(project.id, "visibility", project.visibility === "personal" ? "shared" : "personal")}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${project.visibility === "personal" ? "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" : "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"}`}
+                    >
+                      {project.visibility === "personal" ? "🔒 Personal" : "👥 Shared"}
+                    </button>
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <input type="checkbox" checked={project.is_up || false} onChange={(e) => toggleProjectFlag(project.id, "is_up", e.target.checked)} className="rounded border-slate-300 text-blue-600 cursor-pointer" />
                   </td>
