@@ -28,6 +28,18 @@ const TAGLINES = [
   "Sicko Mode",
   "Risk It For The Biscuit",
   "Hold My Beer",
+  // Tesla / SpaceX
+  "Ludicrous Mode",
+  "Mars Or Bust",
+  "Full Send Full Throttle",
+  "Launch Sequence Initiated",
+  "Pedal Down No Regen",
+  // JDM
+  "VTEC Just Kicked In",
+  "Boost Is Life",
+  "Kansei Dorifto",
+  "Redline Everything",
+  "Touge Mode",
 ];
 
 function getTodaysTagline(): string {
