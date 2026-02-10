@@ -36,29 +36,10 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-            Task Ops
-          </div>
-          <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-            Focused follow-ups for the teams moving vehicles forward.
-          </h1>
-          <p className="text-base text-white/70 sm:text-lg">
-            Sign in to track blockers, ownership, and the next move across every
-            UP.FIT project.
-          </p>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
-            <div className="font-semibold text-white">What you can do</div>
-            <ul className="mt-3 space-y-2">
-              <li>• Assign owners and follow-up cadence to every task.</li>
-              <li>• Track movement with live note updates.</li>
-              <li>• Request closes or approve them instantly.</li>
-            </ul>
-          </div>
-        </div>
+      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-8">
+        <p className="text-lg font-medium text-white/60 italic">If You Know You Know</p>
 
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-8 shadow-2xl backdrop-blur">
+        <div className="w-full rounded-3xl border border-white/10 bg-white/10 p-8 shadow-2xl backdrop-blur">
           <div className="mb-6">
             <h2 className="text-2xl font-semibold text-white">Welcome back</h2>
             <p className="text-sm text-white/70">Log in to your workspace.</p>
