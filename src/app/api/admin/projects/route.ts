@@ -10,7 +10,9 @@ async function checkAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  if (!(await checkAdmin(supabase))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // All authenticated users can create projects
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { name, description, is_up, is_bp, is_upfit } = await request.json();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
