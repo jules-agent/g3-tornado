@@ -195,12 +195,6 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                 type="text"
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleNoteSubmit();
-                  }
-                }}
                 placeholder="Submit an update note..."
                 disabled={saving}
                 className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
@@ -211,7 +205,7 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                   disabled={saving}
                   className="px-3 py-2 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition flex-shrink-0"
                 >
-                  {saving ? "..." : "↵"}
+                  {saving ? "..." : "Submit"}
                 </button>
               )}
             </div>
@@ -231,7 +225,7 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                 onClick={() => setExpanded("cadence")}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
-                📅 Change Cadence
+                📅 Change Cadence ({cadenceDays}d)
               </button>
               <button
                 onClick={() => setExpanded("blocker")}
@@ -255,19 +249,33 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
           {expanded === "cadence" && (
             <div className="flex items-center gap-2 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
               <span className="text-xs text-slate-500 dark:text-slate-400">Cadence:</span>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={cadenceDays}
-                onChange={(e) => setCadenceDays(parseInt(e.target.value) || 1)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCadenceSave();
-                  if (e.key === "Escape") setExpanded("options");
-                }}
-                className="w-16 px-2 py-1 text-sm text-center border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                autoFocus
-              />
+              <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setCadenceDays((d) => Math.max(1, d - 1))}
+                  className="px-2.5 py-1 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={cadenceDays}
+                  onChange={(e) => setCadenceDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCadenceSave();
+                    if (e.key === "Escape") setExpanded("options");
+                  }}
+                  className="w-12 px-1 py-1 text-sm text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setCadenceDays((d) => Math.min(365, d + 1))}
+                  className="px-2.5 py-1 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                >
+                  +
+                </button>
+              </div>
               <span className="text-xs text-slate-500 dark:text-slate-400">days</span>
               <button
                 onClick={handleCadenceSave}
