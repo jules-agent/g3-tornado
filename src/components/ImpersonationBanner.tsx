@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type TargetUser = {
   id: string;
@@ -13,62 +13,38 @@ export function ImpersonationBanner() {
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Check URL param for impersonation token
-    const impersonateToken = searchParams.get("impersonate");
-    if (impersonateToken) {
-      localStorage.setItem("impersonation_token", impersonateToken);
-      // Remove the param from URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete("impersonate");
-      window.history.replaceState({}, "", url.toString());
-    }
-
-    // Check localStorage for impersonation data
-    const token = localStorage.getItem("impersonation_token");
+    // Check localStorage for impersonation data (set by AdminTabs when starting)
     const target = localStorage.getItem("impersonation_target");
-    
-    if (token && target) {
+    if (target) {
       try {
         setTargetUser(JSON.parse(target));
         setIsImpersonating(true);
       } catch {
-        // Invalid data, clear it
-        localStorage.removeItem("impersonation_token");
         localStorage.removeItem("impersonation_target");
       }
     }
-  }, [searchParams]);
+  }, []);
 
   const endImpersonation = async () => {
-    const token = localStorage.getItem("impersonation_token");
-    
     try {
-      await fetch(`/api/admin/impersonate?token=${token}`, {
-        method: "DELETE",
-      });
+      await fetch("/api/admin/impersonate/stop", { method: "POST" });
     } catch {
-      // Ignore errors
+      // Ignore
     }
 
-    // Clear local storage
     localStorage.removeItem("impersonation_token");
     localStorage.removeItem("impersonation_target");
-    
-    // Refresh the page
     setIsImpersonating(false);
     setTargetUser(null);
     router.refresh();
   };
 
-  if (!isImpersonating || !targetUser) {
-    return null;
-  }
+  if (!isImpersonating || !targetUser) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-purple-600 text-white px-4 py-2 flex items-center justify-between text-sm">
+    <div className="fixed top-0 left-0 right-0 z-[9999] bg-purple-600 text-white px-4 py-2 flex items-center justify-between text-sm shadow-lg">
       <div className="flex items-center gap-2">
         <span className="text-purple-200">👤 Viewing as:</span>
         <span className="font-semibold">{targetUser.name || targetUser.email}</span>

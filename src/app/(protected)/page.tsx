@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUser } from "@/lib/impersonation";
 import { ProjectFilter } from "@/components/ProjectFilter";
 import { SearchBox } from "@/components/SearchBox";
 import { TaskTable } from "@/components/TaskTable";
@@ -44,20 +45,14 @@ export default async function Home({
   const searchQuery = params.q || "";
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const effectiveUser = await getEffectiveUser();
+  if (!effectiveUser) return null;
 
-  const isAdmin = user?.email === "ben@unpluggedperformance.com";
+  const isAdmin = effectiveUser.role === "admin" || effectiveUser.email === "ben@unpluggedperformance.com";
+  // When impersonating, use the target user's role — NOT admin
+  const viewAsAdmin = effectiveUser.isImpersonating ? false : isAdmin;
 
-  // Get user's linked owner_id and team flags
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("owner_id")
-    .eq("id", user?.id ?? "")
-    .maybeSingle();
-  
-  const userOwnerId = profile?.owner_id ?? null;
+  const userOwnerId = effectiveUser.ownerId ?? null;
 
   // Get owner flags for project filtering
   let userOwnerFlags: { is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_third_party_vendor?: boolean } | null = null;
@@ -124,7 +119,7 @@ export default async function Home({
 
   // Get voided user owner_ids to hide their tasks from non-admins
   let voidedOwnerIds: Set<string> = new Set();
-  if (!isAdmin) {
+  if (!viewAsAdmin) {
     const { data: voidedProfiles } = await supabase
       .from("profiles")
       .select("owner_id")
@@ -139,11 +134,11 @@ export default async function Home({
   const allProjects = (projects as ProjectWithFlags[] ?? []);
   // Build set of project IDs created by this user (for personal/one-on-one visibility)
   const myProjectIds = new Set(
-    allProjects.filter((p: ProjectWithFlags) => p.created_by === user?.id).map(p => p.id)
+    allProjects.filter((p: ProjectWithFlags) => p.created_by === effectiveUser.effectiveUserId).map(p => p.id)
   );
 
   // Non-admin users see tasks they own OR tasks in projects they created
-  const visibleTasks = isAdmin
+  const visibleTasks = viewAsAdmin
     ? tasksWithDays
     : tasksWithDays.filter((t) => {
         // Show if user is an owner on the task
@@ -159,14 +154,14 @@ export default async function Home({
         if (t.project_id && myProjectIds.has(t.project_id)) return true;
         return false;
       });
-  const visibleProjects = isAdmin ? allProjects : allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
+  const visibleProjects = viewAsAdmin ? allProjects : allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
     // Personal projects: only visible to creator
     if (p.visibility === "personal") {
-      return p.created_by === user?.id;
+      return p.created_by === effectiveUser.effectiveUserId;
     }
     // One-on-one: visible to creator and the shared owner
     if (p.visibility === "one_on_one") {
-      return p.created_by === user?.id || (userOwnerId && p.one_on_one_owner_id === userOwnerId);
+      return p.created_by === effectiveUser.effectiveUserId || (userOwnerId && p.one_on_one_owner_id === userOwnerId);
     }
     // Shared projects: filter by team
     if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
@@ -307,7 +302,7 @@ export default async function Home({
           currentFilter={filter} 
           currentProject={projectFilter} 
         />
-        {isAdmin && (
+        {viewAsAdmin && (
           <Link
             href="/admin"
             className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition"

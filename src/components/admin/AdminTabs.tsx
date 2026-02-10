@@ -237,7 +237,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
   const startImpersonation = async (userId: string) => {
     setImpersonating(userId);
     try {
-      const res = await fetch("/api/admin/impersonate", {
+      const res = await fetch("/api/admin/impersonate/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetUserId: userId }),
@@ -245,11 +245,12 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
       const data = await res.json();
       
       if (res.ok) {
-        // Store impersonation token and redirect
+        // Store target info in localStorage for the banner
         localStorage.setItem("impersonation_token", data.token);
         localStorage.setItem("impersonation_target", JSON.stringify(data.targetUser));
-        // Open in new tab with impersonation active
-        window.open(`/?impersonate=${data.token}`, "_blank");
+        // Cookie is set server-side by the API — just refresh to see as target user
+        router.refresh();
+        router.push("/");
       } else {
         alert(data.error || "Failed to start impersonation");
       }
