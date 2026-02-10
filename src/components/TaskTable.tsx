@@ -8,6 +8,7 @@ import { GateEditor } from "./GateEditor";
 import { OwnerEditor } from "./OwnerEditor";
 import { capitalizeFirst } from "@/lib/utils";
 import { CloseTaskGateCheck } from "./CloseTaskGateCheck";
+import { TaskCard } from "./TaskCard";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -904,7 +905,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
       {/* Toolbar - compact */}
       <div className="sticky top-[40px] z-30 bg-white dark:bg-slate-900 flex flex-wrap justify-between items-center gap-1 mb-1 py-0.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+          <span className="hidden md:inline text-[10px] text-slate-400 dark:text-slate-500">
             💡 Cmd+click cells (• columns) to bulk edit
           </span>
           {top5Projects.length > 0 && (
@@ -922,7 +923,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           )}
         </div>
         
-        <div className="flex items-center gap-1.5">
+        <div className="hidden md:flex items-center gap-1.5">
           {/* Profile selector */}
           <div className="relative" ref={profileMenuRef}>
             <button
@@ -1024,14 +1025,36 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
         </div>
       </div>
 
-      {/* Table */}
-      <div 
-        ref={tableRef}
-        className="card"
-        style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
-      >
-        <div>
-          <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
+      {/* Mobile Card View */}
+      {isMobile && (
+        <div className="space-y-3">
+          {tasks.length > 0 ? (
+            tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                canDelete={canDeleteTask(task)}
+                isAdmin={currentIsAdmin}
+                onRefresh={() => router.refresh()}
+              />
+            ))
+          ) : (
+            <div className="card py-12 text-center text-slate-400">
+              No tasks match your filters
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Desktop Table View */}
+      {!isMobile && (
+        <div 
+          ref={tableRef}
+          className="card"
+          style={scale !== 100 ? { transformOrigin: 'top left', transform: `scale(${scale / 100})`, width: `${100 / (scale / 100)}%` } : undefined}
+        >
+          <div>
+            <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: columns.reduce((sum, c) => sum + c.width, 0) + 36 }}>
             <colgroup>
               <col style={{ width: 36 }} /> {/* Actions column */}
               {columns.map((col) => <col key={col.id} style={{ width: col.width }} />)}
@@ -1386,7 +1409,8 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
+      )}
 
       <div className="text-[11px] text-slate-500 dark:text-slate-400 text-right mt-1">
         {tasks.filter((t) => t.status !== "closed").length} of {total}

@@ -36,6 +36,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [overdueCount, setOverdueCount] = useState<number | null>(null);
   const [inboxTotal, setInboxTotal] = useState(0);
   const [inboxUnread, setInboxUnread] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Check for overdue tasks on mount — auto-open Daily Actions if any exist
   useEffect(() => {
@@ -133,50 +134,41 @@ export default function AppHeader({ user }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-md">
       <div className="flex items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
+        {/* Hamburger Menu Button - Mobile Only */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+
         {/* Logo & Brand */}
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/g3-logo-v2.png"
-                alt="G3-Tornado"
-                className="w-full h-full object-contain"
-              />
+        <Link href="/" className="flex items-center gap-2 md:gap-3 group">
+          <div className="relative w-8 h-8 md:w-10 md:h-10 transition-transform group-hover:scale-105">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/g3-logo-v2.png"
+              alt="G3-Tornado"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="hidden sm:block">
+            <div className="text-lg md:text-xl brand-title">
+              G3-Tornado
             </div>
-            <div>
-              <div className="text-xl brand-title">
-                G3-Tornado
-              </div>
-              <DailyTagline />
-            </div>
-          </Link>
+            <DailyTagline />
+          </div>
+        </Link>
 
-          {/* Navigation - currently empty, reserved for future links */}
-          {navItems.length > 0 && (
-            <nav className="hidden items-center gap-1 md:flex">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      isActive
-                        ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/25"
-                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
-        </div>
-
-        {/* Right side */}
-        <div className="flex items-center gap-4">
+        {/* Desktop: Right side actions */}
+        <div className="hidden md:flex items-center gap-4">
           <button
             onClick={() => setShowProjectHealth(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition"
@@ -298,7 +290,192 @@ export default function AppHeader({ user }: AppHeaderProps) {
             </button>
           </div>
         </div>
+
+        {/* Mobile: Quick actions */}
+        <div className="flex md:hidden items-center gap-2">
+          {overdueCount !== null && overdueCount > 0 && (
+            <button
+              onClick={() => setShowDailyActions(true)}
+              className="relative p-2 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition animate-pulse-urgent"
+              title={`${overdueCount} overdue tasks`}
+            >
+              <span className="text-lg">📋</span>
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {overdueCount}
+              </span>
+            </button>
+          )}
+          <Link href="/profile" className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-sm font-bold text-white hover:opacity-80 transition">
+            {initials}
+          </Link>
+        </div>
       </div>
+
+      {/* Mobile Menu Slide-out */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          
+          {/* Menu Panel */}
+          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 md:hidden overflow-y-auto shadow-2xl">
+            <div className="p-6 space-y-6">
+              {/* User Info */}
+              <div className="flex items-center gap-3 pb-6 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-base font-bold text-white">
+                  {initials}
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-900 dark:text-white">{displayName}</div>
+                  <div className="text-xs font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
+                    {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="space-y-2">
+                <Link
+                  href="/tasks/new"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-semibold shadow-sm active:scale-95 transition"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>New Task</span>
+                </Link>
+                <button
+                  onClick={() => { setShowParkingLot(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 text-white font-semibold shadow-sm active:scale-95 transition"
+                >
+                  <span className="text-xl">🅿️</span>
+                  <span>New Parking</span>
+                </button>
+              </div>
+
+              {/* Main Actions */}
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-4 mb-2">
+                  Actions
+                </div>
+                {overdueCount !== null && overdueCount > 0 && (
+                  <button
+                    onClick={() => { setShowDailyActions(true); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-medium active:bg-red-100 dark:active:bg-red-900/30 transition"
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="text-xl">📋</span>
+                      <span>Today's Actions</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {overdueCount}
+                    </span>
+                  </button>
+                )}
+                {overdueCount !== null && overdueCount > 0 && (
+                  <button
+                    onClick={() => { setShowFocusMode(true); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  >
+                    <span className="text-xl">🎯</span>
+                    <span>Focus Mode</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowProjectHealth(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">📊</span>
+                  <span>Project Health</span>
+                </button>
+                <button
+                  onClick={() => { setShowScorecard(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">🏆</span>
+                  <span>Scorecard</span>
+                </button>
+                {inboxTotal > 0 && (
+                  <Link
+                    href="/inbox"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium transition ${
+                      inboxUnread > 0
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="text-xl">{inboxUnread > 0 ? "📬" : "📭"}</span>
+                      <span>Inbox</span>
+                    </span>
+                    {inboxUnread > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold">
+                        {inboxUnread}
+                      </span>
+                    )}
+                  </Link>
+                )}
+                <button
+                  onClick={() => { setShowBugReport(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">💬</span>
+                  <span>Feedback</span>
+                </button>
+                <button
+                  onClick={() => { setShowProposeTemplate(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">📋</span>
+                  <span>Propose Template</span>
+                </button>
+                <a
+                  href="/tutorial"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">📖</span>
+                  <span>Tutorial</span>
+                </a>
+                <Link
+                  href="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                >
+                  <span className="text-xl">👤</span>
+                  <span>My Profile</span>
+                </Link>
+              </div>
+
+              {/* Theme Toggle */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Theme</span>
+                  <ThemeToggle />
+                </div>
+              </div>
+
+              {/* Sign Out */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="w-full px-4 py-3 rounded-lg text-center font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
+                >
+                  {isSigningOut ? "Signing out..." : "Sign Out"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       <ParkingLot isOpen={showParkingLot} onClose={() => setShowParkingLot(false)} />
       <FocusModeStandalone isOpen={showFocusMode} onClose={() => setShowFocusMode(false)} />
       <DailyActionList isOpen={showDailyActions} onClose={() => setShowDailyActions(false)} />
