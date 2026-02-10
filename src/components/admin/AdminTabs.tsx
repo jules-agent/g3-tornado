@@ -250,9 +250,8 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
         // Store target info in localStorage for the banner
         localStorage.setItem("impersonation_token", data.token);
         localStorage.setItem("impersonation_target", JSON.stringify(data.targetUser));
-        // Cookie is set server-side by the API — just refresh to see as target user
-        router.refresh();
-        router.push("/");
+        // Cookie is set server-side by the API — hard navigate to force full page reload
+        window.location.href = "/";
       } else {
         alert(data.error || "Failed to start impersonation");
       }

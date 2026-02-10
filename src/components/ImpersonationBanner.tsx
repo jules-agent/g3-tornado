@@ -36,9 +36,8 @@ export function ImpersonationBanner() {
 
     localStorage.removeItem("impersonation_token");
     localStorage.removeItem("impersonation_target");
-    setIsImpersonating(false);
-    setTargetUser(null);
-    router.refresh();
+    // Hard navigate to force full page reload with admin context
+    window.location.href = "/admin";
   };
 
   if (!isImpersonating || !targetUser) return null;
