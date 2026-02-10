@@ -17,6 +17,13 @@ export async function POST(request: Request) {
   const { name, description, is_up, is_bp, is_upfit, visibility, one_on_one_owner_id } = await request.json();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
+  // Ensure profile exists (foreign key constraint)
+  await supabase.from("profiles").upsert({
+    id: user.id,
+    email: user.email || "",
+    full_name: user.user_metadata?.full_name || user.email || "",
+  }, { onConflict: "id", ignoreDuplicates: true });
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
