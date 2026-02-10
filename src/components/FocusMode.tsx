@@ -22,7 +22,7 @@ type Task = {
   task_number: string | null;
   projects: { id: string; name: string } | null;
   ownerNames: string;
-  isStale: boolean;
+  isOverdue: boolean;
   isMyTask: boolean;
   gates: Gate[] | null;
   next_step: string | null;
@@ -47,17 +47,17 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const [noteValue, setNoteValue] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Get stale tasks sorted by priority, grouped by gate person
+  // Get overdue tasks sorted by priority, grouped by gate person
   const focusedTasks = useMemo(() => {
-    const staleTasks = tasks
-      .filter((t) => t.isStale && !completedIds.has(t.id))
+    const overdueTasks = tasks
+      .filter((t) => t.isOverdue && !completedIds.has(t.id))
       .sort((a, b) => b.daysSinceMovement - a.daysSinceMovement);
 
-    if (staleTasks.length <= 3) return staleTasks.slice(0, 3);
+    if (overdueTasks.length <= 3) return overdueTasks.slice(0, 3);
 
     // Try to group by common current + next gate person
     const grouped: Map<string, Task[]> = new Map();
-    for (const t of staleTasks) {
+    for (const t of overdueTasks) {
       const currentGate = getCurrentGatePerson(t.gates) || "none";
       const nextGate = getNextGatePerson(t.gates) || "none";
       const key = `${currentGate}|${nextGate}`;
@@ -72,7 +72,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
 
     // Fall back to same current gate
     const byCurrentGate: Map<string, Task[]> = new Map();
-    for (const t of staleTasks) {
+    for (const t of overdueTasks) {
       const currentGate = getCurrentGatePerson(t.gates) || "none";
       if (!byCurrentGate.has(currentGate)) byCurrentGate.set(currentGate, []);
       byCurrentGate.get(currentGate)!.push(t);
@@ -83,7 +83,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     }
 
     // Fall back to top 3 most overdue
-    return staleTasks.slice(0, 3);
+    return overdueTasks.slice(0, 3);
   }, [tasks, completedIds]);
 
   const addNote = useCallback(async (taskId: string) => {
@@ -113,7 +113,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
 
   if (!isOpen) return null;
 
-  const staleCount = tasks.filter((t) => t.isStale).length;
+  const overdueCount = tasks.filter((t) => t.isOverdue).length;
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950">
@@ -124,7 +124,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
           <div>
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Focus Mode</h2>
             <p className="text-xs text-slate-400">
-              {staleCount} stale · {completedIds.size} updated
+              {overdueCount} overdue · {completedIds.size} updated
             </p>
           </div>
         </div>
@@ -142,7 +142,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
           <div className="text-center">
             <div className="text-5xl mb-4">🎉</div>
             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">All caught up!</h3>
-            <p className="text-sm text-slate-400 mt-1">No stale tasks need attention right now.</p>
+            <p className="text-sm text-slate-400 mt-1">No overdue tasks need attention right now.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl w-full">
@@ -276,14 +276,14 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const processed = (allTasks || []).map((task: any) => {
       const daysSinceMovement = Math.floor((Date.now() - new Date(task.last_movement_at).getTime()) / 86400000);
-      const isStale = daysSinceMovement > task.fu_cadence_days;
+      const isOverdue = daysSinceMovement > task.fu_cadence_days;
       const taskOwners = task.task_owners || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ownerNames = taskOwners.map((to: any) => to.owners?.name).filter(Boolean).join(", ");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ownerIds = taskOwners.map((to: any) => to.owner_id).filter(Boolean);
       const isMyTask = userOwnerId ? ownerIds.includes(userOwnerId) : false;
-      return { ...task, daysSinceMovement, daysSinceCreated: 0, isStale, ownerNames, ownerIds, isMyTask } as Task;
+      return { ...task, daysSinceMovement, daysSinceCreated: 0, isOverdue, ownerNames, ownerIds, isMyTask } as Task;
     });
 
     // Non-admin without owner_id sees nothing (not everything)
