@@ -31,6 +31,7 @@ type Task = {
   project_id: string;
   gates: Gate[] | null;
   next_step: string | null;
+  estimated_hours: number | null;
   projects: { id: string; name: string } | null;
   task_owners: { owner_id: string; owners: { id: string; name: string } | null }[] | null;
   task_notes: TaskNote[] | null;
@@ -82,6 +83,7 @@ export default async function Home({
         project_id,
         gates,
         next_step,
+        estimated_hours,
         projects (id, name),
         task_owners (owner_id, owners (id, name)),
         task_notes (id, content, created_at, profiles (full_name, email))

@@ -42,6 +42,7 @@ type TaskFormProps = {
     description: string;
     project_id: string;
     fu_cadence_days: number;
+    estimated_hours?: number | null;
     status?: string;
     is_blocked?: boolean;
     blocker_description?: string | null;
@@ -79,6 +80,9 @@ export default function TaskForm({
   const [newProjectIsUpfit, setNewProjectIsUpfit] = useState(false);
   const [fuCadenceDays, setFuCadenceDays] = useState(
     initialValues?.fu_cadence_days ?? 3
+  );
+  const [estimatedHours, setEstimatedHours] = useState<string>(
+    initialValues?.estimated_hours ? String(initialValues.estimated_hours) : ""
   );
   const [status, setStatus] = useState(initialValues?.status ?? "open");
   const [taskNumber, setTaskNumber] = useState(initialValues?.task_number ?? "");
@@ -397,6 +401,7 @@ export default function TaskForm({
           description,
           project_id: projectId,
           fu_cadence_days: fuCadenceDays,
+          estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
           status: "open",
           task_number: nextNumber,
           is_blocked: hasGate,
@@ -458,6 +463,7 @@ export default function TaskForm({
         description,
         project_id: projectId,
         fu_cadence_days: fuCadenceDays,
+        estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
         status,
         task_number: taskNumber || null,
         is_blocked: isBlocked,
@@ -776,18 +782,34 @@ export default function TaskForm({
           );
         })()}
 
-        {/* Cadence */}
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Follow-up cadence (days)
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={fuCadenceDays}
-            onChange={(event) => setFuCadenceDays(Number(event.target.value))}
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-          />
+        {/* Cadence + Task Length */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Follow-up cadence (days)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={fuCadenceDays}
+              onChange={(event) => setFuCadenceDays(Number(event.target.value))}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              ⏱ Task length (hours)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={0.25}
+              value={estimatedHours}
+              onChange={(event) => setEstimatedHours(event.target.value)}
+              placeholder="Optional"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Gate Sequence */}
@@ -983,6 +1005,20 @@ export default function TaskForm({
                 min={1}
                 value={fuCadenceDays}
                 onChange={(event) => setFuCadenceDays(Number(event.target.value))}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                ⏱ Task length (hours)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={0.25}
+                value={estimatedHours}
+                onChange={(event) => setEstimatedHours(event.target.value)}
+                placeholder="Optional"
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
               />
             </div>

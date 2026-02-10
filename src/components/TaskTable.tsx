@@ -27,6 +27,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
   currentGate: "Current gate: Owner / Task to complete",
   nextGate: "Next gate: Owner / Task to complete",
   nextStep: "Next action to be taken",
+  estimatedHours: "Estimated task length in hours",
   notes: "Most recent note - hover 📝 for full history",
   cadence: "Follow-up frequency in days",
   aging: "Days since last update / Days since task created",
@@ -44,6 +45,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "nextStep", label: "Next Step", width: 150, minWidth: 100, align: "left", editable: true, defaultVisible: true },
   { id: "notes", label: "Update", width: 200, minWidth: 150, align: "left", defaultVisible: true },
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
+  { id: "estimatedHours", label: "⏱", width: 50, minWidth: 40, align: "center", editable: false, defaultVisible: true },
   { id: "aging", label: "Aging", width: 70, minWidth: 60, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
   { id: "owner", label: "Contact", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: false },
@@ -84,6 +86,7 @@ type Task = {
   last_movement_at: string;
   created_at: string;
   gates: Gate[] | null;
+  estimated_hours: number | null;
   next_step: string | null;
   notes: TaskNote[];
 };
@@ -1479,6 +1482,9 @@ function renderCell(columnId: string, task: Task, projectCreators: Record<string
     case "notes":
       // Handled inline in table body for editing capability
       return null;
+    case "estimatedHours":
+      if (!task.estimated_hours) return <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>;
+      return <span className="text-slate-700 dark:text-slate-400 text-xs font-medium" title={`${task.estimated_hours}h estimated`}>⏱ {task.estimated_hours}h</span>;
     case "cadence":
       return <span className="text-slate-700 dark:text-slate-400 text-xs font-medium">{task.fu_cadence_days}d</span>;
     case "aging": {
