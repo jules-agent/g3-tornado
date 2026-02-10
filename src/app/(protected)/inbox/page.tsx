@@ -161,6 +161,55 @@ export default function InboxPage() {
     setReadIds(new Set(getReadIds()));
   };
 
+  // Admin actions
+  const handleMarkComplete = async (id: string) => {
+    const supabase = createClient();
+    await supabase.from("bug_reports").update({ status: "fixed", resolution: "Marked complete by admin", fixed_at: new Date().toISOString() }).eq("id", id);
+    markAsRead([id]);
+    fetchReports();
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm("Reject and remove this report?")) return;
+    const supabase = createClient();
+    await supabase.from("bug_reports").delete().eq("id", id);
+    fetchReports();
+  };
+
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [sendingResponse, setSendingResponse] = useState(false);
+
+  const handleSendResponse = async (reportId: string) => {
+    if (!responseText.trim()) return;
+    setSendingResponse(true);
+    // Save response as resolution on the report
+    const supabase = createClient();
+    const report = reports.find(r => r.id === reportId);
+    await supabase.from("bug_reports").update({
+      resolution: responseText.trim(),
+      status: "reviewing",
+    }).eq("id", reportId);
+    
+    // Send to Jules (iMessage) for relay to Ben
+    await fetch("/api/admin/respond-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reportId,
+        reportDescription: report?.description,
+        reporterEmail: report?.reported_by_email,
+        response: responseText.trim(),
+      }),
+    }).catch(() => {}); // Best effort
+
+    markAsRead([reportId]);
+    setRespondingTo(null);
+    setResponseText("");
+    setSendingResponse(false);
+    fetchReports();
+  };
+
   const openReports = reports.filter(r => !CLOSED_STATUSES.includes(r.status));
   const closedReports = reports.filter(r => CLOSED_STATUSES.includes(r.status));
   const unreadCount = reports.filter(r => !readIds.has(r.id)).length;
@@ -246,6 +295,68 @@ export default function InboxPage() {
                           {report.type === "bug" && <StatusTimeline status={report.status} />}
                           {report.status === "deployed" && report.reported_by === userId && (
                             <VerifyButton reportId={report.id} onVerified={fetchReports} />
+                          )}
+
+                          {/* Admin Actions */}
+                          {isAdmin && (
+                            <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                              {respondingTo === report.id ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={responseText}
+                                    onChange={(e) => setResponseText(e.target.value)}
+                                    placeholder="Type your response..."
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleSendResponse(report.id)}
+                                      disabled={sendingResponse || !responseText.trim()}
+                                      className="rounded-lg bg-teal-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-40 transition"
+                                    >
+                                      {sendingResponse ? "Sending..." : "Send Response"}
+                                    </button>
+                                    <button
+                                      onClick={() => { setRespondingTo(null); setResponseText(""); }}
+                                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleMarkComplete(report.id); }}
+                                    className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                                  >
+                                    ✅ Complete
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleReject(report.id); }}
+                                    className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-2.5 py-1 text-[11px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
+                                  >
+                                    ❌ Reject
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setRespondingTo(report.id); }}
+                                    className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
+                                  >
+                                    💬 Respond
+                                  </button>
+                                  {!readIds.has(report.id) && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarkRead(report.id); }}
+                                      className="rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition"
+                                    >
+                                      👁 Mark Read
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                         {report.screenshot_url && (
