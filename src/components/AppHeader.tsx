@@ -10,6 +10,7 @@ import { FocusModeStandalone } from "./FocusMode";
 import { DailyActionList } from "./DailyActionList";
 import { Scorecard } from "./Scorecard";
 import { ProjectHealth } from "./ProjectHealth";
+import { BugReport } from "./BugReport";
 
 type AppHeaderProps = {
   user: {
@@ -28,6 +29,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [showDailyActions, setShowDailyActions] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
   const [showProjectHealth, setShowProjectHealth] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
   const initials = displayName
@@ -132,6 +134,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             🎯
           </button>
+          <button
+            onClick={() => setShowBugReport(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-300 transition"
+            title="Report a Bug"
+          >
+            🐛
+          </button>
           <ThemeToggle />
           
           <button
@@ -179,6 +188,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       <DailyActionList isOpen={showDailyActions} onClose={() => setShowDailyActions(false)} />
       <Scorecard isOpen={showScorecard} onClose={() => setShowScorecard(false)} />
       <ProjectHealth isOpen={showProjectHealth} onClose={() => setShowProjectHealth(false)} />
+      <BugReport isOpen={showBugReport} onClose={() => setShowBugReport(false)} />
     </header>
   );
 }

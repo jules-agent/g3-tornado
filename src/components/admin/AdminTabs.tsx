@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -83,6 +83,7 @@ export function AdminTabs({
     { key: "projects", label: "Projects", count: projects.length, href: "/admin?tab=projects" },
     { key: "owners", label: "Owners", count: owners.length, href: "/admin?tab=owners" },
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
+    { key: "bugs", label: "Bugs", count: undefined, href: "/admin?tab=bugs" },
   ];
 
   return (
@@ -99,7 +100,7 @@ export function AdminTabs({
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
             }`}
           >
-            {tab.label} <span className={activeTab === tab.key ? "text-teal-100" : "text-slate-400"}>{tab.count}</span>
+            {tab.label} {tab.count !== undefined && <span className={activeTab === tab.key ? "text-teal-100" : "text-slate-400"}>{tab.count}</span>}
           </Link>
         ))}
       </div>
@@ -110,6 +111,7 @@ export function AdminTabs({
         {activeTab === "projects" && <ProjectsTab projects={projects} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
+        {activeTab === "bugs" && <BugsTab />}
       </div>
     </div>
   );
@@ -1498,6 +1500,139 @@ function ActivityLogTab({ logs }: { logs: ActivityLog[] }) {
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+type BugReport = {
+  id: string;
+  description: string;
+  screenshot_url: string | null;
+  reported_by_email: string | null;
+  status: string;
+  resolution: string | null;
+  fixed_at: string | null;
+  created_at: string;
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300",
+  investigating: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  fixed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+  escalated: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+  duplicate: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
+};
+
+function BugsTab() {
+  const [bugs, setBugs] = useState<BugReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBugs();
+  }, []);
+
+  const fetchBugs = async () => {
+    try {
+      const res = await fetch("/api/bugs");
+      if (res.ok) setBugs(await res.json());
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/bugs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setBugs(bugs.map((b) => (b.id === id ? updated : b)));
+      }
+    } catch { /* ignore */ }
+    setUpdatingId(null);
+  };
+
+  if (loading) {
+    return <div className="px-4 py-8 text-center text-slate-400 text-sm">Loading bug reports...</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+        <h2 className="font-semibold text-slate-900 dark:text-white">🐛 Bug Reports ({bugs.length})</h2>
+      </div>
+
+      {expandedImage && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70" onClick={() => setExpandedImage(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={expandedImage} alt="Screenshot" className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl" />
+        </div>
+      )}
+
+      <div className="overflow-visible">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <th className="px-4 py-2 font-semibold">Description</th>
+              <th className="px-4 py-2 font-semibold w-16">Image</th>
+              <th className="px-4 py-2 font-semibold w-40">Reporter</th>
+              <th className="px-4 py-2 font-semibold w-32">Status</th>
+              <th className="px-4 py-2 font-semibold w-24">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            {bugs.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">No bug reports yet. 🎉</td>
+              </tr>
+            ) : (
+              bugs.map((bug) => (
+                <tr key={bug.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-4 py-2 text-slate-900 dark:text-white max-w-xs">
+                    <div className="line-clamp-3">{bug.description}</div>
+                    {bug.resolution && (
+                      <div className="mt-1 text-[10px] text-slate-400 italic">Resolution: {bug.resolution}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {bug.screenshot_url ? (
+                      <button onClick={() => setExpandedImage(bug.screenshot_url)}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={bug.screenshot_url} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-600 hover:opacity-80 transition" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{bug.reported_by_email || "—"}</td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={bug.status}
+                      onChange={(e) => updateStatus(bug.id, e.target.value)}
+                      disabled={updatingId === bug.id}
+                      className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[bug.status] || STATUS_COLORS.pending}`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="investigating">Investigating</option>
+                      <option value="fixed">Fixed</option>
+                      <option value="escalated">Escalated</option>
+                      <option value="duplicate">Duplicate</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                    {new Date(bug.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
