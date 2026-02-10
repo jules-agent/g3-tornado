@@ -55,11 +55,20 @@ export async function POST(request: Request) {
 
   // Update profile with role and full_name
   if (newUser?.user) {
+    // Auto-link to owner if email matches
+    const { data: matchingOwner } = await serviceClient
+      .from("owners")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .limit(1)
+      .maybeSingle();
+
     await serviceClient
       .from("profiles")
       .update({
         role: role || "user",
         full_name: fullName || email.split("@")[0],
+        ...(matchingOwner ? { owner_id: matchingOwner.id } : {}),
       })
       .eq("id", newUser.user.id);
   }
