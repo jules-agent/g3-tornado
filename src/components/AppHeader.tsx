@@ -12,6 +12,7 @@ import { Scorecard } from "./Scorecard";
 import { ProjectHealth } from "./ProjectHealth";
 import { BugReport } from "./BugReport";
 import { ProposeTemplate } from "./ProposeTemplate";
+import { DailyTagline } from "./DailyTagline";
 
 type AppHeaderProps = {
   user: {
@@ -147,9 +148,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
               <div className="text-xl brand-title">
                 G3-Tornado
               </div>
-              <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                Task Management
-              </div>
+              <DailyTagline />
             </div>
           </Link>
 
