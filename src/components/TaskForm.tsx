@@ -61,7 +61,7 @@ export default function TaskForm({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [fuCadenceDays, setFuCadenceDays] = useState(
-    initialValues?.fu_cadence_days ?? 7
+    initialValues?.fu_cadence_days ?? 3
   );
   const [status, setStatus] = useState(initialValues?.status ?? "open");
   const [taskNumber, setTaskNumber] = useState(initialValues?.task_number ?? "");
@@ -70,12 +70,21 @@ export default function TaskForm({
     initialValues?.blocker_description ?? ""
   );
   const [ownerIds, setOwnerIds] = useState<string[]>(selectedOwnerIds);
+
+  // Gate/Blocker state (create mode)
+  const [hasGate, setHasGate] = useState(false);
+  const [gateOwnerId, setGateOwnerId] = useState<string>("");
+  const [gateName, setGateName] = useState("");
+  const [isAddingGateName, setIsAddingGateName] = useState(false);
+
+  // Edit mode owner state
   const [isAddingOwner, setIsAddingOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
   const [newOwnerEmail, setNewOwnerEmail] = useState("");
   const [newOwnerPhone, setNewOwnerPhone] = useState("");
   const [isCreatingOwner, setIsCreatingOwner] = useState(false);
   const [ownerError, setOwnerError] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasProjects = projects.length > 0;
@@ -85,31 +94,52 @@ export default function TaskForm({
     return new Map(owners.map((owner) => [owner.id, owner.name]));
   }, [owners]);
 
-  // Filter owners based on selected project's business units
+  // Auto-assign current user as owner on create
+  const [currentUserOwnerId, setCurrentUserOwnerId] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "create") return;
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("owner_id").eq("id", user.id).maybeSingle();
+        if (profile?.owner_id) {
+          setCurrentUserOwnerId(profile.owner_id);
+          setOwnerIds(prev => prev.includes(profile.owner_id) ? prev : [...prev, profile.owner_id]);
+        }
+      }
+    };
+    fetchUser();
+  }, [mode]);
+
+  // Staff and vendors for gate selector
+  const { employees: allStaff, vendors: allVendors } = useMemo(() => {
+    const staff = owners.filter(o => !o.is_third_party_vendor);
+    const vends = owners.filter(o => o.is_third_party_vendor);
+    return { employees: staff, vendors: vends };
+  }, [owners]);
+
+  // Filter owners based on selected project's business units (for edit mode)
   const { employees: filteredEmployees, vendors: filteredVendors } = useMemo(() => {
     const selectedProject = projects.find(p => p.id === projectId);
     const hasAnyFlag = selectedProject?.is_up || selectedProject?.is_bp || selectedProject?.is_upfit;
 
-    // If project has no company flags set, show all owners
     if (!hasAnyFlag) {
       const emps = owners.filter(o => !o.is_third_party_vendor);
       const vends = owners.filter(o => o.is_third_party_vendor);
       return { employees: emps, vendors: vends };
     }
 
-    // Filter: show employees of matching companies + all vendors
     const employees = owners.filter(o => {
       if (o.is_third_party_vendor) return false;
       if (selectedProject?.is_up && o.is_up_employee) return true;
       if (selectedProject?.is_bp && o.is_bp_employee) return true;
       if (selectedProject?.is_upfit && o.is_upfit_employee) return true;
-      // If owner has no flags at all, include them
       if (!o.is_up_employee && !o.is_bp_employee && !o.is_upfit_employee && !o.is_third_party_vendor) return true;
       return false;
     });
 
     const vendors = owners.filter(o => o.is_third_party_vendor);
-
     return { employees, vendors };
   }, [owners, projects, projectId]);
 
@@ -149,21 +179,17 @@ export default function TaskForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmedName }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setProjectError(data?.error ?? "Unable to create project.");
         setIsCreatingProject(false);
         return;
       }
-
       if (!data?.id) {
         setProjectError("Unable to create project.");
         setIsCreatingProject(false);
         return;
       }
-
       setProjectId(data.id);
       setNewProjectName("");
       setIsAddingProject(false);
@@ -191,21 +217,17 @@ export default function TaskForm({
           phone: newOwnerPhone.trim() || null,
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setOwnerError(data?.error ?? "Unable to create owner.");
         setIsCreatingOwner(false);
         return;
       }
-
       if (!data?.id) {
         setOwnerError("Unable to create owner.");
         setIsCreatingOwner(false);
         return;
       }
-
       setOwnerIds((prev) => (prev.includes(data.id) ? prev : [...prev, data.id]));
       setNewOwnerName("");
       setNewOwnerEmail("");
@@ -237,16 +259,38 @@ export default function TaskForm({
     }
 
     if (mode === "create") {
+      // Auto-generate task number
+      const { data: maxTask } = await supabase
+        .from("tasks")
+        .select("task_number")
+        .not("task_number", "is", null)
+        .order("task_number", { ascending: false })
+        .limit(1)
+        .single();
+
+      let nextNumber = "T-001";
+      if (maxTask?.task_number) {
+        const match = maxTask.task_number.match(/(\d+)$/);
+        if (match) {
+          nextNumber = `T-${String(parseInt(match[1], 10) + 1).padStart(3, "0")}`;
+        }
+      }
+
       const { data, error: insertError } = await supabase
         .from("tasks")
         .insert({
           description,
           project_id: projectId,
           fu_cadence_days: fuCadenceDays,
-          status,
-          task_number: taskNumber || null,
-          is_blocked: isBlocked,
-          blocker_description: isBlocked ? blockerDescription : null,
+          status: "open",
+          task_number: nextNumber,
+          is_blocked: hasGate,
+          blocker_description: hasGate && gateName ? gateName : null,
+          gates: hasGate && gateOwnerId ? [{
+            name: gateName || "Gate",
+            owner_name: ownerLookup.get(gateOwnerId) || "",
+            completed: false,
+          }] : null,
         })
         .select("id")
         .single();
@@ -257,11 +301,11 @@ export default function TaskForm({
         return;
       }
 
+      // Add current user as owner
       if (ownerIds.length > 0) {
         const { error: ownerError } = await supabase
           .from("task_owners")
           .insert(ownerIds.map((ownerId) => ({ task_id: data.id, owner_id: ownerId })));
-
         if (ownerError) {
           setError(ownerError.message);
           setIsSaving(false);
@@ -283,6 +327,7 @@ export default function TaskForm({
       return;
     }
 
+    // EDIT MODE
     if (!taskId) {
       setError("Missing task id for edit.");
       setIsSaving(false);
@@ -323,7 +368,6 @@ export default function TaskForm({
       const { error: ownerError } = await supabase
         .from("task_owners")
         .insert(ownerIds.map((ownerId) => ({ task_id: taskId, owner_id: ownerId })));
-
       if (ownerError) {
         setError(ownerError.message);
         setIsSaving(false);
@@ -335,6 +379,197 @@ export default function TaskForm({
     setIsSaving(false);
   };
 
+  // ========== CREATE MODE ==========
+  if (mode === "create") {
+    return (
+      <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
+        {/* Description */}
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Task description
+          </label>
+          <textarea
+            required
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            rows={3}
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+            placeholder="Describe the task, outcome, or blocker..."
+          />
+        </div>
+
+        {/* Project */}
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Project
+          </label>
+          <select
+            required
+            value={projectId}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === NEW_PROJECT_VALUE) {
+                setIsAddingProject(true);
+                setProjectId(NEW_PROJECT_VALUE);
+                setProjectError(null);
+                return;
+              }
+              setIsAddingProject(false);
+              setProjectId(value);
+              setProjectError(null);
+            }}
+            disabled={isCreatingProject}
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+          >
+            <option value="" disabled>
+              {hasProjects ? "Select a project" : "Add a project"}
+            </option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+            <option value={NEW_PROJECT_VALUE}>+ New Project</option>
+          </select>
+          {isAddingProject && (
+            <div className="mt-2 space-y-2">
+              <input
+                value={newProjectName}
+                onChange={(event) => setNewProjectName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") { event.preventDefault(); void createProject(); }
+                  if (event.key === "Escape") { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }
+                }}
+                onBlur={() => void createProject()}
+                placeholder="Project name"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                autoFocus
+              />
+              {projectError && <div className="text-xs text-rose-600">{projectError}</div>}
+              {isCreatingProject && <div className="text-xs text-slate-400">Creating project...</div>}
+            </div>
+          )}
+        </div>
+
+        {/* Cadence */}
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Follow-up cadence (days)
+          </label>
+          <input
+            type="number"
+            min={1}
+            value={fuCadenceDays}
+            onChange={(event) => setFuCadenceDays(Number(event.target.value))}
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+          />
+        </div>
+
+        {/* Gate/Blocker */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center gap-3">
+            <input
+              id="has-gate"
+              type="checkbox"
+              checked={hasGate}
+              onChange={(event) => setHasGate(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-slate-900"
+            />
+            <label htmlFor="has-gate" className="text-sm font-medium text-slate-700">
+              Is there a Gate / Blocker?
+            </label>
+          </div>
+          {hasGate && (
+            <div className="mt-4 space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Gate Selector
+              </label>
+              <select
+                value={gateOwnerId}
+                onChange={(e) => setGateOwnerId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+              >
+                <option value="">Select gate person...</option>
+                {allStaff.length > 0 && (
+                  <optgroup label="Staff">
+                    {allStaff.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {allVendors.length > 0 && (
+                  <optgroup label="3rd Party Vendors">
+                    {allVendors.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+
+              {/* Gate Name */}
+              {isAddingGateName ? (
+                <div>
+                  <input
+                    value={gateName}
+                    onChange={(e) => setGateName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setIsAddingGateName(false); setGateName(""); } }}
+                    placeholder="Gate name (e.g. Waiting for parts, Approval needed...)"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingGateName(true)}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                >
+                  + Add Gate Name
+                </button>
+              )}
+              {gateName && !isAddingGateName && (
+                <div className="text-xs text-slate-500">
+                  Gate: <span className="font-medium text-slate-700">{gateName}</span>
+                  <button type="button" onClick={() => { setIsAddingGateName(true); }} className="ml-2 text-slate-400 hover:text-slate-600">✏️</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!hasProjects && !isAddingProject && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            You need at least one project before creating tasks.
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSaving || !canSubmitProject}
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {isSaving ? "Creating..." : "Create task"}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // ========== EDIT MODE (unchanged) ==========
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -391,27 +626,15 @@ export default function TaskForm({
                     value={newProjectName}
                     onChange={(event) => setNewProjectName(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void createProject();
-                      }
-                      if (event.key === "Escape") {
-                        setIsAddingProject(false);
-                        setProjectId(projects[0]?.id ?? "");
-                      }
+                      if (event.key === "Enter") { event.preventDefault(); void createProject(); }
+                      if (event.key === "Escape") { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }
                     }}
-                    onBlur={() => {
-                      void createProject();
-                    }}
+                    onBlur={() => void createProject()}
                     placeholder="Project name"
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
                   />
-                  {projectError && (
-                    <div className="text-xs text-rose-600">{projectError}</div>
-                  )}
-                  {isCreatingProject && (
-                    <div className="text-xs text-slate-400">Creating project...</div>
-                  )}
+                  {projectError && <div className="text-xs text-rose-600">{projectError}</div>}
+                  {isCreatingProject && <div className="text-xs text-slate-400">Creating project...</div>}
                 </div>
               )}
             </div>
@@ -431,7 +654,7 @@ export default function TaskForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Task number (optional)
+                Task number
               </label>
               <input
                 value={taskNumber ?? ""}
@@ -491,10 +714,7 @@ export default function TaskForm({
             <div className="text-sm font-semibold text-slate-900">Owners</div>
             <div className="mt-3 space-y-2">
               {filteredEmployees.map((owner) => (
-                <label
-                  key={owner.id}
-                  className="flex items-center gap-2 text-sm text-slate-600"
-                >
+                <label key={owner.id} className="flex items-center gap-2 text-sm text-slate-600">
                   <input
                     type="checkbox"
                     checked={ownerIds.includes(owner.id)}
@@ -510,10 +730,7 @@ export default function TaskForm({
                 </div>
               )}
               {filteredVendors.map((owner) => (
-                <label
-                  key={owner.id}
-                  className="flex items-center gap-2 text-sm text-slate-600"
-                >
+                <label key={owner.id} className="flex items-center gap-2 text-sm text-slate-600">
                   <input
                     type="checkbox"
                     checked={ownerIds.includes(owner.id)}
@@ -556,41 +773,17 @@ export default function TaskForm({
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void createOwner()}
-                      disabled={isCreatingOwner || !newOwnerName.trim()}
-                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                    >
+                    <button type="button" onClick={() => void createOwner()} disabled={isCreatingOwner || !newOwnerName.trim()} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
                       {isCreatingOwner ? "Adding..." : "Add"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingOwner(false);
-                        setOwnerError(null);
-                        setNewOwnerName("");
-                        setNewOwnerEmail("");
-                        setNewOwnerPhone("");
-                      }}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                    >
+                    <button type="button" onClick={() => { setIsAddingOwner(false); setOwnerError(null); setNewOwnerName(""); setNewOwnerEmail(""); setNewOwnerPhone(""); }} className="text-xs font-semibold text-slate-500 hover:text-slate-700">
                       Cancel
                     </button>
                   </div>
-                  {ownerError && (
-                    <div className="text-xs text-rose-600">{ownerError}</div>
-                  )}
+                  {ownerError && <div className="text-xs text-rose-600">{ownerError}</div>}
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddingOwner(true);
-                    setOwnerError(null);
-                  }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                >
+                <button type="button" onClick={() => { setIsAddingOwner(true); setOwnerError(null); }} className="text-xs font-semibold text-slate-500 hover:text-slate-700">
                   + Add Owner
                 </button>
               )}
@@ -627,13 +820,7 @@ export default function TaskForm({
           disabled={isSaving || !canSubmitProject}
           className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {isSaving
-            ? mode === "create"
-              ? "Creating..."
-              : "Saving..."
-            : mode === "create"
-            ? "Create task"
-            : "Save changes"}
+          {isSaving ? "Saving..." : "Save changes"}
         </button>
         <button
           type="button"
