@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "./ThemeToggle";
 import { ParkingLot } from "./ParkingLot";
 import { FocusModeStandalone } from "./FocusMode";
+import { DailyActionList } from "./DailyActionList";
 
 type AppHeaderProps = {
   user: {
@@ -22,6 +23,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
+  const [showDailyActions, setShowDailyActions] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
   const initials = displayName
@@ -92,6 +94,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
         {/* Right side */}
         <div className="flex items-center gap-4">
           <button
+            onClick={() => setShowDailyActions(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
+            title="Today's Actions"
+          >
+            📋
+          </button>
+          <button
             onClick={() => setShowParkingLot(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition"
             title="Parking Lot"
@@ -149,6 +158,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       </div>
       <ParkingLot isOpen={showParkingLot} onClose={() => setShowParkingLot(false)} />
       <FocusModeStandalone isOpen={showFocusMode} onClose={() => setShowFocusMode(false)} />
+      <DailyActionList isOpen={showDailyActions} onClose={() => setShowDailyActions(false)} />
     </header>
   );
 }
