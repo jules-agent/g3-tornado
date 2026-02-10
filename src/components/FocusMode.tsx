@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -114,8 +115,8 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
 
   const staleCount = tasks.filter((t) => t.isStale).length;
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950" style={{ isolation: "isolate" }}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950">
       {/* Minimal top bar */}
       <div className="flex items-center justify-between px-6 py-4 shrink-0">
         <div className="flex items-center gap-3">
@@ -234,7 +235,8 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
