@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="w-full">
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-8">
-        <p className="text-2xl font-bold uppercase tracking-[0.35em] text-white/40 select-none">If You Know You Know</p>
+        <p className="text-lg sm:text-2xl font-bold uppercase tracking-[0.35em] text-white/40 select-none whitespace-nowrap">If You Know You Know</p>
 
         <div className="w-full rounded-3xl border border-white/10 bg-white/10 p-8 shadow-2xl backdrop-blur">
           <div className="mb-6">
