@@ -137,9 +137,9 @@ export default function AppHeader({ user }: AppHeaderProps) {
           <button
             onClick={() => setShowBugReport(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-300 transition"
-            title="Report a Bug"
+            title="Feedback"
           >
-            🐛
+            💬
           </button>
           <ThemeToggle />
           

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { description, screenshot } = await request.json();
+  const { description, screenshot, type } = await request.json();
 
   if (!description?.trim()) {
     return NextResponse.json({ error: "Description is required" }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       screenshot_url,
       reported_by: user.id,
       reported_by_email: profile?.email || user.email,
+      type: type === "feature_request" ? "feature_request" : "bug",
     })
     .select()
     .single();
