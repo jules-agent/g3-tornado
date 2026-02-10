@@ -7,13 +7,19 @@ export default async function NewTaskPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: allProjects }, { data: owners }] = await Promise.all([
-    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by, one_on_one_owner_id").order("name"),
     supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").order("name"),
   ]);
 
-  // Filter: show personal projects only to creator, all shared projects
+  // Get user's owner_id for one-on-one filtering
+  const { data: userProfile } = await supabase.from("profiles").select("owner_id").eq("id", user?.id ?? "").maybeSingle();
+
+  // Filter: show personal projects only to creator, one-on-one to creator + shared owner
   const projects = (allProjects ?? []).filter(p => {
     if (p.visibility === "personal") return p.created_by === user?.id;
+    if (p.visibility === "one_on_one") {
+      return p.created_by === user?.id || (userProfile?.owner_id && p.one_on_one_owner_id === userProfile.owner_id);
+    }
     return true;
   });
 
@@ -46,7 +52,7 @@ export default async function NewTaskPage() {
           owners={owners ?? []}
           initialValues={{
             description: "",
-            project_id: projects?.[0]?.id ?? "",
+            project_id: "",
             fu_cadence_days: 3,
           }}
         />

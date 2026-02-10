@@ -134,22 +134,31 @@ export default async function Home({
     );
   }
 
-  // Non-admin users only see tasks they're associated with, excluding voided users' tasks
+  // Non-admin users see tasks they own OR tasks in projects they created
   const visibleTasks = isAdmin
     ? tasksWithDays
     : tasksWithDays.filter((t) => {
-        if (!t.isMyTask) return false;
-        // Hide tasks where ALL owners are voided
-        if (voidedOwnerIds.size > 0 && t.ownerIds.length > 0) {
-          const allVoided = t.ownerIds.every((id: string) => voidedOwnerIds.has(id));
-          if (allVoided) return false;
+        // Show if user is an owner on the task
+        if (t.isMyTask) {
+          // But hide if ALL owners are voided
+          if (voidedOwnerIds.size > 0 && t.ownerIds.length > 0) {
+            const allVoided = t.ownerIds.every((id: string) => voidedOwnerIds.has(id));
+            if (allVoided) return false;
+          }
+          return true;
         }
-        return true;
+        // Also show tasks in projects the user created (personal, one-on-one)
+        if (t.project_id && myProjectIds.has(t.project_id)) return true;
+        return false;
       });
 
   // Filter projects by visibility and team membership
   type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; visibility?: string; created_by?: string };
   const allProjects = (projects as ProjectWithFlags[] ?? []);
+  // Build set of project IDs created by this user (for personal/one-on-one visibility)
+  const myProjectIds = new Set(
+    allProjects.filter((p: ProjectWithFlags) => p.created_by === user?.id).map(p => p.id)
+  );
   const visibleProjects = isAdmin ? allProjects : allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
     // Personal projects: only visible to creator
     if (p.visibility === "personal") {
