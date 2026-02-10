@@ -12,6 +12,7 @@ type Project = {
   is_upfit?: boolean;
   visibility?: string;
   created_by?: string;
+  one_on_one_owner_id?: string;
 };
 
 type Owner = {
@@ -56,13 +57,14 @@ export default function TaskForm({
   const parkingDesc = searchParams.get("desc");
   const [description, setDescription] = useState(parkingDesc || (initialValues?.description ?? ""));
   const [projectId, setProjectId] = useState(
-    initialValues?.project_id ?? projects[0]?.id ?? ""
+    initialValues?.project_id ?? (mode === "edit" ? projects[0]?.id ?? "" : "")
   );
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectError, setProjectError] = useState<string | null>(null);
-  const [newProjectVisibility, setNewProjectVisibility] = useState<"personal" | "shared">("shared");
+  const [newProjectVisibility, setNewProjectVisibility] = useState<"personal" | "shared" | "one_on_one">("shared");
+  const [oneOnOneOwnerId, setOneOnOneOwnerId] = useState<string>("");
   const [newProjectIsUp, setNewProjectIsUp] = useState(false);
   const [newProjectIsBp, setNewProjectIsBp] = useState(false);
   const [newProjectIsUpfit, setNewProjectIsUpfit] = useState(false);
@@ -185,10 +187,11 @@ export default function TaskForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: trimmedName,
-          visibility: newProjectVisibility,
+          visibility: newProjectVisibility === "one_on_one" ? "one_on_one" : newProjectVisibility,
           is_up: newProjectVisibility === "shared" ? newProjectIsUp : false,
           is_bp: newProjectVisibility === "shared" ? newProjectIsBp : false,
           is_upfit: newProjectVisibility === "shared" ? newProjectIsUpfit : false,
+          one_on_one_owner_id: newProjectVisibility === "one_on_one" ? oneOnOneOwnerId : null,
         }),
       });
       const data = await res.json();
@@ -209,6 +212,7 @@ export default function TaskForm({
       setNewProjectIsUp(false);
       setNewProjectIsBp(false);
       setNewProjectIsUpfit(false);
+      setOneOnOneOwnerId("");
       router.refresh();
     } catch {
       setProjectError("Unable to create project.");
@@ -447,9 +451,16 @@ export default function TaskForm({
                 ))}
               </optgroup>
             )}
-            {projects.filter(p => p.visibility !== "personal").length > 0 && (
+            {projects.filter(p => p.visibility === "one_on_one").length > 0 && (
+              <optgroup label="One on One">
+                {projects.filter(p => p.visibility === "one_on_one").map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {projects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").length > 0 && (
               <optgroup label="Shared / Team">
-                {projects.filter(p => p.visibility !== "personal").map((project) => (
+                {projects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </optgroup>
@@ -474,6 +485,13 @@ export default function TaskForm({
                 >
                   👥 Shared / Team
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setNewProjectVisibility("one_on_one")}
+                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "one_on_one" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                >
+                  🤝 One on One
+                </button>
               </div>
 
               <input
@@ -481,7 +499,7 @@ export default function TaskForm({
                 onChange={(event) => setNewProjectName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") { event.preventDefault(); void createProject(); }
-                  if (event.key === "Escape") { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }
+                  if (event.key === "Escape") { setIsAddingProject(false); setProjectId(""); }
                 }}
                 placeholder="Project name"
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
@@ -510,6 +528,25 @@ export default function TaskForm({
                 <p className="text-[10px] text-slate-400">Only you will see this project and its tasks.</p>
               )}
 
+              {newProjectVisibility === "one_on_one" && (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Share with
+                  </label>
+                  <select
+                    value={oneOnOneOwnerId}
+                    onChange={(e) => setOneOnOneOwnerId(e.target.value)}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                  >
+                    <option value="">Select a person...</option>
+                    {allStaff.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[10px] text-slate-400">Only you and this person will see tasks in this project. Shows under their &quot;Shared&quot; tab.</p>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -521,7 +558,7 @@ export default function TaskForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }}
+                  onClick={() => { setIsAddingProject(false); setProjectId(""); }}
                   className="text-xs font-semibold text-slate-500 hover:text-slate-700"
                 >
                   Cancel
@@ -532,6 +569,9 @@ export default function TaskForm({
           )}
         </div>
 
+        {/* Cadence + Gate only show after project is selected */}
+        {canSubmitProject && (
+        <>
         {/* Cadence */}
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -617,6 +657,8 @@ export default function TaskForm({
             </div>
           )}
         </div>
+        </>
+        )}
 
         {!hasProjects && !isAddingProject && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">

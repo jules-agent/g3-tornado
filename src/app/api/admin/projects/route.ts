@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, description, is_up, is_bp, is_upfit, visibility } = await request.json();
+  const { name, description, is_up, is_bp, is_upfit, visibility, one_on_one_owner_id } = await request.json();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
   const { data, error } = await supabase
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       is_upfit: is_upfit || false,
       visibility: visibility || "shared",
       created_by: user.id,
+      one_on_one_owner_id: one_on_one_owner_id || null,
     })
     .select()
     .single();

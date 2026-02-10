@@ -71,7 +71,7 @@ export default async function Home({
   }
 
   const [{ data: projects }, { data: allTasks }] = await Promise.all([
-    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by, one_on_one_owner_id").order("name"),
     supabase
       .from("tasks")
       .select(
@@ -150,10 +150,14 @@ export default async function Home({
   // Filter projects by visibility and team membership
   type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; visibility?: string; created_by?: string };
   const allProjects = (projects as ProjectWithFlags[] ?? []);
-  const visibleProjects = isAdmin ? allProjects : allProjects.filter((p) => {
+  const visibleProjects = isAdmin ? allProjects : allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
     // Personal projects: only visible to creator
     if (p.visibility === "personal") {
       return p.created_by === user?.id;
+    }
+    // One-on-one: visible to creator and the shared owner
+    if (p.visibility === "one_on_one") {
+      return p.created_by === user?.id || (userOwnerId && p.one_on_one_owner_id === userOwnerId);
     }
     // Shared projects: filter by team
     if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
@@ -163,6 +167,11 @@ export default async function Home({
     if (userOwnerFlags?.is_third_party_vendor) return true;
     return false;
   });
+
+  // One-on-one project IDs for "Shared" tab
+  const oneOnOneProjectIds = new Set(
+    visibleProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => p.visibility === "one_on_one").map(p => p.id)
+  );
 
   // Filter tasks
   const filter = params.filter || "open";
@@ -178,6 +187,8 @@ export default async function Home({
     filteredTasks = filteredTasks.filter((t) => t.is_blocked);
   } else if (filter === "stale") {
     filteredTasks = filteredTasks.filter((t) => t.isStale);
+  } else if (filter === "shared") {
+    filteredTasks = filteredTasks.filter((t) => t.project_id && oneOnOneProjectIds.has(t.project_id));
   }
   
   if (projectFilter !== "all") {
@@ -249,12 +260,16 @@ export default async function Home({
     stale: visibleTasks.filter((t) => t.isStale).length,
   };
 
+  // Count shared (one-on-one) tasks
+  const sharedCount = visibleTasks.filter(t => t.project_id && oneOnOneProjectIds.has(t.project_id)).length;
+
   const filters = [
     { key: "all", label: "All", count: stats.total },
     { key: "open", label: "Open", count: stats.open },
     { key: "stale", label: "Stale", count: stats.stale, color: "text-amber-600" },
     { key: "blocked", label: "Gated", count: stats.gated, color: "text-slate-600" },
     { key: "closed", label: "Done", count: stats.closed },
+    ...(sharedCount > 0 ? [{ key: "shared", label: "Shared", count: sharedCount }] : []),
   ];
 
   return (
