@@ -1,9 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { capitalizeFirst } from "@/lib/utils";
+
+type Owner = {
+  id: string;
+  name: string;
+};
+
+type Gate = {
+  name: string;
+  owner_name: string;
+  task_name?: string;
+  completed: boolean;
+};
 
 type ActionItem = {
   taskId: string;
@@ -16,13 +29,362 @@ type ActionItem = {
   gatePerson: string | null;
   nextStep: string | null;
   ownerNames: string;
-  action: string; // computed recommended action
+  action: string;
+  fuCadenceDays: number;
+  gates: Gate[];
 };
+
+type ExpandedState = "none" | "options" | "cadence" | "blocker";
+
+function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void }) {
+  const [noteText, setNoteText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState<ExpandedState>("none");
+  const [cadenceDays, setCadenceDays] = useState(item.fuCadenceDays);
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [blockerOwner, setBlockerOwner] = useState("");
+  const [blockerDesc, setBlockerDesc] = useState("");
+  const [blockerPosition, setBlockerPosition] = useState(item.gates.length); // default: end
+  const [savingCadence, setSavingCadence] = useState(false);
+  const [savingBlocker, setSavingBlocker] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  const noteInputRef = useRef<HTMLInputElement>(null);
+
+  const supabase = createClient();
+
+  // Load owners when blocker section opens
+  useEffect(() => {
+    if (expanded !== "blocker") return;
+    async function loadOwners() {
+      const { data } = await supabase.from("owners").select("id, name").order("name");
+      setOwners(data || []);
+    }
+    loadOwners();
+  }, [expanded, supabase]);
+
+  async function handleNoteSubmit() {
+    if (!noteText.trim() || saving) return;
+    setSaving(true);
+
+    const { error: noteError } = await supabase.from("task_notes").insert({
+      task_id: item.taskId,
+      content: noteText.trim(),
+    });
+
+    if (!noteError) {
+      // Update last_movement_at
+      await supabase
+        .from("tasks")
+        .update({ last_movement_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", item.taskId);
+
+      setNoteText("");
+      setNoteSaved(true);
+      setExpanded("options");
+      // Auto-dismiss after 5 seconds if no action taken
+      setTimeout(() => {
+        setExpanded((prev) => (prev === "options" ? "none" : prev));
+        setNoteSaved(false);
+      }, 8000);
+    }
+    setSaving(false);
+  }
+
+  async function handleCadenceSave() {
+    if (cadenceDays === item.fuCadenceDays) {
+      setExpanded("none");
+      return;
+    }
+    setSavingCadence(true);
+    await supabase
+      .from("tasks")
+      .update({ fu_cadence_days: cadenceDays, updated_at: new Date().toISOString() })
+      .eq("id", item.taskId);
+    setSavingCadence(false);
+    setExpanded("none");
+    onUpdate();
+  }
+
+  async function handleBlockerSave() {
+    if (!blockerOwner) return;
+    setSavingBlocker(true);
+
+    const newGate: Gate = {
+      name: `Gate ${item.gates.length + 1}`,
+      owner_name: blockerOwner,
+      task_name: blockerDesc || undefined,
+      completed: false,
+    };
+
+    const updatedGates = [...item.gates];
+    updatedGates.splice(blockerPosition, 0, newGate);
+
+    // Rename gates sequentially
+    updatedGates.forEach((g, i) => {
+      g.name = `Gate ${i + 1}`;
+    });
+
+    await supabase
+      .from("tasks")
+      .update({
+        gates: updatedGates,
+        is_blocked: updatedGates.some((g) => !g.completed && g.owner_name),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.taskId);
+
+    setSavingBlocker(false);
+    setBlockerOwner("");
+    setBlockerDesc("");
+    setExpanded("none");
+    onUpdate();
+  }
+
+  return (
+    <div
+      className={`rounded-xl border p-4 transition hover:shadow-md ${
+        item.isBlocked
+          ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          {/* Header row */}
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] font-mono text-slate-400">{item.taskNumber}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+              {capitalizeFirst(item.projectName)}
+            </span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                item.daysOverdue > 7
+                  ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300"
+                  : "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {item.daysOverdue}d overdue
+            </span>
+            {item.isBlocked && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 font-semibold">
+                🚧 Gated
+              </span>
+            )}
+          </div>
+
+          {/* Task description */}
+          <p className="text-sm text-slate-800 dark:text-slate-200 mb-2 line-clamp-2">
+            {capitalizeFirst(item.description)}
+          </p>
+
+          {/* Recommended action */}
+          <div className="rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 px-3 py-2 mb-3">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400 mb-0.5">
+              Action for today
+            </div>
+            <p className="text-sm font-medium text-teal-900 dark:text-teal-100">
+              {capitalizeFirst(item.action)}
+            </p>
+          </div>
+
+          {/* Quick note input */}
+          <div className="mb-2">
+            <div className="flex gap-2">
+              <input
+                ref={noteInputRef}
+                type="text"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleNoteSubmit();
+                  }
+                }}
+                placeholder="Add a note..."
+                disabled={saving}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 capitalize"
+              />
+              {noteText.trim() && (
+                <button
+                  onClick={handleNoteSubmit}
+                  disabled={saving}
+                  className="px-3 py-2 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition flex-shrink-0"
+                >
+                  {saving ? "..." : "↵"}
+                </button>
+              )}
+            </div>
+
+            {/* Note saved confirmation */}
+            {noteSaved && expanded === "options" && (
+              <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                ✓ Note saved & movement updated
+              </div>
+            )}
+          </div>
+
+          {/* Post-note options */}
+          {expanded === "options" && (
+            <div className="flex gap-2 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <button
+                onClick={() => setExpanded("cadence")}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                📅 Change Cadence
+              </button>
+              <button
+                onClick={() => setExpanded("blocker")}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                🚧 Add Blocker
+              </button>
+              <button
+                onClick={() => {
+                  setExpanded("none");
+                  setNoteSaved(false);
+                }}
+                className="px-2 py-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Cadence change inline */}
+          {expanded === "cadence" && (
+            <div className="flex items-center gap-2 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Cadence:</span>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={cadenceDays}
+                onChange={(e) => setCadenceDays(parseInt(e.target.value) || 1)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCadenceSave();
+                  if (e.key === "Escape") setExpanded("options");
+                }}
+                className="w-16 px-2 py-1 text-sm text-center border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                autoFocus
+              />
+              <span className="text-xs text-slate-500 dark:text-slate-400">days</span>
+              <button
+                onClick={handleCadenceSave}
+                disabled={savingCadence}
+                className="px-3 py-1 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
+              >
+                {savingCadence ? "..." : "Save"}
+              </button>
+              <button
+                onClick={() => setExpanded("options")}
+                className="px-2 py-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                ← Back
+              </button>
+            </div>
+          )}
+
+          {/* Add blocker inline */}
+          {expanded === "blocker" && (
+            <div className="space-y-2 mb-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">New Blocker</span>
+                <button
+                  onClick={() => setExpanded("options")}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  ← Back
+                </button>
+              </div>
+
+              {/* Owner */}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  Who
+                </label>
+                <select
+                  value={blockerOwner}
+                  onChange={(e) => setBlockerOwner(e.target.value)}
+                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">Select person...</option>
+                  {owners.map((o) => (
+                    <option key={o.id} value={o.name}>
+                      {capitalizeFirst(o.name)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  What
+                </label>
+                <input
+                  type="text"
+                  value={blockerDesc}
+                  onChange={(e) => setBlockerDesc(e.target.value)}
+                  placeholder="What do they need to do?"
+                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 capitalize"
+                />
+              </div>
+
+              {/* Position (only show if existing gates) */}
+              {item.gates.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    Sequence
+                  </label>
+                  <select
+                    value={blockerPosition}
+                    onChange={(e) => setBlockerPosition(parseInt(e.target.value))}
+                    className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value={0}>Before all existing gates</option>
+                    {item.gates.map((g, i) => (
+                      <option key={i} value={i + 1}>
+                        After {capitalizeFirst(g.owner_name)} — {capitalizeFirst(g.task_name || "gate")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                onClick={handleBlockerSave}
+                disabled={!blockerOwner || savingBlocker}
+                className="w-full px-3 py-1.5 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
+              >
+                {savingBlocker ? "Saving..." : "Add Blocker"}
+              </button>
+            </div>
+          )}
+
+          {/* Owner + link */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400">
+              Owners: {capitalizeFirst(item.ownerNames)}
+            </span>
+            <Link
+              href={`/tasks/${item.taskId}`}
+              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+            >
+              Open →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [items, setItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => setMounted(true), []);
 
@@ -32,25 +394,37 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
 
     const fetchData = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase.from("profiles").select("owner_id, role").eq("id", user.id).maybeSingle();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("owner_id, role")
+        .eq("id", user.id)
+        .maybeSingle();
       const isAdmin = profile?.role === "admin" || user.email === "ben@unpluggedperformance.com";
       const userOwnerId = profile?.owner_id;
 
       const { data: tasks } = await supabase
         .from("tasks")
-        .select(`
+        .select(
+          `
           id, task_number, description, status, fu_cadence_days, last_movement_at,
           is_blocked, blocker_description, next_step, gates,
           projects (id, name),
           task_owners (owner_id, owners (id, name))
-        `)
+        `
+        )
         .eq("status", "open")
         .order("last_movement_at", { ascending: true });
 
-      if (!tasks) { setItems([]); setLoading(false); return; }
+      if (!tasks) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
 
       const actionItems: ActionItem[] = [];
 
@@ -58,28 +432,30 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
         const daysSince = Math.floor(
           (Date.now() - new Date(task.last_movement_at).getTime()) / (1000 * 60 * 60 * 24)
         );
-        if (daysSince <= task.fu_cadence_days) continue; // not overdue
+        if (daysSince <= task.fu_cadence_days) continue;
 
         const ownerIds = task.task_owners?.map((to: any) => to.owner_id).filter(Boolean) || [];
         const isMyTask = userOwnerId ? ownerIds.includes(userOwnerId) : false;
 
-        // Non-admin: only show own tasks
         if (!isAdmin && !isMyTask) continue;
 
-        const ownerNames = task.task_owners?.map((to: any) => to.owners?.name).filter(Boolean).join(", ") || "Unassigned";
+        const ownerNames =
+          task.task_owners
+            ?.map((to: any) => to.owners?.name)
+            .filter(Boolean)
+            .join(", ") || "Unassigned";
         const projectName = task.projects?.name || "No project";
 
-        // Determine gate person from gates array
         let gatePerson: string | null = null;
-        if (task.gates && Array.isArray(task.gates) && task.gates.length > 0) {
-          const activeGate = task.gates.find((g: any) => !g.completed);
+        const gates: Gate[] = (task.gates && Array.isArray(task.gates) ? task.gates : []) as Gate[];
+        if (gates.length > 0) {
+          const activeGate = gates.find((g) => !g.completed);
           if (activeGate) gatePerson = activeGate.owner_name || null;
         }
 
-        // Compute recommended action
         let action: string;
         if (task.is_blocked && gatePerson) {
-          action = `📞 Contact ${gatePerson}` + (task.blocker_description ? ` — ${task.blocker_description}` : "");
+          action = `📞 Contact ${gatePerson}${task.blocker_description ? ` — ${task.blocker_description}` : ""}`;
         } else if (task.is_blocked && task.blocker_description) {
           action = `🚧 Resolve blocker: ${task.blocker_description}`;
         } else if (task.next_step) {
@@ -100,17 +476,18 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
           nextStep: task.next_step,
           ownerNames,
           action,
+          fuCadenceDays: task.fu_cadence_days,
+          gates,
         });
       }
 
-      // Sort by most overdue first
       actionItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
       setItems(actionItems);
       setLoading(false);
     };
 
     fetchData();
-  }, [isOpen]);
+  }, [isOpen, refreshKey]);
 
   if (!isOpen || !mounted) return null;
 
@@ -119,7 +496,6 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
       className="fixed inset-0 z-[9999] bg-white dark:bg-slate-950 overflow-y-auto"
       style={{ isolation: "isolate" }}
     >
-      {/* Lock body scroll */}
       <style>{`body { overflow: hidden !important; }`}</style>
 
       {/* Top bar */}
@@ -128,7 +504,9 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
           <span className="text-xl">📋</span>
           <div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-white">Today&apos;s Actions</h1>
-            <p className="text-xs text-slate-500">{items.length} overdue task{items.length !== 1 ? "s" : ""} need attention</p>
+            <p className="text-xs text-slate-500">
+              {items.length} overdue task{items.length !== 1 ? "s" : ""} need attention
+            </p>
           </div>
         </div>
         <button
@@ -153,77 +531,9 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
           </div>
         ) : (
           <div className="space-y-3">
-            {items.map((item, idx) => (
-              <div
-                key={item.taskId}
-                className={`rounded-xl border p-4 transition hover:shadow-md ${
-                  item.isBlocked
-                    ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"
-                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Number */}
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {idx + 1}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {/* Header row */}
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-[10px] font-mono text-slate-400">{item.taskNumber}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{item.projectName}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                        item.daysOverdue > 7
-                          ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300"
-                          : "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
-                      }`}>
-                        {item.daysOverdue}d overdue
-                      </span>
-                      {item.isBlocked && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 font-semibold">
-                          🚧 GATED
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Task description */}
-                    <p className="text-sm text-slate-800 dark:text-slate-200 mb-2 line-clamp-2">
-                      {item.description}
-                    </p>
-
-                    {/* Recommended action — the key part */}
-                    <div className="rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 px-3 py-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400 mb-0.5">
-                        Action for today
-                      </div>
-                      <p className="text-sm font-medium text-teal-900 dark:text-teal-100">
-                        {item.action}
-                      </p>
-                    </div>
-
-                    {/* Owner + link */}
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-[10px] text-slate-400">Owners: {item.ownerNames}</span>
-                      <Link
-                        href={`/tasks/${item.taskId}`}
-                        onClick={onClose}
-                        className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
-                      >
-                        Open →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {items.map((item) => (
+              <ActionCard key={item.taskId} item={item} onUpdate={() => setRefreshKey((k) => k + 1)} />
             ))}
-
-            {/* Future automation teaser */}
-            <div className="mt-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 text-center">
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                🤖 <span className="font-semibold">Coming soon:</span> Auto-contact gate blockers and send follow-up reminders on your behalf
-              </p>
-            </div>
           </div>
         )}
       </div>
