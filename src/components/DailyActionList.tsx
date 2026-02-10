@@ -34,27 +34,29 @@ type ActionItem = {
   gates: Gate[];
 };
 
-type ExpandedState = "none" | "options" | "cadence" | "blocker";
+type ExpandedState = "none" | "manage";
 
 function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void }) {
   const [noteText, setNoteText] = useState("");
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>("none");
   const [cadenceDays, setCadenceDays] = useState(item.fuCadenceDays);
+  const [cadenceChanged, setCadenceChanged] = useState(false);
   const [owners, setOwners] = useState<Owner[]>([]);
   const [blockerOwner, setBlockerOwner] = useState("");
   const [blockerDesc, setBlockerDesc] = useState("");
-  const [blockerPosition, setBlockerPosition] = useState(item.gates.length); // default: end
-  const [savingCadence, setSavingCadence] = useState(false);
-  const [savingBlocker, setSavingBlocker] = useState(false);
+  const [blockerPosition, setBlockerPosition] = useState(item.gates.length);
+  const [savingChanges, setSavingChanges] = useState(false);
+  const [closingTask, setClosingTask] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const noteInputRef = useRef<HTMLInputElement>(null);
+  const cadenceInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
 
-  // Load owners when blocker section opens
+  // Load owners when manage panel opens
   useEffect(() => {
-    if (expanded !== "blocker") return;
+    if (expanded !== "manage") return;
     async function loadOwners() {
       const { data } = await supabase.from("owners").select("id, name").order("name");
       setOwners(data || []);
@@ -72,7 +74,6 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
     });
 
     if (!noteError) {
-      // Update last_movement_at
       await supabase
         .from("tasks")
         .update({ last_movement_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -80,65 +81,73 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
 
       setNoteText("");
       setNoteSaved(true);
-      setExpanded("options");
-      // Auto-dismiss after 5 seconds if no action taken
-      setTimeout(() => {
-        setExpanded((prev) => (prev === "options" ? "none" : prev));
-        setNoteSaved(false);
-      }, 8000);
+      setExpanded("manage");
     }
     setSaving(false);
   }
 
-  async function handleCadenceSave() {
-    if (cadenceDays === item.fuCadenceDays) {
-      setExpanded("none");
-      return;
-    }
-    setSavingCadence(true);
+  function handleCadenceChange(val: number) {
+    const clamped = Math.max(1, Math.min(365, val));
+    setCadenceDays(clamped);
+    setCadenceChanged(clamped !== item.fuCadenceDays);
+  }
+
+  async function handleCloseTask() {
+    setClosingTask(true);
     await supabase
       .from("tasks")
-      .update({ fu_cadence_days: cadenceDays, updated_at: new Date().toISOString() })
+      .update({ status: "closed", updated_at: new Date().toISOString() })
       .eq("id", item.taskId);
-    setSavingCadence(false);
-    setExpanded("none");
+    setClosingTask(false);
     onUpdate();
   }
 
-  async function handleBlockerSave() {
-    if (!blockerOwner) return;
-    setSavingBlocker(true);
+  async function handleSaveAll() {
+    setSavingChanges(true);
 
-    const newGate: Gate = {
-      name: `Gate ${item.gates.length + 1}`,
-      owner_name: blockerOwner,
-      task_name: blockerDesc || undefined,
-      completed: false,
-    };
+    // Save cadence if changed
+    if (cadenceChanged) {
+      await supabase
+        .from("tasks")
+        .update({ fu_cadence_days: cadenceDays, updated_at: new Date().toISOString() })
+        .eq("id", item.taskId);
+    }
 
-    const updatedGates = [...item.gates];
-    updatedGates.splice(blockerPosition, 0, newGate);
+    // Save blocker if filled
+    if (blockerOwner) {
+      const newGate: Gate = {
+        name: `Gate ${item.gates.length + 1}`,
+        owner_name: blockerOwner,
+        task_name: blockerDesc || undefined,
+        completed: false,
+      };
 
-    // Rename gates sequentially
-    updatedGates.forEach((g, i) => {
-      g.name = `Gate ${i + 1}`;
-    });
+      const updatedGates = [...item.gates];
+      updatedGates.splice(blockerPosition, 0, newGate);
+      updatedGates.forEach((g, i) => {
+        g.name = `Gate ${i + 1}`;
+      });
 
-    await supabase
-      .from("tasks")
-      .update({
-        gates: updatedGates,
-        is_blocked: updatedGates.some((g) => !g.completed && g.owner_name),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", item.taskId);
+      await supabase
+        .from("tasks")
+        .update({
+          gates: updatedGates,
+          is_blocked: updatedGates.some((g) => !g.completed && g.owner_name),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", item.taskId);
+    }
 
-    setSavingBlocker(false);
+    setSavingChanges(false);
+    setExpanded("none");
+    setCadenceChanged(false);
     setBlockerOwner("");
     setBlockerDesc("");
-    setExpanded("none");
+    setNoteSaved(false);
     onUpdate();
   }
+
+  const hasChanges = cadenceChanged || !!blockerOwner;
 
   return (
     <div
@@ -195,6 +204,12 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                 type="text"
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && noteText.trim()) {
+                    e.preventDefault();
+                    handleNoteSubmit();
+                  }
+                }}
                 placeholder="Submit an update note..."
                 disabled={saving}
                 className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
@@ -211,176 +226,146 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
             </div>
 
             {/* Note saved confirmation */}
-            {noteSaved && expanded === "options" && (
+            {noteSaved && (
               <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                 ✓ Note saved & movement updated
               </div>
             )}
           </div>
 
-          {/* Post-note options */}
-          {expanded === "options" && (
-            <div className="flex gap-2 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
-              <button
-                onClick={() => setExpanded("cadence")}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-              >
-                📅 Change Cadence ({cadenceDays}d)
-              </button>
-              <button
-                onClick={() => setExpanded("blocker")}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-              >
-                🚧 Add Blocker
-              </button>
-              <button
-                onClick={() => {
-                  setExpanded("none");
-                  setNoteSaved(false);
-                }}
-                className="px-2 py-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Cadence change inline */}
-          {expanded === "cadence" && (
-            <div className="flex items-center gap-2 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Cadence:</span>
-              <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setCadenceDays((d) => Math.max(1, d - 1))}
-                  className="px-2.5 py-1 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={cadenceDays}
-                  onChange={(e) => setCadenceDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCadenceSave();
-                    if (e.key === "Escape") setExpanded("options");
-                  }}
-                  className="w-12 px-1 py-1 text-sm text-center bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  autoFocus
-                />
-                <button
-                  onClick={() => setCadenceDays((d) => Math.min(365, d + 1))}
-                  className="px-2.5 py-1 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                >
-                  +
-                </button>
-              </div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">days</span>
-              <button
-                onClick={handleCadenceSave}
-                disabled={savingCadence}
-                className="px-3 py-1 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
-              >
-                {savingCadence ? "..." : "Save"}
-              </button>
-              <button
-                onClick={() => setExpanded("options")}
-                className="px-2 py-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                ← Back
-              </button>
-            </div>
-          )}
-
-          {/* Add blocker inline */}
-          {expanded === "blocker" && (
-            <div className="space-y-2 mb-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 animate-in fade-in slide-in-from-top-1 duration-200">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">New Blocker</span>
-                <button
-                  onClick={() => setExpanded("options")}
-                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                >
-                  ← Back
-                </button>
-              </div>
-
-              {/* Owner */}
+          {/* Manage panel — cadence + blocker together, no auto-submit, no timeout */}
+          {expanded === "manage" && (
+            <div className="space-y-3 mb-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 animate-in fade-in slide-in-from-top-1 duration-200">
+              {/* Cadence section */}
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  Who
+                  📅 Follow-up Cadence
                 </label>
-                <select
-                  value={blockerOwner}
-                  onChange={(e) => setBlockerOwner(e.target.value)}
-                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                >
-                  <option value="">Select person...</option>
-                  {owners.map((o) => (
-                    <option key={o.id} value={o.name}>
-                      {capitalizeFirst(o.name)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  What
-                </label>
-                <input
-                  type="text"
-                  value={blockerDesc}
-                  onChange={(e) => setBlockerDesc(e.target.value)}
-                  placeholder="What do they need to do?"
-                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-
-              {/* Position (only show if existing gates) */}
-              {item.gates.length > 0 && (
-                <div>
-                  <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    Sequence
-                  </label>
-                  <select
-                    value={blockerPosition}
-                    onChange={(e) => setBlockerPosition(parseInt(e.target.value))}
-                    className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    onClick={() => handleCadenceChange(cadenceDays - 1)}
+                    className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition select-none"
                   >
-                    <option value={0}>Before all existing gates</option>
-                    {item.gates.map((g, i) => (
-                      <option key={i} value={i + 1}>
-                        After {capitalizeFirst(g.owner_name)} — {capitalizeFirst(g.task_name || "gate")}
+                    −
+                  </button>
+                  <input
+                    ref={cadenceInputRef}
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={cadenceDays}
+                    onChange={(e) => handleCadenceChange(parseInt(e.target.value) || 1)}
+                    className="w-20 h-10 px-2 text-center text-lg font-bold border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => handleCadenceChange(cadenceDays + 1)}
+                    className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition select-none"
+                  >
+                    +
+                  </button>
+                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">days</span>
+                  {cadenceChanged && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium ml-1">
+                      changed from {item.fuCadenceDays}d
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Blocker section */}
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  🚧 Add Blocker (optional)
+                </label>
+                <div className="mt-1 space-y-1.5">
+                  <select
+                    value={blockerOwner}
+                    onChange={(e) => setBlockerOwner(e.target.value)}
+                    className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">Select gate person...</option>
+                    {owners.map((o) => (
+                      <option key={o.id} value={o.name}>
+                        {capitalizeFirst(o.name)}
                       </option>
                     ))}
                   </select>
+                  {blockerOwner && (
+                    <>
+                      <input
+                        type="text"
+                        value={blockerDesc}
+                        onChange={(e) => setBlockerDesc(e.target.value)}
+                        placeholder="What do they need to do?"
+                        className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                      {item.gates.length > 0 && (
+                        <select
+                          value={blockerPosition}
+                          onChange={(e) => setBlockerPosition(parseInt(e.target.value))}
+                          className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value={0}>Before all existing gates</option>
+                          {item.gates.map((g, i) => (
+                            <option key={i} value={i + 1}>
+                              After {capitalizeFirst(g.owner_name)} — {capitalizeFirst(g.task_name || "gate")}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
 
-              <button
-                onClick={handleBlockerSave}
-                disabled={!blockerOwner || savingBlocker}
-                className="w-full px-3 py-1.5 bg-teal-500 text-white rounded-lg text-xs font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
-              >
-                {savingBlocker ? "Saving..." : "Add Blocker"}
-              </button>
+              {/* Action buttons — explicit save only */}
+              <div className="flex gap-2 pt-1">
+                {hasChanges && (
+                  <button
+                    onClick={handleSaveAll}
+                    disabled={savingChanges}
+                    className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
+                  >
+                    {savingChanges ? "Saving..." : "Save Changes"}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setExpanded("none");
+                    setCadenceDays(item.fuCadenceDays);
+                    setCadenceChanged(false);
+                    setBlockerOwner("");
+                    setBlockerDesc("");
+                    setNoteSaved(false);
+                  }}
+                  className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+                >
+                  {hasChanges ? "Discard" : "Close"}
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Owner + link */}
+          {/* Owner + Close Task + Open link */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-400">
               Owners: {capitalizeFirst(item.ownerNames)}
             </span>
-            <Link
-              href={`/tasks/${item.taskId}`}
-              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
-            >
-              Open →
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCloseTask}
+                disabled={closingTask}
+                className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 transition"
+              >
+                {closingTask ? "Closing..." : "Close Task"}
+              </button>
+              <Link
+                href={`/tasks/${item.taskId}`}
+                className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+              >
+                Open →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
