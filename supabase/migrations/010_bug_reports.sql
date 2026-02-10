@@ -4,7 +4,8 @@ CREATE TABLE bug_reports (
   screenshot_url TEXT,
   reported_by UUID REFERENCES profiles(id),
   reported_by_email TEXT,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'investigating', 'fixed', 'escalated', 'duplicate')),
+  type TEXT DEFAULT 'bug' CHECK (type IN ('bug', 'feature_request')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'investigating', 'fixed', 'escalated', 'duplicate', 'reviewing', 'approved', 'dismissed')),
   resolution TEXT,
   fixed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()

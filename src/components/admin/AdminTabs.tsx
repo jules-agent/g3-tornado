@@ -83,7 +83,7 @@ export function AdminTabs({
     { key: "projects", label: "Projects", count: projects.length, href: "/admin?tab=projects" },
     { key: "owners", label: "Owners", count: owners.length, href: "/admin?tab=owners" },
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
-    { key: "bugs", label: "Bugs", count: undefined, href: "/admin?tab=bugs" },
+    { key: "bugs", label: "Feedback", count: undefined, href: "/admin?tab=bugs" },
   ];
 
   return (
@@ -1504,12 +1504,13 @@ function ActivityLogTab({ logs }: { logs: ActivityLog[] }) {
   );
 }
 
-type BugReport = {
+type BugReportItem = {
   id: string;
   description: string;
   screenshot_url: string | null;
   reported_by_email: string | null;
   status: string;
+  type: string;
   resolution: string | null;
   fixed_at: string | null;
   created_at: string;
@@ -1521,22 +1522,26 @@ const STATUS_COLORS: Record<string, string> = {
   fixed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
   escalated: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
   duplicate: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
+  reviewing: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
+  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+  dismissed: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
 };
 
 function BugsTab() {
-  const [bugs, setBugs] = useState<BugReport[]>([]);
+  const [items, setItems] = useState<BugReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "bug" | "feature_request">("all");
 
   useEffect(() => {
-    fetchBugs();
+    fetchItems();
   }, []);
 
-  const fetchBugs = async () => {
+  const fetchItems = async () => {
     try {
       const res = await fetch("/api/bugs");
-      if (res.ok) setBugs(await res.json());
+      if (res.ok) setItems(await res.json());
     } catch { /* ignore */ }
     setLoading(false);
   };
@@ -1551,20 +1556,43 @@ function BugsTab() {
       });
       if (res.ok) {
         const updated = await res.json();
-        setBugs(bugs.map((b) => (b.id === id ? updated : b)));
+        setItems(items.map((b) => (b.id === id ? updated : b)));
       }
     } catch { /* ignore */ }
     setUpdatingId(null);
   };
 
+  const filtered = filter === "all" ? items : items.filter((i) => (i.type || "bug") === filter);
+  const bugCount = items.filter((i) => (i.type || "bug") === "bug").length;
+  const featureCount = items.filter((i) => i.type === "feature_request").length;
+
   if (loading) {
-    return <div className="px-4 py-8 text-center text-slate-400 text-sm">Loading bug reports...</div>;
+    return <div className="px-4 py-8 text-center text-slate-400 text-sm">Loading feedback...</div>;
   }
 
   return (
     <div>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
-        <h2 className="font-semibold text-slate-900 dark:text-white">🐛 Bug Reports ({bugs.length})</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-white">💬 Feedback ({items.length})</h2>
+        <div className="flex gap-1">
+          {(["all", "bug", "feature_request"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition ${
+                filter === f
+                  ? f === "feature_request"
+                    ? "bg-indigo-500 text-white"
+                    : f === "bug"
+                    ? "bg-teal-500 text-white"
+                    : "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-800"
+                  : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+            >
+              {f === "all" ? `All (${items.length})` : f === "bug" ? `🐛 Bugs (${bugCount})` : `💡 Features (${featureCount})`}
+            </button>
+          ))}
+        </div>
       </div>
 
       {expandedImage && (
@@ -1578,6 +1606,7 @@ function BugsTab() {
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <th className="px-4 py-2 font-semibold w-12">Type</th>
               <th className="px-4 py-2 font-semibold">Description</th>
               <th className="px-4 py-2 font-semibold w-16">Image</th>
               <th className="px-4 py-2 font-semibold w-40">Reporter</th>
@@ -1586,49 +1615,76 @@ function BugsTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {bugs.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">No bug reports yet. 🎉</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No feedback yet. 🎉</td>
               </tr>
             ) : (
-              bugs.map((bug) => (
-                <tr key={bug.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-4 py-2 text-slate-900 dark:text-white max-w-xs">
-                    <div className="line-clamp-3">{bug.description}</div>
-                    {bug.resolution && (
-                      <div className="mt-1 text-[10px] text-slate-400 italic">Resolution: {bug.resolution}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    {bug.screenshot_url ? (
-                      <button onClick={() => setExpandedImage(bug.screenshot_url)}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={bug.screenshot_url} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-600 hover:opacity-80 transition" />
-                      </button>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{bug.reported_by_email || "—"}</td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={bug.status}
-                      onChange={(e) => updateStatus(bug.id, e.target.value)}
-                      disabled={updatingId === bug.id}
-                      className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[bug.status] || STATUS_COLORS.pending}`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="investigating">Investigating</option>
-                      <option value="fixed">Fixed</option>
-                      <option value="escalated">Escalated</option>
-                      <option value="duplicate">Duplicate</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                    {new Date(bug.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))
+              filtered.map((item) => {
+                const isFeature = item.type === "feature_request";
+                const statusOptions = isFeature
+                  ? [
+                      { value: "pending", label: "Pending" },
+                      { value: "reviewing", label: "Reviewing" },
+                      { value: "approved", label: "Approved" },
+                      { value: "dismissed", label: "Dismissed" },
+                    ]
+                  : [
+                      { value: "pending", label: "Pending" },
+                      { value: "investigating", label: "Investigating" },
+                      { value: "fixed", label: "Fixed" },
+                      { value: "escalated", label: "Escalated" },
+                      { value: "duplicate", label: "Duplicate" },
+                    ];
+
+                return (
+                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-4 py-2 text-center">
+                      <span
+                        className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          isFeature
+                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                            : "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
+                        }`}
+                      >
+                        {isFeature ? "💡" : "🐛"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-slate-900 dark:text-white max-w-xs">
+                      <div className="line-clamp-3">{item.description}</div>
+                      {item.resolution && (
+                        <div className="mt-1 text-[10px] text-slate-400 italic">Resolution: {item.resolution}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {item.screenshot_url ? (
+                        <button onClick={() => setExpandedImage(item.screenshot_url)}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.screenshot_url} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-600 hover:opacity-80 transition" />
+                        </button>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{item.reported_by_email || "—"}</td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={item.status}
+                        onChange={(e) => updateStatus(item.id, e.target.value)}
+                        disabled={updatingId === item.id}
+                        className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[item.status] || STATUS_COLORS.pending}`}
+                      >
+                        {statusOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
