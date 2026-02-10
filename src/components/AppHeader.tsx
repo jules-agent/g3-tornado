@@ -174,13 +174,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             🅿️
           </button>
-          <button
-            onClick={() => setShowFocusMode(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 transition"
-            title="Focus Mode"
-          >
-            🎯
-          </button>
+          {overdueCount !== null && overdueCount > 0 && (
+            <button
+              onClick={() => setShowFocusMode(true)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 transition"
+              title="Focus Mode"
+            >
+              🎯
+            </button>
+          )}
           <button
             onClick={() => setShowBugReport(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-300 transition"
