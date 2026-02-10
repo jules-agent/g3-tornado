@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 type Owner = {
@@ -18,28 +17,26 @@ type Gate = {
 
 type GateEditorProps = {
   taskId: string;
-  gateIndex: number;
+  gateIndex: number; // kept for API compat but editor shows all gates
   gates: Gate[];
   onClose: () => void;
   onSave: (updatedGates: Gate[]) => void;
 };
 
-export function GateEditor({ taskId, gateIndex, gates, onClose, onSave }: GateEditorProps) {
+export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: GateEditorProps) {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [gates, setGates] = useState<Gate[]>(
+    initialGates.length > 0 ? initialGates : [{ name: "", owner_name: "", task_name: "", completed: false }]
+  );
   const [showAddOwner, setShowAddOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
-  
-  const gate = gates[gateIndex] || { name: `Gate ${gateIndex + 1}`, owner_name: "", task_name: "", completed: false };
-  const [ownerName, setOwnerName] = useState(gate.owner_name);
-  const [taskName, setTaskName] = useState(gate.task_name || "");
-  const [completed, setCompleted] = useState(gate.completed);
-  
+  const [addingForIdx, setAddingForIdx] = useState<number | null>(null);
+
   const modalRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  // Load owners
   useEffect(() => {
     async function loadOwners() {
       const { data } = await supabase.from("owners").select("id, name").order("name");
@@ -49,18 +46,14 @@ export function GateEditor({ taskId, gateIndex, gates, onClose, onSave }: GateEd
     loadOwners();
   }, [supabase]);
 
-  // Close on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  // Close on escape
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -69,222 +62,241 @@ export function GateEditor({ taskId, gateIndex, gates, onClose, onSave }: GateEd
     return () => document.removeEventListener("keydown", handleEscape);
   }, [onClose]);
 
-  async function handleAddOwner() {
+  const updateGate = (idx: number, field: keyof Gate, value: string | boolean) => {
+    const updated = [...gates];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setGates(updated);
+  };
+
+  const addGate = () => {
+    setGates([...gates, { name: "", owner_name: "", task_name: "", completed: false }]);
+  };
+
+  const removeGate = (idx: number) => {
+    if (gates.length <= 1) return;
+    setGates(gates.filter((_, i) => i !== idx));
+  };
+
+  const moveGate = (idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= gates.length) return;
+    const updated = [...gates];
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    setGates(updated);
+  };
+
+  const toggleCompleted = (idx: number) => {
+    const updated = [...gates];
+    updated[idx] = { ...updated[idx], completed: !updated[idx].completed };
+    setGates(updated);
+  };
+
+  async function handleAddOwner(idx: number) {
     if (!newOwnerName.trim()) return;
-    
     const { data, error } = await supabase
       .from("owners")
       .insert({ name: newOwnerName.trim() })
       .select("id, name")
       .single();
-    
     if (data && !error) {
       setOwners([...owners, data].sort((a, b) => a.name.localeCompare(b.name)));
-      setOwnerName(data.name);
+      updateGate(idx, "owner_name", data.name);
       setNewOwnerName("");
       setShowAddOwner(false);
+      setAddingForIdx(null);
     }
   }
 
   async function handleSave() {
     setSaving(true);
-    
-    // Build updated gates array
-    const updatedGates = [...gates];
-    
-    // If this gate index doesn't exist yet, fill in empty gates
-    while (updatedGates.length <= gateIndex) {
-      updatedGates.push({ name: `Gate ${updatedGates.length + 1}`, owner_name: "", task_name: "", completed: false });
-    }
-    
-    updatedGates[gateIndex] = {
-      name: gate.name || `Gate ${gateIndex + 1}`,
-      owner_name: ownerName,
-      task_name: taskName,
-      completed: completed
-    };
-    
-    // Remove empty trailing gates
-    while (updatedGates.length > 0 && !updatedGates[updatedGates.length - 1].owner_name) {
-      updatedGates.pop();
-    }
-    
-    // Update in database
+    // Filter out completely empty gates
+    const validGates = gates.filter(g => g.owner_name || g.name || g.task_name);
+
     const { error } = await supabase
       .from("tasks")
-      .update({ 
-        gates: updatedGates,
-        is_blocked: updatedGates.some(g => !g.completed && g.owner_name),
-        updated_at: new Date().toISOString()
+      .update({
+        gates: validGates,
+        is_blocked: validGates.some(g => !g.completed && g.owner_name),
+        updated_at: new Date().toISOString(),
       })
       .eq("id", taskId);
-    
+
     setSaving(false);
-    
     if (!error) {
-      onSave(updatedGates);
+      onSave(validGates);
       onClose();
     }
   }
 
-  async function handleClearGate() {
-    setSaving(true);
-    
-    const updatedGates = gates.filter((_, i) => i !== gateIndex);
-    
-    const { error } = await supabase
-      .from("tasks")
-      .update({ 
-        gates: updatedGates,
-        is_blocked: updatedGates.some(g => !g.completed && g.owner_name),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", taskId);
-    
-    setSaving(false);
-    
-    if (!error) {
-      onSave(updatedGates);
-      onClose();
-    }
-  }
+  // Find current (first incomplete) gate index
+  const currentGateIdx = gates.findIndex(g => !g.completed);
 
   return (
-    <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-      <div 
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div
         ref={modalRef}
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 w-80 max-w-[90vw]"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900 dark:text-white">
-            Edit {gateIndex === 0 ? "Current" : "Next"} Gate
-          </h3>
-          <button 
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            ✕
-          </button>
-        </div>
-        
-        {loading ? (
-          <div className="py-8 text-center text-slate-400">Loading...</div>
-        ) : (
-          <div className="space-y-4">
-            {/* Owner Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
-                Owner (person responsible)
-              </label>
-              {showAddOwner ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newOwnerName}
-                    onChange={(e) => setNewOwnerName(e.target.value)}
-                    placeholder="New owner name..."
-                    className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddOwner();
-                      if (e.key === "Escape") setShowAddOwner(false);
-                    }}
-                  />
-                  <button
-                    onClick={handleAddOwner}
-                    className="px-3 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600"
-                  >
-                    Add
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <select
-                    value={ownerName}
-                    onChange={(e) => {
-                      if (e.target.value === "__add_new__") {
-                        setShowAddOwner(true);
-                      } else {
-                        setOwnerName(e.target.value);
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="">Select owner...</option>
-                    {owners.map((owner) => (
-                      <option key={owner.id} value={owner.name}>
-                        {owner.name}
-                      </option>
-                    ))}
-                    <option value="__add_new__" className="text-teal-600 font-medium">
-                      + Add new person...
-                    </option>
-                  </select>
-                  <Link
-                    href="/admin/owners"
-                    target="_blank"
-                    className="block text-right text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    Manage people list →
-                  </Link>
-                </div>
-              )}
-            </div>
-            
-            {/* Task Input */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
-                Task (what they need to do)
-              </label>
-              <input
-                type="text"
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="e.g., Get Printer, Send Quote..."
-                className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-            
-            {/* Completed Toggle */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setCompleted(!completed)}
-                className={`relative w-10 h-6 rounded-full transition-colors ${
-                  completed ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              >
-                <span 
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                    completed ? "translate-x-5" : "translate-x-1"
-                  }`}
-                />
-              </button>
-              <span className="text-sm text-slate-600 dark:text-slate-300">
-                {completed ? "Gate passed ✓" : "Gate pending"}
-              </span>
-            </div>
-            
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-50 transition"
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-              {gate.owner_name && (
-                <button
-                  onClick={handleClearGate}
-                  disabled={saving}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 transition"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white">Gate Sequence</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {gates.filter(g => g.completed).length}/{gates.length} completed • Drag to reorder
+            </p>
           </div>
-        )}
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg">✕</button>
+        </div>
+
+        {/* Gate List */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+          {loading ? (
+            <div className="py-8 text-center text-slate-400">Loading...</div>
+          ) : (
+            gates.map((gate, idx) => {
+              const isCurrent = idx === currentGateIdx;
+              const isNext = idx === currentGateIdx + 1;
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-lg border p-3 transition ${
+                    gate.completed
+                      ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20"
+                      : isCurrent
+                        ? "border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-900/20 ring-1 ring-teal-400"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {/* Sequence number + status */}
+                    <div className="flex flex-col items-center gap-1 pt-1">
+                      <button
+                        onClick={() => toggleCompleted(idx)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold transition ${
+                          gate.completed
+                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            : isCurrent
+                              ? "border-teal-500 text-teal-600"
+                              : "border-slate-300 dark:border-slate-600 text-slate-400"
+                        }`}
+                        title={gate.completed ? "Mark incomplete" : "Mark complete"}
+                      >
+                        {gate.completed ? "✓" : idx + 1}
+                      </button>
+                      {isCurrent && !gate.completed && (
+                        <span className="text-[8px] font-bold text-teal-600 uppercase">Current</span>
+                      )}
+                      {isNext && !gate.completed && (
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">Next</span>
+                      )}
+                    </div>
+
+                    {/* Gate fields */}
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        value={gate.name}
+                        onChange={e => updateGate(idx, "name", e.target.value)}
+                        placeholder={`Gate ${idx + 1} description`}
+                        className={`w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500 ${gate.completed ? "line-through text-slate-400" : ""}`}
+                      />
+                      <div className="flex gap-1.5">
+                        {showAddOwner && addingForIdx === idx ? (
+                          <div className="flex gap-1 flex-1">
+                            <input
+                              value={newOwnerName}
+                              onChange={e => setNewOwnerName(e.target.value)}
+                              placeholder="New person name..."
+                              className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === "Enter") handleAddOwner(idx);
+                                if (e.key === "Escape") { setShowAddOwner(false); setAddingForIdx(null); }
+                              }}
+                            />
+                            <button onClick={() => handleAddOwner(idx)} className="px-2 py-1 bg-teal-500 text-white rounded text-xs font-semibold">Add</button>
+                          </div>
+                        ) : (
+                          <select
+                            value={gate.owner_name}
+                            onChange={e => {
+                              if (e.target.value === "__add__") {
+                                setShowAddOwner(true);
+                                setAddingForIdx(idx);
+                              } else {
+                                updateGate(idx, "owner_name", e.target.value);
+                              }
+                            }}
+                            className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                          >
+                            <option value="">Select person...</option>
+                            {owners.map(o => (
+                              <option key={o.id} value={o.name}>{o.name}</option>
+                            ))}
+                            <option value="__add__">+ Add new person...</option>
+                          </select>
+                        )}
+                        <input
+                          value={gate.task_name || ""}
+                          onChange={e => updateGate(idx, "task_name", e.target.value)}
+                          placeholder="What they do..."
+                          className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Reorder + Delete */}
+                    <div className="flex flex-col items-center gap-0.5 pt-1">
+                      <button
+                        onClick={() => moveGate(idx, -1)}
+                        disabled={idx === 0}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-20 text-xs"
+                        title="Move up"
+                      >▲</button>
+                      <button
+                        onClick={() => moveGate(idx, 1)}
+                        disabled={idx === gates.length - 1}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-20 text-xs"
+                        title="Move down"
+                      >▼</button>
+                      {gates.length > 1 && (
+                        <button
+                          onClick={() => removeGate(idx)}
+                          className="text-red-400 hover:text-red-600 text-xs mt-1"
+                          title="Remove gate"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
+          <button
+            onClick={addGate}
+            className="w-full rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-600 px-3 py-2 text-xs font-semibold text-slate-500 hover:border-teal-400 hover:text-teal-600 transition"
+          >
+            + Add Gate
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition"
+            >
+              {saving ? "Saving..." : "Save Gates"}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

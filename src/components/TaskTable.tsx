@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { GateEditor } from "./GateEditor";
 import { OwnerEditor } from "./OwnerEditor";
 import { capitalizeFirst } from "@/lib/utils";
+import { CloseTaskGateCheck } from "./CloseTaskGateCheck";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -206,6 +207,9 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   
   // Owner editor state
   const [editingOwner, setEditingOwner] = useState<{ taskId: string; ownerIds: string[] } | null>(null);
+  
+  // Close task gate check
+  const [closingTaskWithGates, setClosingTaskWithGates] = useState<{ taskId: string; gates: Gate[] } | null>(null);
   
   // Row actions menu state
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
@@ -693,15 +697,29 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   };
   
   // Row action handlers
-  const handleCloseTask = async (taskId: string) => {
-    const supabase = createClient();
-    await supabase.from("tasks").update({ 
-      status: "closed", 
-      closed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }).eq("id", taskId);
-    setRowMenuOpen(null);
-    router.refresh();
+  const handleCloseTask = (taskId: string) => {
+    // Check if task has open gates
+    const task = tasks.find(t => t.id === taskId);
+    const openGates = (task?.gates || []).filter(g => !g.completed);
+    if (openGates.length > 0) {
+      setClosingTaskWithGates({ taskId, gates: task!.gates! });
+      setRowMenuOpen(null);
+      return;
+    }
+    // No open gates — close directly
+    const doClose = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("tasks").update({ 
+        status: "closed", 
+        closed_at: new Date().toISOString(),
+        closed_by: user?.id ?? null,
+        updated_at: new Date().toISOString()
+      }).eq("id", taskId);
+      setRowMenuOpen(null);
+      router.refresh();
+    };
+    doClose();
   };
   
   const handleReopenTask = async (taskId: string) => {
@@ -1356,6 +1374,14 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           onSave={() => router.refresh()}
         />
       )}
+      {closingTaskWithGates && (
+        <CloseTaskGateCheck
+          taskId={closingTaskWithGates.taskId}
+          gates={closingTaskWithGates.gates}
+          onClose={() => setClosingTaskWithGates(null)}
+          onComplete={() => { setClosingTaskWithGates(null); router.refresh(); }}
+        />
+      )}
     </div>
   );
 }
@@ -1384,15 +1410,18 @@ function renderCell(columnId: string, task: Task, projectCreators: Record<string
       );
     case "currentGate": {
       const gates = task.gates || [];
+      const completedCount = gates.filter(g => g.completed).length;
       const currentIdx = gates.findIndex(g => !g.completed);
+      if (currentIdx === -1 && gates.length > 0) return <span className="text-emerald-500 text-xs font-semibold">✅ {completedCount}/{gates.length}</span>;
       if (currentIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[currentIdx];
       const ownerPart = capitalizeFirst(gate.owner_name) || "—";
       const taskPart = capitalizeFirst(gate.task_name || gate.name) || "";
       return (
-        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
-          <span className="font-semibold text-amber-800 break-words">{ownerPart}</span>
-          {taskPart && <span className="text-amber-600 break-words text-[10px]">{taskPart}</span>}
+        <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs max-w-full" title={`Gate ${currentIdx + 1}/${gates.length}: ${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
+          <span className="font-semibold text-amber-800 dark:text-amber-300 break-words">{ownerPart}</span>
+          {taskPart && <span className="text-amber-600 dark:text-amber-400 break-words text-[10px]">{taskPart}</span>}
+          {gates.length > 1 && <span className="text-[9px] text-amber-500">{completedCount}/{gates.length} gates</span>}
         </span>
       );
     }

@@ -105,10 +105,12 @@ export default function TaskForm({
     }).catch(() => {});
   }, []);
 
-  // Gate/Blocker state (create mode)
+  // Gate/Blocker state (create mode) — unlimited gates
   const [hasGate, setHasGate] = useState(false);
-  const [gateOwnerId, setGateOwnerId] = useState<string>("");
-  const [gateName, setGateName] = useState("");
+  const [createGates, setCreateGates] = useState<{ name: string; ownerId: string }[]>([{ name: "", ownerId: "" }]);
+  // Legacy compat
+  const gateOwnerId = createGates[0]?.ownerId || "";
+  const gateName = createGates[0]?.name || "";
   const [isAddingGateContact, setIsAddingGateContact] = useState(false);
   const [newGateContactName, setNewGateContactName] = useState("");
   const [isCreatingGateContact, setIsCreatingGateContact] = useState(false);
@@ -327,7 +329,9 @@ export default function TaskForm({
       .select("id")
       .single();
     if (!insertErr && data?.id) {
-      setGateOwnerId(data.id);
+      const updated = [...createGates];
+      if (updated.length > 0) updated[0] = { ...updated[0], ownerId: data.id };
+      setCreateGates(updated);
       setNewGateContactName("");
       setIsAddingGateContact(false);
       // Refresh page to get updated owners list
@@ -396,13 +400,15 @@ export default function TaskForm({
           status: "open",
           task_number: nextNumber,
           is_blocked: hasGate,
-          blocker_description: hasGate && gateName ? gateName : null,
+          blocker_description: hasGate && createGates[0]?.name ? createGates[0].name : null,
           blocker_category: null,
-          gates: hasGate && gateOwnerId ? [{
-            name: gateName || "Gate",
-            owner_name: ownerLookup.get(gateOwnerId) || "",
-            completed: false,
-          }] : null,
+          gates: hasGate ? createGates
+            .filter(g => g.ownerId || g.name)
+            .map(g => ({
+              name: g.name || "Gate",
+              owner_name: ownerLookup.get(g.ownerId) || "",
+              completed: false,
+            })) : null,
         })
         .select("id")
         .single();
@@ -749,10 +755,12 @@ export default function TaskForm({
                   setSelectedTemplate(e.target.value);
                   if (tpl) {
                     setHasGate(true);
-                    setGateName(tpl.gates[0]?.name || "");
-                    // Find matching owner for first gate
-                    const match = owners.find(o => o.name.toLowerCase() === tpl.gates[0]?.owner_name?.toLowerCase());
-                    if (match) setGateOwnerId(match.id);
+                    // Map all template gates to createGates
+                    const tplGates = (tpl.gates || []).map((g: { name?: string; owner_name?: string }) => {
+                      const match = owners.find(o => o.name.toLowerCase() === g.owner_name?.toLowerCase());
+                      return { name: g.name || "", ownerId: match?.id || "" };
+                    });
+                    setCreateGates(tplGates.length > 0 ? tplGates : [{ name: "", ownerId: "" }]);
                   } else {
                     setSelectedTemplate("");
                   }
@@ -782,101 +790,83 @@ export default function TaskForm({
           />
         </div>
 
-        {/* Gate/Blocker */}
+        {/* Gate Sequence */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center gap-3">
             <input
               id="has-gate"
               type="checkbox"
               checked={hasGate}
-              onChange={(event) => setHasGate(event.target.checked)}
+              onChange={(event) => {
+                setHasGate(event.target.checked);
+                if (event.target.checked && createGates.length === 0) {
+                  setCreateGates([{ name: "", ownerId: "" }]);
+                }
+              }}
               className="h-4 w-4 rounded border-slate-300 text-slate-900"
             />
             <label htmlFor="has-gate" className="text-sm font-medium text-slate-700">
-              Is there a Gate / Blocker?
+              Add Gates / Blockers
             </label>
           </div>
           {hasGate && (
-            <div className="mt-4 space-y-3">
-              {/* Gate Contact — filtered by task company flags */}
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Gate Contact
-                </label>
-                <select
-                  value={gateOwnerId}
-                  onChange={(e) => setGateOwnerId(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-                >
-                  <option value="">Select gate person...</option>
-                  {filteredEmployees.length > 0 && (
-                    <optgroup label="Employees">
-                      {filteredEmployees.map((o) => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {filteredVendors.length > 0 && (
-                    <optgroup label="3rd Party Vendors">
-                      {filteredVendors.map((o) => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-
-                {/* Add new gate contact inline */}
-                {isAddingGateContact ? (
-                  <div className="mt-2 space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+            <div className="mt-4 space-y-2">
+              {createGates.map((gate, idx) => (
+                <div key={idx} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                  <span className="text-xs font-bold text-slate-400 pt-2 w-5 text-center">{idx + 1}</span>
+                  <div className="flex-1 space-y-1.5">
                     <input
-                      value={newGateContactName}
-                      onChange={(e) => setNewGateContactName(e.target.value)}
-                      placeholder="Contact name"
+                      value={gate.name}
+                      onChange={(e) => {
+                        const updated = [...createGates];
+                        updated[idx] = { ...updated[idx], name: autoCapitalizeWords(e.target.value) };
+                        setCreateGates(updated);
+                      }}
+                      placeholder="Gate description (e.g. Waiting For Parts, Approval Needed...)"
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-                      autoFocus
                     />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCreateGateContact}
-                        disabled={isCreatingGateContact || !newGateContactName.trim()}
-                        className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400"
-                      >
-                        {isCreatingGateContact ? "Adding..." : "Add Contact"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setIsAddingGateContact(false); setNewGateContactName(""); }}
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                    <select
+                      value={gate.ownerId}
+                      onChange={(e) => {
+                        const updated = [...createGates];
+                        updated[idx] = { ...updated[idx], ownerId: e.target.value };
+                        setCreateGates(updated);
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                    >
+                      <option value="">Select gate person...</option>
+                      {filteredEmployees.length > 0 && (
+                        <optgroup label="Employees">
+                          {filteredEmployees.map((o) => (
+                            <option key={o.id} value={o.id}>{o.name}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {filteredVendors.length > 0 && (
+                        <optgroup label="3rd Party Vendors">
+                          {filteredVendors.map((o) => (
+                            <option key={o.id} value={o.id}>{o.name}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingGateContact(true)}
-                    className="mt-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700"
-                  >
-                    + Add New Contact
-                  </button>
-                )}
-              </div>
-
-              {/* Gate Description — always visible, required, auto-capitalize */}
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Gate Description <span className="text-red-400">*</span>
-                </label>
-                <input
-                  required={hasGate}
-                  value={gateName}
-                  onChange={(e) => setGateName(autoCapitalizeWords(e.target.value))}
-                  placeholder="What needs to happen? (e.g. Waiting For Parts, Approval Needed...)"
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-                />
-              </div>
+                  <div className="flex flex-col gap-0.5 pt-1">
+                    <button type="button" onClick={() => { if (idx > 0) { const u = [...createGates]; [u[idx], u[idx-1]] = [u[idx-1], u[idx]]; setCreateGates(u); } }} disabled={idx === 0} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-20">▲</button>
+                    <button type="button" onClick={() => { if (idx < createGates.length - 1) { const u = [...createGates]; [u[idx], u[idx+1]] = [u[idx+1], u[idx]]; setCreateGates(u); } }} disabled={idx === createGates.length - 1} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-20">▼</button>
+                    {createGates.length > 1 && (
+                      <button type="button" onClick={() => setCreateGates(createGates.filter((_, i) => i !== idx))} className="text-xs text-red-400 hover:text-red-600 mt-1">✕</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setCreateGates([...createGates, { name: "", ownerId: "" }])}
+                className="w-full rounded-xl border-2 border-dashed border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 hover:border-teal-400 hover:text-teal-600 transition"
+              >
+                + Add Another Gate
+              </button>
             </div>
           )}
         </div>
