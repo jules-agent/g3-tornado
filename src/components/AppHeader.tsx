@@ -66,7 +66,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
       }
 
       setOverdueCount(count);
-      if (count > 0) {
+      // Auto-open only once per browser session (on refresh or fresh login)
+      const alreadyShown = sessionStorage.getItem("dailyActionsAutoOpened");
+      if (count > 0 && !alreadyShown) {
+        sessionStorage.setItem("dailyActionsAutoOpened", "1");
         setShowDailyActions(true);
       }
     }
