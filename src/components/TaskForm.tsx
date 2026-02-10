@@ -626,37 +626,52 @@ export default function TaskForm({
         {canSubmitProject && (
         <>
         {/* Company Association */}
-        <div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Which company does this apply to? <span className="text-red-400">*</span>
           </label>
-          <p className="text-[10px] text-slate-400 mt-0.5 mb-2">Select one or more. This determines which contacts are available.</p>
+          {(() => {
+            const selectedProject = projects.find(p => p.id === projectId);
+            const hasNoFlags = !taskIsUp && !taskIsBp && !taskIsUpfit && !taskIsPersonal;
+            return (
+              <>
+                {selectedProject && hasNoFlags && (
+                  <p className="text-[10px] text-amber-600 mt-1 mb-2 font-medium">⚠️ This project has no company set yet — please select one below.</p>
+                )}
+                {!hasNoFlags && (
+                  <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
+                    {taskIsPersonal ? "Personal — only you will see this." : `Applies to: ${[taskIsUp && "UP", taskIsBp && "BP", taskIsUpfit && "UPFIT"].filter(Boolean).join(", ")}`}
+                  </p>
+                )}
+              </>
+            );
+          })()}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => { setTaskIsUp(!taskIsUp); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsUp ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsUp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
             >
               UP
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsBp(!taskIsBp); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsBp ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsBp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
             >
               BP
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsUpfit(!taskIsUpfit); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsUpfit ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsUpfit ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
             >
               UPFIT
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsPersonal(!taskIsPersonal); setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); }}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
             >
               🔒 Personal
             </button>
