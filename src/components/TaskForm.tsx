@@ -36,6 +36,7 @@ type TaskFormProps = {
   taskId?: string;
   projects: Project[];
   owners: Owner[];
+  creatorNames?: Record<string, string>;
   initialValues?: {
     task_number?: string | null;
     description: string;
@@ -55,6 +56,7 @@ export default function TaskForm({
   taskId,
   projects,
   owners,
+  creatorNames = {},
   initialValues,
   selectedOwnerIds = [],
 }: TaskFormProps) {
@@ -550,21 +552,21 @@ export default function TaskForm({
             {visibleProjects.filter(p => p.visibility === "personal").length > 0 && (
               <optgroup label="Personal">
                 {visibleProjects.filter(p => p.visibility === "personal").map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
+                  <option key={project.id} value={project.id}>{project.name}{project.created_by && creatorNames[project.created_by] ? ` (${creatorNames[project.created_by]})` : ""}</option>
                 ))}
               </optgroup>
             )}
             {visibleProjects.filter(p => p.visibility === "one_on_one").length > 0 && (
               <optgroup label="One on One">
                 {visibleProjects.filter(p => p.visibility === "one_on_one").map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
+                  <option key={project.id} value={project.id}>{project.name}{project.created_by && creatorNames[project.created_by] ? ` (${creatorNames[project.created_by]})` : ""}</option>
                 ))}
               </optgroup>
             )}
             {visibleProjects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").length > 0 && (
               <optgroup label="Shared / Team">
                 {visibleProjects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
+                  <option key={project.id} value={project.id}>{project.name}{project.created_by && creatorNames[project.created_by] ? ` (${creatorNames[project.created_by]})` : ""}</option>
                 ))}
               </optgroup>
             )}

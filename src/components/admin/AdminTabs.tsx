@@ -71,6 +71,7 @@ export function AdminTabs({
   owners,
   activityLogs = [],
   pendingInvites = [],
+  creatorNames = {},
 }: {
   activeTab: string;
   profiles: Profile[];
@@ -78,6 +79,7 @@ export function AdminTabs({
   owners: Owner[];
   activityLogs?: ActivityLog[];
   pendingInvites?: PendingInvite[];
+  creatorNames?: Record<string, string>;
 }) {
   const tabs = [
     { key: "users", label: "Users", count: profiles.length, href: "/admin?tab=users" },
@@ -110,7 +112,7 @@ export function AdminTabs({
       {/* Tab Content */}
       <div className="rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
         {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} pendingInvites={pendingInvites} />}
-        {activeTab === "projects" && <ProjectsTab projects={projects} />}
+        {activeTab === "projects" && <ProjectsTab projects={projects} creatorNames={creatorNames} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
         {activeTab === "bugs" && <BugsTab />}
@@ -805,7 +807,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
   );
 }
 
-function ProjectsTab({ projects }: { projects: Project[] }) {
+function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; creatorNames?: Record<string, string> }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -970,7 +972,12 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
             ) : (
               projects.map((project) => (
                 <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">{project.name}</td>
+                  <td className="px-4 py-2">
+                    <div className="font-medium text-slate-900 dark:text-white">{project.name}</div>
+                    {(project as Project & { created_by?: string }).created_by && creatorNames[(project as Project & { created_by?: string }).created_by!] && (
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500">by {creatorNames[(project as Project & { created_by?: string }).created_by!]}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <button
                       onClick={() => toggleProjectFlag(project.id, "visibility", project.visibility === "personal" ? "shared" : "personal")}

@@ -63,14 +63,28 @@ export async function PUT(request: Request) {
 
 export async function PATCH(request: Request) {
   const supabase = await createClient();
-  if (!(await checkAdmin(supabase))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const isAdmin = await checkAdmin(supabase);
 
   const body = await request.json();
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
 
-  // Only allow specific fields
-  const allowed = ["is_up", "is_bp", "is_upfit", "name", "description", "visibility", "deadline", "buffer_days", "customer_name"];
+  // Check if user is admin OR the project creator
+  if (!isAdmin) {
+    const { data: project } = await supabase.from("projects").select("created_by").eq("id", id).single();
+    if (!project || project.created_by !== user.id) {
+      return NextResponse.json({ error: "Only the project creator or an admin can edit this project" }, { status: 403 });
+    }
+  }
+
+  // Only allow specific fields — non-admins can only edit name and description
+  const adminOnly = ["is_up", "is_bp", "is_upfit", "visibility", "deadline", "buffer_days", "customer_name"];
+  const allowed = isAdmin
+    ? ["name", "description", ...adminOnly]
+    : ["name", "description"];
   const filtered: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(updates)) {
     if (allowed.includes(k)) filtered[k] = v;

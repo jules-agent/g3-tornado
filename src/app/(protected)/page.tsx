@@ -65,7 +65,7 @@ export default async function Home({
     userOwnerFlags = ownerData;
   }
 
-  const [{ data: projects }, { data: allTasks }] = await Promise.all([
+  const [{ data: projects }, { data: allTasks }, { data: allProfiles }] = await Promise.all([
     supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by, one_on_one_owner_id").order("name"),
     supabase
       .from("tasks")
@@ -88,7 +88,14 @@ export default async function Home({
       `
       )
       .order("task_number", { ascending: true }),
+    supabase.from("profiles").select("id, full_name, email"),
   ]);
+
+  // Build creator name lookup
+  const creatorNames: Record<string, string> = {};
+  (allProfiles || []).forEach((p: { id: string; full_name: string | null; email: string }) => {
+    creatorNames[p.id] = p.full_name || p.email || "Unknown";
+  });
 
   // Calculate days and stale status for each task
   const tasksWithDays = (allTasks as Task[] | null)?.map((task) => {
@@ -300,7 +307,8 @@ export default async function Home({
         <ProjectFilter 
           projects={visibleProjects} 
           currentFilter={filter} 
-          currentProject={projectFilter} 
+          currentProject={projectFilter}
+          creatorNames={creatorNames}
         />
         {viewAsAdmin && (
           <Link
@@ -313,7 +321,7 @@ export default async function Home({
       </div>
 
       {/* Table with resizable/reorderable columns */}
-      <TaskTable tasks={filteredTasks} total={stats.total} allTasks={visibleTasks} currentProject={projectFilter} currentFilter={filter} />
+      <TaskTable tasks={filteredTasks} total={stats.total} allTasks={visibleTasks} currentProject={projectFilter} currentFilter={filter} creatorNames={creatorNames} projectCreators={Object.fromEntries(allProjects.map(p => [p.id, p.created_by || ""]))} />
     </div>
   );
 }

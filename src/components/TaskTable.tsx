@@ -93,6 +93,8 @@ type TaskTableProps = {
   allTasks?: Task[];
   currentProject?: string;
   currentFilter?: string;
+  creatorNames?: Record<string, string>;
+  projectCreators?: Record<string, string>;
 };
 
 type SelectedCell = {
@@ -151,7 +153,7 @@ const DEFAULT_PROFILE: ViewProfile = {
   scale: 100
 };
 
-export function TaskTable({ tasks, total, allTasks, currentProject = "all", currentFilter = "open" }: TaskTableProps) {
+export function TaskTable({ tasks, total, allTasks, currentProject = "all", currentFilter = "open", creatorNames = {}, projectCreators = {} }: TaskTableProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const deviceType = isMobile ? 'mobile' : 'desktop';
@@ -1254,7 +1256,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                             className={cellClasses}
                             onClick={(e) => isEditable && handleCellClick(e, task.id, col.id, index)}
                           >
-                            {renderCell(col.id, task)}
+                            {renderCell(col.id, task, projectCreators, creatorNames)}
                           </td>
                         );
                       })}
@@ -1296,7 +1298,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   );
 }
 
-function renderCell(columnId: string, task: Task) {
+function renderCell(columnId: string, task: Task, projectCreators: Record<string, string> = {}, creatorNames: Record<string, string> = {}) {
   switch (columnId) {
     case "task":
       return (
@@ -1310,7 +1312,14 @@ function renderCell(columnId: string, task: Task) {
         </>
       );
     case "project":
-      return <span className="text-slate-700 dark:text-slate-200 break-words text-sm">{capitalizeFirst(task.projects?.name) || "—"}</span>;
+      const projCreatorId = task.projects?.id ? projectCreators[task.projects.id] : null;
+      const projCreatorName = projCreatorId ? creatorNames[projCreatorId] : null;
+      return (
+        <span className="text-slate-700 dark:text-slate-200 break-words text-sm">
+          {capitalizeFirst(task.projects?.name) || "—"}
+          {projCreatorName && <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1">({projCreatorName})</span>}
+        </span>
+      );
     case "currentGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);

@@ -6,10 +6,16 @@ export default async function NewTaskPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: allProjects }, { data: owners }] = await Promise.all([
+  const [{ data: allProjects }, { data: owners }, { data: allProfiles }] = await Promise.all([
     supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by, one_on_one_owner_id").order("name"),
     supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").order("name"),
+    supabase.from("profiles").select("id, full_name, email"),
   ]);
+
+  const creatorNames: Record<string, string> = {};
+  (allProfiles || []).forEach((p: { id: string; full_name: string | null; email: string }) => {
+    creatorNames[p.id] = p.full_name || p.email || "Unknown";
+  });
 
   // Get user's owner_id for one-on-one filtering
   const { data: userProfile } = await supabase.from("profiles").select("owner_id").eq("id", user?.id ?? "").maybeSingle();
@@ -50,6 +56,7 @@ export default async function NewTaskPage() {
           mode="create"
           projects={projects ?? []}
           owners={owners ?? []}
+          creatorNames={creatorNames}
           initialValues={{
             description: "",
             project_id: "",

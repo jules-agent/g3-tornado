@@ -155,6 +155,7 @@ export default async function AdminPage({
         owners={owners || []}
         activityLogs={activityLogs || []}
         pendingInvites={filteredPendingInvites}
+        creatorNames={Object.fromEntries((profiles || []).map((p: { id: string; full_name: string | null; email: string }) => [p.id, p.full_name || p.email || "Unknown"]))}
       />
     </div>
   );
