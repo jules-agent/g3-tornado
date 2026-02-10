@@ -342,7 +342,7 @@ export default function TaskForm({
         });
       }
 
-      router.push(`/tasks/${data.id}`);
+      router.push("/?filter=open");
       router.refresh();
       return;
     }
