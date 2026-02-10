@@ -120,7 +120,8 @@ export function BugReport({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
               {isBug ? "✅ Bug submitted!" : "✅ Feature request submitted!"}
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {isBug ? "We'll look into it shortly." : "Thanks for the idea! We'll review it soon."}
+              {isBug ? "Our AI will analyze and fix this automatically. Track progress on" : "Thanks for the idea! Track it on"}{" "}
+              <a href="/my-reports" className="text-teal-600 dark:text-teal-400 font-semibold hover:underline">My Reports</a>.
             </p>
             <button
               onClick={onClose}

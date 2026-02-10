@@ -190,6 +190,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             💬
           </button>
+          <Link
+            href="/my-reports"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
+            title="My Reports"
+          >
+            🐛
+          </Link>
           <a
             href="/tutorial"
             target="_blank"
