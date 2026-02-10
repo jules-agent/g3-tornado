@@ -347,7 +347,7 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
           )}
 
           {/* Contact + Close Task + Open link */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <span className="text-[10px] text-slate-400">
               Contacts: {capitalizeFirst(item.ownerNames)}
             </span>
@@ -490,21 +490,24 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
       style={{ isolation: "isolate", top: "var(--header-height, 57px)" }}
     >
       {/* Sub-header for Daily Actions */}
-      <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">📋</span>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white">Today&apos;s Actions</h1>
-            <p className="text-xs text-slate-500">
+      <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="text-xl flex-shrink-0">📋</span>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Today&apos;s Actions</h1>
+            <p className="text-xs text-slate-500 truncate">
               {items.length} overdue task{items.length !== 1 ? "s" : ""} need attention
             </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+          className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition flex-shrink-0"
         >
-          ← Back to Tasks
+          <span className="hidden sm:inline">←</span>
+          <span className="sm:hidden">✕</span>
+          <span className="hidden sm:inline">Back to Tasks</span>
+          <span className="sm:hidden">Close</span>
         </button>
       </div>
 
