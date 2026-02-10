@@ -102,12 +102,20 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     router.refresh();
   }, [noteValue, router]);
 
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const staleCount = tasks.filter((t) => t.isStale).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-sky-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950" style={{ isolation: "isolate" }}>
       {/* Minimal top bar */}
       <div className="flex items-center justify-between px-6 py-4 shrink-0">
         <div className="flex items-center gap-3">
