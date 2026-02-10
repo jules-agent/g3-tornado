@@ -188,6 +188,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             💬
           </button>
+          <a
+            href="/tutorial"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition"
+            title="User Tutorial"
+          >
+            📖
+          </a>
           <ThemeToggle />
           
           <button
