@@ -284,7 +284,9 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
       return { ...task, daysSinceMovement, daysSinceCreated: 0, isStale, ownerNames, ownerIds, isMyTask } as Task;
     });
 
-    setTasks(processed);
+    // Only show tasks belonging to the current user (non-admin sees own tasks only)
+    const myTasks = userOwnerId ? processed.filter((t: Task) => t.isMyTask) : processed;
+    setTasks(myTasks);
     setLoaded(true);
   };
 
