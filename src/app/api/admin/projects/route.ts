@@ -70,7 +70,7 @@ export async function PATCH(request: Request) {
   if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
 
   // Only allow specific fields
-  const allowed = ["is_up", "is_bp", "is_upfit", "name", "description", "visibility"];
+  const allowed = ["is_up", "is_bp", "is_upfit", "name", "description", "visibility", "deadline", "buffer_days", "customer_name"];
   const filtered: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(updates)) {
     if (allowed.includes(k)) filtered[k] = v;

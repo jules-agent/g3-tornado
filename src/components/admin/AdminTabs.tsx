@@ -23,6 +23,9 @@ type Project = {
   is_upfit?: boolean;
   visibility?: string;
   created_by?: string;
+  deadline?: string | null;
+  buffer_days?: number | null;
+  customer_name?: string | null;
   created_at: string;
 };
 
@@ -825,7 +828,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
     setLoading(false);
   };
 
-  const toggleProjectFlag = async (projectId: string, field: string, value: boolean | string) => {
+  const toggleProjectFlag = async (projectId: string, field: string, value: boolean | string | number | null) => {
     try {
       const res = await fetch("/api/admin/projects", {
         method: "PATCH",
@@ -949,13 +952,15 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
               <th className="px-4 py-2 font-semibold">Description</th>
-              <th className="px-4 py-2 font-semibold w-28">Created</th>
+              <th className="px-3 py-2 font-semibold w-28">Deadline</th>
+              <th className="px-3 py-2 font-semibold w-16">Buffer</th>
+              <th className="px-3 py-2 font-semibold">Customer</th>
               <th className="px-4 py-2 font-semibold w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {projects.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
             ) : (
               projects.map((project) => (
                 <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
@@ -978,7 +983,32 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
                     <input type="checkbox" checked={project.is_upfit || false} onChange={(e) => toggleProjectFlag(project.id, "is_upfit", e.target.checked)} className="rounded border-slate-300 text-purple-600 cursor-pointer" />
                   </td>
                   <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{project.description || "—"}</td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{new Date(project.created_at).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="date"
+                      value={project.deadline || ""}
+                      onChange={(e) => toggleProjectFlag(project.id, "deadline", e.target.value || null)}
+                      className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5 text-[10px] text-slate-700 dark:text-slate-300"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={project.buffer_days ?? 7}
+                      onChange={(e) => toggleProjectFlag(project.id, "buffer_days", parseInt(e.target.value) || 7)}
+                      className="w-14 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5 text-[10px] text-center text-slate-700 dark:text-slate-300"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={project.customer_name || ""}
+                      onChange={(e) => toggleProjectFlag(project.id, "customer_name", e.target.value || null)}
+                      placeholder="Customer..."
+                      className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5 text-[10px] text-slate-700 dark:text-slate-300"
+                    />
+                  </td>
                   <td className="px-4 py-2">
                     <button onClick={() => startEdit(project)} className="text-slate-400 hover:text-slate-600 mr-2">Edit</button>
                     <button onClick={() => deleteProject(project.id)} className="text-red-400 hover:text-red-600">Delete</button>
