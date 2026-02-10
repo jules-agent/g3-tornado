@@ -122,8 +122,30 @@ export default async function Home({
     return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, ownerIds, isMyTask, notes };
   }) ?? [];
 
-  // Non-admin users only see tasks they're associated with
-  const visibleTasks = isAdmin ? tasksWithDays : tasksWithDays.filter((t) => t.isMyTask);
+  // Get voided user owner_ids to hide their tasks from non-admins
+  let voidedOwnerIds: Set<string> = new Set();
+  if (!isAdmin) {
+    const { data: voidedProfiles } = await supabase
+      .from("profiles")
+      .select("owner_id")
+      .eq("status", "voided");
+    voidedOwnerIds = new Set(
+      (voidedProfiles || []).map((p) => p.owner_id).filter(Boolean) as string[]
+    );
+  }
+
+  // Non-admin users only see tasks they're associated with, excluding voided users' tasks
+  const visibleTasks = isAdmin
+    ? tasksWithDays
+    : tasksWithDays.filter((t) => {
+        if (!t.isMyTask) return false;
+        // Hide tasks where ALL owners are voided
+        if (voidedOwnerIds.size > 0 && t.ownerIds.length > 0) {
+          const allVoided = t.ownerIds.every((id: string) => voidedOwnerIds.has(id));
+          if (allVoided) return false;
+        }
+        return true;
+      });
 
   // Filter projects by visibility and team membership
   type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; visibility?: string; created_by?: string };

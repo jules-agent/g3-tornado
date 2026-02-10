@@ -10,6 +10,7 @@ type Profile = {
   full_name: string | null;
   role: string | null;
   owner_id: string | null;
+  status: string | null;
   created_at: string;
 };
 
@@ -281,6 +282,37 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
     setLoading(false);
   };
 
+  const updateUserStatus = async (userId: string, action: "pause" | "void" | "activate") => {
+    const labels = { pause: "Pause", void: "Void", activate: "Activate" };
+    const confirmMsg = action === "void"
+      ? "⚠️ VOID this user? This will disable login AND hide their task history from non-admin users. Continue?"
+      : action === "pause"
+      ? "Pause this user? They won't be able to log in until reactivated."
+      : "Reactivate this user?";
+    if (!confirm(confirmMsg)) { setUserMenuOpen(null); return; }
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/user-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`✅ User ${labels[action].toLowerCase()}d successfully`);
+        router.refresh();
+      } else {
+        setMessage(`❌ ${data.error || "Failed to update user status"}`);
+      }
+    } catch {
+      setMessage("❌ Error updating user status");
+    }
+    setLoading(false);
+    setUserMenuOpen(null);
+    setTimeout(() => setMessage(""), 5000);
+  };
+
   const copyInviteLink = async (invite: PendingInvite) => {
     const signupUrl = `https://www.g3tornado.com/signup?email=${encodeURIComponent(invite.email)}&invite=${invite.invite_token}`;
     try {
@@ -524,12 +556,14 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
               </tr>
             ) : (
               profiles.map((profile) => (
-                <tr key={profile.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <tr key={profile.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${profile.status === "voided" ? "opacity-50" : ""}`}>
                   <td className="px-4 py-2">
-                    <div className="font-medium text-slate-900 dark:text-white">
+                    <div className={`font-medium ${profile.status === "voided" ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
                       {profile.full_name || "—"}
+                      {profile.status === "paused" && <span className="ml-2 text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 px-1.5 py-0.5 rounded">⏸️ PAUSED</span>}
+                      {profile.status === "voided" && <span className="ml-2 text-xs bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 px-1.5 py-0.5 rounded">🚫 VOIDED</span>}
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400">{profile.email}</div>
+                    <div className={`${profile.status === "voided" ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-500 dark:text-slate-400"}`}>{profile.email}</div>
                   </td>
                   <td className="px-4 py-2">
                     <select
@@ -600,6 +634,52 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
                         >
                           🔑 Reset Password (Manual)
                         </button>
+                        <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                        {(!profile.status || profile.status === "active") && (
+                          <>
+                            <button
+                              onClick={() => updateUserStatus(profile.id, "pause")}
+                              disabled={loading}
+                              className="w-full text-left px-3 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 disabled:opacity-50"
+                            >
+                              ⏸️ Pause User
+                            </button>
+                            <button
+                              onClick={() => updateUserStatus(profile.id, "void")}
+                              disabled={loading}
+                              className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
+                            >
+                              🚫 Void User
+                            </button>
+                          </>
+                        )}
+                        {profile.status === "paused" && (
+                          <>
+                            <button
+                              onClick={() => updateUserStatus(profile.id, "activate")}
+                              disabled={loading}
+                              className="w-full text-left px-3 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-50"
+                            >
+                              ▶️ Reactivate User
+                            </button>
+                            <button
+                              onClick={() => updateUserStatus(profile.id, "void")}
+                              disabled={loading}
+                              className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
+                            >
+                              🚫 Void User
+                            </button>
+                          </>
+                        )}
+                        {profile.status === "voided" && (
+                          <button
+                            onClick={() => updateUserStatus(profile.id, "activate")}
+                            disabled={loading}
+                            className="w-full text-left px-3 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-50"
+                          >
+                            ▶️ Reactivate User
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

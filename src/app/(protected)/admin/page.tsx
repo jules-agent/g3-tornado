@@ -46,7 +46,7 @@ export default async function AdminPage({
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, full_name, role, owner_id, created_at")
+      .select("id, email, full_name, role, owner_id, status, created_at")
       .order("created_at", { ascending: false }),
     supabase.from("projects").select("*").order("name"),
     supabase.from("owners").select(`
@@ -109,6 +109,7 @@ export default async function AdminPage({
         full_name: au.user_metadata?.full_name || au.email || "",
         role: "user",
         owner_id: null,
+        status: "active",
         created_at: au.created_at,
       });
     }
