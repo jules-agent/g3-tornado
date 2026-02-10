@@ -107,66 +107,68 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const staleCount = tasks.filter((t) => t.isStale).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pt-[8vh]" onClick={onClose}>
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-md" />
-      <div className="relative w-full max-w-5xl mx-4 mb-auto" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-sky-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Minimal top bar */}
+      <div className="flex items-center justify-between px-6 py-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-lg">🎯</span>
           <div>
-            <h2 className="text-2xl font-bold text-white">🎯 Focus Mode</h2>
-            <p className="text-sm text-slate-400 mt-1">
-              {staleCount} stale task{staleCount !== 1 ? "s" : ""} remaining · {completedIds.size} updated this session
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Focus Mode</h2>
+            <p className="text-xs text-slate-400">
+              {staleCount} stale · {completedIds.size} updated
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl transition">✕</button>
         </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg transition">✕</button>
+      </div>
 
-        {/* Cards */}
+      {/* Centered content */}
+      <div className="flex-1 flex items-center justify-center px-4 pb-8">
         {focusedTasks.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center">
             <div className="text-5xl mb-4">🎉</div>
-            <h3 className="text-xl font-bold text-white">All caught up!</h3>
-            <p className="text-slate-400 mt-2">No stale tasks to focus on right now.</p>
+            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">All caught up!</h3>
+            <p className="text-sm text-slate-400 mt-1">No stale tasks need attention right now.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl w-full">
             {focusedTasks.map((task) => {
               const currentGate = getCurrentGatePerson(task.gates);
               const currentGateTask = task.gates?.find((g) => !g.completed)?.task_name;
               return (
-                <div key={task.id} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-5 flex flex-col">
+                <div key={task.id} className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 p-5 flex flex-col">
                   {/* Project + Age */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
                       {task.projects?.name || "No project"}
                     </span>
-                    <span className="text-xs font-bold text-red-500">
+                    <span className="text-xs font-semibold text-rose-400">
                       {task.daysSinceMovement}d overdue
                     </span>
                   </div>
 
                   {/* Task ID */}
                   {task.task_number && (
-                    <span className="text-[10px] text-slate-400 font-mono">{task.task_number}</span>
+                    <span className="text-[10px] text-slate-300 dark:text-slate-500 font-mono">{task.task_number}</span>
                   )}
 
                   {/* Description */}
-                  <p className="text-sm font-medium text-slate-900 dark:text-white mt-1 mb-3 line-clamp-3">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-1 mb-3 line-clamp-3 leading-relaxed">
                     {task.description}
                   </p>
 
                   {/* Gate info */}
                   {currentGate && (
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                      <span className="font-semibold">Gate:</span> {currentGate}
-                      {currentGateTask && <span className="text-slate-400"> — {currentGateTask}</span>}
+                    <div className="text-xs text-slate-400 mb-2">
+                      <span className="font-medium text-slate-500 dark:text-slate-300">Gate:</span> {currentGate}
+                      {currentGateTask && <span className="text-slate-300 dark:text-slate-500"> — {currentGateTask}</span>}
                     </div>
                   )}
 
                   {/* Next step */}
                   {task.next_step && (
-                    <div className="text-xs text-teal-600 dark:text-teal-400 mb-3">
-                      <span className="font-semibold">Next:</span> {task.next_step}
+                    <div className="text-xs text-teal-500 dark:text-teal-400 mb-3">
+                      <span className="font-medium">Next:</span> {task.next_step}
                     </div>
                   )}
 
@@ -175,7 +177,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                     👤 {task.ownerNames || "Unassigned"}
                   </div>
 
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <div className="mt-auto pt-3 border-t border-slate-50 dark:border-slate-700/50">
                     {editingNote === task.id ? (
                       <div className="flex gap-2">
                         <input
@@ -184,19 +186,19 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                           onChange={(e) => setNoteValue(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && addNote(task.id)}
                           placeholder="Add update note..."
-                          className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                          className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
                           autoFocus
                         />
                         <button
                           onClick={() => addNote(task.id)}
                           disabled={saving || !noteValue.trim()}
-                          className="px-2 py-1 rounded bg-teal-500 text-white text-xs font-semibold hover:bg-teal-600 disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg bg-teal-500 text-white text-xs font-medium hover:bg-teal-600 disabled:opacity-50 transition"
                         >
                           {saving ? "..." : "✓"}
                         </button>
                         <button
                           onClick={() => { setEditingNote(null); setNoteValue(""); }}
-                          className="text-slate-400 hover:text-slate-600 text-xs"
+                          className="text-slate-300 hover:text-slate-500 text-xs"
                         >
                           ✕
                         </button>
@@ -205,13 +207,13 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingNote(task.id)}
-                          className="flex-1 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs font-semibold py-2 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition"
+                          className="flex-1 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-xs font-medium py-2 hover:bg-teal-50 hover:text-teal-600 dark:hover:bg-teal-900/30 dark:hover:text-teal-300 transition"
                         >
                           📝 Add Update
                         </button>
                         <a
                           href={`/tasks/${task.id}`}
-                          className="rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold py-2 px-3 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                          className="rounded-lg bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-xs font-medium py-2 px-3 hover:bg-slate-100 dark:hover:bg-slate-600 transition"
                         >
                           Open →
                         </a>
