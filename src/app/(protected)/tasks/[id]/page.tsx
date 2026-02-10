@@ -126,7 +126,7 @@ export default async function TaskDetailPage({
               </div>
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Owners
+                  Contacts
                 </div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">
                   {ownerNames}

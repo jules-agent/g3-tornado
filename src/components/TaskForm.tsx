@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { filterContactsByProject, filterProjectsByUser } from "@/lib/utils";
 
 type Project = {
   id: string;
@@ -103,23 +104,42 @@ export default function TaskForm({
     return new Map(owners.map((owner) => [owner.id, owner.name]));
   }, [owners]);
 
-  // Auto-assign current user as owner on create
+  // Auto-assign current user as owner on create & get admin status
   const [currentUserOwnerId, setCurrentUserOwnerId] = useState<string | null>(null);
+  const [currentUserOwner, setCurrentUserOwner] = useState<{
+    is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_third_party_vendor?: boolean;
+  } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
-    if (mode !== "create") return;
     const fetchUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from("profiles").select("owner_id").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("owner_id, role").eq("id", user.id).maybeSingle();
+        const adminStatus = profile?.role === "admin" || user.email === "ben@unpluggedperformance.com";
+        setIsAdmin(adminStatus);
         if (profile?.owner_id) {
           setCurrentUserOwnerId(profile.owner_id);
-          setOwnerIds(prev => prev.includes(profile.owner_id) ? prev : [...prev, profile.owner_id]);
+          if (mode === "create") {
+            setOwnerIds(prev => prev.includes(profile.owner_id) ? prev : [...prev, profile.owner_id]);
+          }
+          // Fetch owner record for company flags
+          const { data: ownerRecord } = await supabase
+            .from("owners")
+            .select("is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor")
+            .eq("id", profile.owner_id)
+            .maybeSingle();
+          setCurrentUserOwner(ownerRecord);
         }
       }
     };
     fetchUser();
   }, [mode]);
+
+  // Filter projects by user's company access
+  const visibleProjects = useMemo(() => {
+    return filterProjectsByUser(projects, currentUserOwner, isAdmin);
+  }, [projects, currentUserOwner, isAdmin]);
 
   // Staff and vendors for gate selector
   const { employees: allStaff, vendors: allVendors } = useMemo(() => {
@@ -128,29 +148,19 @@ export default function TaskForm({
     return { employees: staff, vendors: vends };
   }, [owners]);
 
-  // Filter owners based on selected project's business units (for edit mode)
+  // Filter contacts based on selected project's company flags
   const { employees: filteredEmployees, vendors: filteredVendors } = useMemo(() => {
     const selectedProject = projects.find(p => p.id === projectId);
-    const hasAnyFlag = selectedProject?.is_up || selectedProject?.is_bp || selectedProject?.is_upfit;
-
-    if (!hasAnyFlag) {
-      const emps = owners.filter(o => !o.is_third_party_vendor);
-      const vends = owners.filter(o => o.is_third_party_vendor);
-      return { employees: emps, vendors: vends };
-    }
-
-    const employees = owners.filter(o => {
-      if (o.is_third_party_vendor) return false;
-      if (selectedProject?.is_up && o.is_up_employee) return true;
-      if (selectedProject?.is_bp && o.is_bp_employee) return true;
-      if (selectedProject?.is_upfit && o.is_upfit_employee) return true;
-      if (!o.is_up_employee && !o.is_bp_employee && !o.is_upfit_employee && !o.is_third_party_vendor) return true;
-      return false;
-    });
-
-    const vendors = owners.filter(o => o.is_third_party_vendor);
+    
+    // Use utility function to filter contacts by project
+    const filteredContacts = filterContactsByProject(owners, selectedProject, isAdmin);
+    
+    // Split into employees and vendors
+    const employees = filteredContacts.filter(o => !o.is_third_party_vendor);
+    const vendors = filteredContacts.filter(o => o.is_third_party_vendor);
+    
     return { employees, vendors };
-  }, [owners, projects, projectId]);
+  }, [owners, projects, projectId, isAdmin]);
 
   const handleOwnerToggle = (ownerId: string) => {
     setOwnerIds((prev) =>
@@ -446,23 +456,23 @@ export default function TaskForm({
             <option value="" disabled>
               {hasProjects ? "Select a project" : "Add a project"}
             </option>
-            {projects.filter(p => p.visibility === "personal").length > 0 && (
+            {visibleProjects.filter(p => p.visibility === "personal").length > 0 && (
               <optgroup label="Personal">
-                {projects.filter(p => p.visibility === "personal").map((project) => (
+                {visibleProjects.filter(p => p.visibility === "personal").map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </optgroup>
             )}
-            {projects.filter(p => p.visibility === "one_on_one").length > 0 && (
+            {visibleProjects.filter(p => p.visibility === "one_on_one").length > 0 && (
               <optgroup label="One on One">
-                {projects.filter(p => p.visibility === "one_on_one").map((project) => (
+                {visibleProjects.filter(p => p.visibility === "one_on_one").map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </optgroup>
             )}
-            {projects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").length > 0 && (
+            {visibleProjects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").length > 0 && (
               <optgroup label="Shared / Team">
-                {projects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").map((project) => (
+                {visibleProjects.filter(p => p.visibility !== "personal" && p.visibility !== "one_on_one").map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </optgroup>
@@ -757,7 +767,7 @@ export default function TaskForm({
                 <option value="" disabled>
                   {hasProjects ? "Select a project" : "Add a project"}
                 </option>
-                {projects.map((project) => (
+                {visibleProjects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name}
                   </option>
@@ -855,7 +865,7 @@ export default function TaskForm({
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-900">Owners</div>
+            <div className="text-sm font-semibold text-slate-900">Contacts</div>
             <div className="mt-3 space-y-2">
               {filteredEmployees.map((owner) => (
                 <label key={owner.id} className="flex items-center gap-2 text-sm text-slate-600">
@@ -895,7 +905,7 @@ export default function TaskForm({
                     value={newOwnerName}
                     onChange={(event) => setNewOwnerName(event.target.value)}
                     onKeyDown={handleOwnerInputKeyDown}
-                    placeholder="Owner name"
+                    placeholder="Contact name"
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
                   />
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -928,14 +938,14 @@ export default function TaskForm({
                 </div>
               ) : (
                 <button type="button" onClick={() => { setIsAddingOwner(true); setOwnerError(null); }} className="text-xs font-semibold text-slate-500 hover:text-slate-700">
-                  + Add Owner
+                  + Add Contact
                 </button>
               )}
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Selected owners
+              Selected contacts
             </div>
             <div className="mt-2 text-sm text-slate-700">
               {ownerIds.length === 0

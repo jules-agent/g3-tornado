@@ -116,7 +116,7 @@ export function OwnerEditor({ taskId, onClose, onSave }: OwnerEditorProps) {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-900 dark:text-white">
-            Assign Owners
+            Assign Contacts
           </h3>
           <button 
             onClick={onClose}

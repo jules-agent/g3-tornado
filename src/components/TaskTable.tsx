@@ -45,7 +45,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { id: "cadence", label: "Cad.", width: 50, minWidth: 40, align: "center", editable: true, defaultVisible: true },
   { id: "aging", label: "Aging", width: 70, minWidth: 60, align: "center", defaultVisible: true },
   { id: "status", label: "Status", width: 70, minWidth: 60, align: "center", editable: true, defaultVisible: true },
-  { id: "owner", label: "Owner", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: false },
+  { id: "owner", label: "Contact", width: 100, minWidth: 80, align: "left", editable: true, defaultVisible: false },
   { id: "gated", label: "Gated", width: 70, minWidth: 60, align: "center", defaultVisible: false },
   { id: "id", label: "ID", width: 56, minWidth: 50, align: "left", defaultVisible: false },
 ];

@@ -346,10 +346,10 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
             </div>
           )}
 
-          {/* Owner + Close Task + Open link */}
+          {/* Contact + Close Task + Open link */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-400">
-              Owners: {capitalizeFirst(item.ownerNames)}
+              Contacts: {capitalizeFirst(item.ownerNames)}
             </span>
             <div className="flex items-center gap-3">
               <button

@@ -186,7 +186,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                     </div>
                   )}
 
-                  {/* Owners */}
+                  {/* Contacts */}
                   <div className="text-xs text-slate-400 mb-3">
                     👤 {task.ownerNames || "Unassigned"}
                   </div>
