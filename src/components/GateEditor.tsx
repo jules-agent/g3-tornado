@@ -168,8 +168,8 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {/* Sequence number + status */}
-                    <div className="flex flex-col items-center gap-1 pt-1">
+                    {/* Gate label + status */}
+                    <div className="flex flex-col items-center gap-1 pt-1 min-w-[52px]">
                       <button
                         onClick={() => toggleCompleted(idx)}
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold transition ${
@@ -183,22 +183,17 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
                       >
                         {gate.completed ? "✓" : idx + 1}
                       </button>
-                      {isCurrent && !gate.completed && (
-                        <span className="text-[8px] font-bold text-teal-600 uppercase">Current</span>
-                      )}
-                      {isNext && !gate.completed && (
-                        <span className="text-[8px] font-bold text-slate-400 uppercase">Next</span>
-                      )}
+                      <span className={`text-[9px] font-bold uppercase leading-tight text-center ${
+                        gate.completed ? "text-emerald-500" : isCurrent ? "text-teal-600" : isNext ? "text-slate-500" : "text-slate-400"
+                      }`}>
+                        Gate {idx + 1}
+                        {isCurrent && !gate.completed && <><br /><span className="text-teal-500">Current</span></>}
+                        {isNext && !gate.completed && <><br /><span className="text-slate-400">(Next)</span></>}
+                      </span>
                     </div>
 
                     {/* Gate fields */}
                     <div className="flex-1 space-y-1.5">
-                      <input
-                        value={gate.name}
-                        onChange={e => updateGate(idx, "name", e.target.value)}
-                        placeholder={`Gate ${idx + 1} description`}
-                        className={`w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500 ${gate.completed ? "line-through text-slate-400" : ""}`}
-                      />
                       <div className="flex gap-1.5">
                         {showAddOwner && addingForIdx === idx ? (
                           <div className="flex gap-1 flex-1">
