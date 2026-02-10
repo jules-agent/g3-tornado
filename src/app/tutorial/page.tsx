@@ -111,7 +111,7 @@ const sections: Section[] = [
         <ol className="list-decimal ml-5 space-y-2 text-sm">
           <li><strong>Project</strong> — Select an existing project or create a new one. You&apos;ll only see projects for your associated companies.</li>
           <li><strong>Description</strong> — What needs to be done.</li>
-          <li><strong>Follow-up Cadence</strong> — How many days before this task is considered overdue (default: 7 days).</li>
+          <li><strong>Follow-up Cadence</strong> — How many days before this task is considered overdue (default: 3 days).</li>
         </ol>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Contacts</h3>
         <p className="text-sm">Assign one or more contacts to the task. Contacts are filtered based on the selected project&apos;s company associations:</p>
@@ -285,7 +285,7 @@ const sections: Section[] = [
         <p>Every task has a <strong>follow-up cadence</strong> — the number of days before it&apos;s considered overdue if no update has been made.</p>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">How It Works</h3>
         <ul className="list-disc ml-5 space-y-1 text-sm">
-          <li>Default cadence is <strong>7 days</strong></li>
+          <li>Default cadence is <strong>3 days</strong></li>
           <li>The &quot;Aging&quot; column shows days since last movement</li>
           <li>When aging exceeds cadence, the task turns <strong>red/amber</strong> and appears in Today&apos;s Actions</li>
           <li>Adding a note or any update resets the aging timer</li>
