@@ -201,9 +201,9 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                     handleNoteSubmit();
                   }
                 }}
-                placeholder="Add a note..."
+                placeholder="Submit an update note..."
                 disabled={saving}
-                className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 capitalize"
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
               />
               {noteText.trim() && (
                 <button
@@ -327,7 +327,7 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                   value={blockerDesc}
                   onChange={(e) => setBlockerDesc(e.target.value)}
                   placeholder="What do they need to do?"
-                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 capitalize"
+                  className="mt-0.5 w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
