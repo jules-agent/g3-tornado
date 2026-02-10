@@ -10,6 +10,8 @@ type Project = {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  visibility?: string;
+  created_by?: string;
 };
 
 type Owner = {
@@ -60,6 +62,10 @@ export default function TaskForm({
   const [newProjectName, setNewProjectName] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [newProjectVisibility, setNewProjectVisibility] = useState<"personal" | "shared">("shared");
+  const [newProjectIsUp, setNewProjectIsUp] = useState(false);
+  const [newProjectIsBp, setNewProjectIsBp] = useState(false);
+  const [newProjectIsUpfit, setNewProjectIsUpfit] = useState(false);
   const [fuCadenceDays, setFuCadenceDays] = useState(
     initialValues?.fu_cadence_days ?? 3
   );
@@ -177,7 +183,13 @@ export default function TaskForm({
       const res = await fetch("/api/admin/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName }),
+        body: JSON.stringify({
+          name: trimmedName,
+          visibility: newProjectVisibility,
+          is_up: newProjectVisibility === "shared" ? newProjectIsUp : false,
+          is_bp: newProjectVisibility === "shared" ? newProjectIsBp : false,
+          is_upfit: newProjectVisibility === "shared" ? newProjectIsUpfit : false,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -193,6 +205,10 @@ export default function TaskForm({
       setProjectId(data.id);
       setNewProjectName("");
       setIsAddingProject(false);
+      setNewProjectVisibility("shared");
+      setNewProjectIsUp(false);
+      setNewProjectIsBp(false);
+      setNewProjectIsUpfit(false);
       router.refresh();
     } catch {
       setProjectError("Unable to create project.");
@@ -424,15 +440,42 @@ export default function TaskForm({
             <option value="" disabled>
               {hasProjects ? "Select a project" : "Add a project"}
             </option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
+            {projects.filter(p => p.visibility === "personal").length > 0 && (
+              <optgroup label="Personal">
+                {projects.filter(p => p.visibility === "personal").map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {projects.filter(p => p.visibility !== "personal").length > 0 && (
+              <optgroup label="Shared / Team">
+                {projects.filter(p => p.visibility !== "personal").map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </optgroup>
+            )}
             <option value={NEW_PROJECT_VALUE}>+ New Project</option>
           </select>
           {isAddingProject && (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-3">
+              {/* Visibility selector */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewProjectVisibility("personal")}
+                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "personal" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                >
+                  🔒 Personal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewProjectVisibility("shared")}
+                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "shared" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                >
+                  👥 Shared / Team
+                </button>
+              </div>
+
               <input
                 value={newProjectName}
                 onChange={(event) => setNewProjectName(event.target.value)}
@@ -440,13 +483,51 @@ export default function TaskForm({
                   if (event.key === "Enter") { event.preventDefault(); void createProject(); }
                   if (event.key === "Escape") { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }
                 }}
-                onBlur={() => void createProject()}
                 placeholder="Project name"
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
                 autoFocus
               />
+
+              {/* Team selector for shared projects */}
+              {newProjectVisibility === "shared" && (
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" checked={newProjectIsUp} onChange={(e) => setNewProjectIsUp(e.target.checked)} className="h-3.5 w-3.5 rounded border-slate-300" />
+                    UP
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" checked={newProjectIsBp} onChange={(e) => setNewProjectIsBp(e.target.checked)} className="h-3.5 w-3.5 rounded border-slate-300" />
+                    BP
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" checked={newProjectIsUpfit} onChange={(e) => setNewProjectIsUpfit(e.target.checked)} className="h-3.5 w-3.5 rounded border-slate-300" />
+                    UPFIT
+                  </label>
+                </div>
+              )}
+
+              {newProjectVisibility === "personal" && (
+                <p className="text-[10px] text-slate-400">Only you will see this project and its tasks.</p>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void createProject()}
+                  disabled={isCreatingProject || !newProjectName.trim()}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400"
+                >
+                  {isCreatingProject ? "Creating..." : "Create Project"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+              </div>
               {projectError && <div className="text-xs text-rose-600">{projectError}</div>}
-              {isCreatingProject && <div className="text-xs text-slate-400">Creating project...</div>}
             </div>
           )}
         </div>

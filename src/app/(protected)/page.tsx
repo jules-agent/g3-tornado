@@ -71,7 +71,7 @@ export default async function Home({
   }
 
   const [{ data: projects }, { data: allTasks }] = await Promise.all([
-    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by").order("name"),
     supabase
       .from("tasks")
       .select(
@@ -125,19 +125,22 @@ export default async function Home({
   // Non-admin users only see tasks they're associated with
   const visibleTasks = isAdmin ? tasksWithDays : tasksWithDays.filter((t) => t.isMyTask);
 
-  // Non-admin users only see projects matching their team
-  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean };
-  const visibleProjects = isAdmin ? (projects as ProjectWithFlags[] ?? []) : ((projects as ProjectWithFlags[] ?? []).filter((p) => {
-    // If project has no flags, show to everyone
+  // Filter projects by visibility and team membership
+  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; visibility?: string; created_by?: string };
+  const allProjects = (projects as ProjectWithFlags[] ?? []);
+  const visibleProjects = isAdmin ? allProjects : allProjects.filter((p) => {
+    // Personal projects: only visible to creator
+    if (p.visibility === "personal") {
+      return p.created_by === user?.id;
+    }
+    // Shared projects: filter by team
     if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
-    // Show if user's team matches any of the project's flags
     if (p.is_up && userOwnerFlags?.is_up_employee) return true;
     if (p.is_bp && userOwnerFlags?.is_bp_employee) return true;
     if (p.is_upfit && userOwnerFlags?.is_upfit_employee) return true;
-    // Vendors see all projects
     if (userOwnerFlags?.is_third_party_vendor) return true;
     return false;
-  }));
+  });
 
   // Filter tasks
   const filter = params.filter || "open";

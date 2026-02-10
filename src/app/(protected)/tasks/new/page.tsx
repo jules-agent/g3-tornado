@@ -4,11 +4,18 @@ import TaskForm from "@/components/TaskForm";
 
 export default async function NewTaskPage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: projects }, { data: owners }] = await Promise.all([
-    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit").order("name"),
+  const [{ data: allProjects }, { data: owners }] = await Promise.all([
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by").order("name"),
     supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").order("name"),
   ]);
+
+  // Filter: show personal projects only to creator, all shared projects
+  const projects = (allProjects ?? []).filter(p => {
+    if (p.visibility === "personal") return p.created_by === user?.id;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -40,7 +47,7 @@ export default async function NewTaskPage() {
           initialValues={{
             description: "",
             project_id: projects?.[0]?.id ?? "",
-            fu_cadence_days: 7,
+            fu_cadence_days: 3,
           }}
         />
       </div>
