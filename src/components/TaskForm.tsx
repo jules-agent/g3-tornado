@@ -83,6 +83,7 @@ export default function TaskForm({
   const [hasGate, setHasGate] = useState(false);
   const [gateOwnerId, setGateOwnerId] = useState<string>("");
   const [gateName, setGateName] = useState("");
+  const [blockerCategory, setBlockerCategory] = useState<string>("");
   const [isAddingGateName, setIsAddingGateName] = useState(false);
 
   // Edit mode owner state
@@ -306,6 +307,7 @@ export default function TaskForm({
           task_number: nextNumber,
           is_blocked: hasGate,
           blocker_description: hasGate && gateName ? gateName : null,
+          blocker_category: hasGate ? blockerCategory || null : null,
           gates: hasGate && gateOwnerId ? [{
             name: gateName || "Gate",
             owner_name: ownerLookup.get(gateOwnerId) || "",
@@ -602,6 +604,25 @@ export default function TaskForm({
           </div>
           {hasGate && (
             <div className="mt-4 space-y-3">
+              {/* Blocker Category */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Blocker Category
+                </label>
+                <select
+                  value={blockerCategory}
+                  onChange={(e) => setBlockerCategory(e.target.value)}
+                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                >
+                  <option value="">Select category...</option>
+                  <option value="vendor">🏭 Vendor</option>
+                  <option value="engineering">⚙️ Engineering</option>
+                  <option value="design">🎨 Design</option>
+                  <option value="decision">🧑‍💼 Waiting on Decision</option>
+                  <option value="other">❓ Other</option>
+                </select>
+              </div>
+
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Gate Selector
               </label>

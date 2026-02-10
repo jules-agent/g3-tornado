@@ -12,6 +12,49 @@ const transporter = nodemailer.createTransport({
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "G3 Tornado <noreply@g3tornado.com>";
 
+export async function sendNudgeEmail({
+  to,
+  name,
+  taskNumber,
+  blockerDescription,
+  daysOverdue,
+}: {
+  to: string;
+  name: string;
+  taskNumber: string;
+  blockerDescription: string;
+  daysOverdue: number;
+}) {
+  try {
+    const info = await transporter.sendMail({
+      from: FROM_EMAIL,
+      to,
+      subject: `Action needed: Task ${taskNumber} is waiting on your input`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0f172a; font-size: 24px; margin: 0;">🌪️ G3 Tornado</h1>
+          </div>
+          <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 24px;">
+            <p style="color: #475569; font-size: 15px;">Hi ${name},</p>
+            <p style="color: #475569; font-size: 15px;">Task <strong>${taskNumber}</strong> is waiting on your input.</p>
+            ${blockerDescription ? `<p style="color: #475569; font-size: 15px;">${blockerDescription}</p>` : ""}
+            <p style="color: #ef4444; font-size: 15px; font-weight: 600;">This task is ${daysOverdue} day${daysOverdue === 1 ? "" : "s"} overdue. Please provide an update.</p>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+            This is an automated reminder from G3 Tornado.
+          </p>
+        </div>
+      `,
+    });
+    return { success: true, emailId: info.messageId };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Failed to send nudge email:", message);
+    return { success: false, error: message };
+  }
+}
+
 export async function sendInviteEmail({
   to,
   signupUrl,
