@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import TaskForm from "@/components/TaskForm";
 import AddNoteForm from "@/components/AddNoteForm";
 import TaskActions from "@/components/TaskActions";
+import { DeleteNoteButton } from "@/components/DeleteNoteButton";
 
 export default async function TaskDetailPage({
   params,
@@ -69,6 +70,9 @@ export default async function TaskDetailPage({
       .join(", ") || "Unassigned";
   const selectedOwnerIds =
     taskOwners?.map((to) => to.owner_id).filter(Boolean) ?? [];
+
+  const isSharedTask = (taskOwners?.length ?? 0) > 1;
+  const isAdmin = profile?.role === "admin" || user?.email === "ben@unpluggedperformance.com";
 
   const daysSinceMovement = Math.floor(
     (Date.now() - new Date(task.last_movement_at).getTime()) /
@@ -168,22 +172,29 @@ export default async function TaskDetailPage({
             </div>
             <div className="mt-6 space-y-4">
               {notes && notes.length > 0 ? (
-                notes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                  >
-                    <div className="text-sm text-slate-700">{note.content}</div>
-                    <div className="mt-2 text-xs text-slate-400">
-                      {(() => {
-                        const profile = note.profiles as unknown as { full_name: string | null; email: string } | null;
-                        return profile?.full_name || profile?.email || "Unknown";
-                      })()}
-                      {" • "}
-                      {new Date(note.created_at).toLocaleString()}
+                notes.map((note) => {
+                  const noteAuthor = note.profiles as unknown as { full_name: string | null; email: string } | null;
+                  const isMyNote = note.created_by === user?.id;
+                  const canDelete = isAdmin || (isMyNote && !isSharedTask);
+                  return (
+                    <div
+                      key={note.id}
+                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm text-slate-700">{note.content}</div>
+                        {canDelete && (
+                          <DeleteNoteButton noteId={note.id} isSharedTask={!isAdmin && isSharedTask} />
+                        )}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">
+                        {noteAuthor?.full_name || noteAuthor?.email || "Unknown"}
+                        {" • "}
+                        {new Date(note.created_at).toLocaleString()}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
                   No notes yet. Add the first update to reset movement.
@@ -203,7 +214,7 @@ export default async function TaskDetailPage({
               <TaskActions
                 taskId={task.id}
                 status={task.status}
-                isAdmin={profile?.role === "admin" || user?.email === "ben@unpluggedperformance.com"}
+                isAdmin={isAdmin}
                 closeRequestedAt={task.close_requested_at}
               />
             </div>
