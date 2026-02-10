@@ -90,6 +90,8 @@ type TaskTableProps = {
   tasks: Task[];
   total: number;
   allTasks?: Task[];
+  currentProject?: string;
+  currentFilter?: string;
 };
 
 type SelectedCell = {
@@ -148,7 +150,7 @@ const DEFAULT_PROFILE: ViewProfile = {
   scale: 100
 };
 
-export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
+export function TaskTable({ tasks, total, allTasks, currentProject = "all", currentFilter = "open" }: TaskTableProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const deviceType = isMobile ? 'mobile' : 'desktop';
@@ -780,11 +782,14 @@ export function TaskTable({ tasks, total, allTasks }: TaskTableProps) {
             💡 Cmd+click cells (• columns) to bulk edit
           </span>
           {top5Projects.length > 0 && (
-            <div className="flex items-center gap-1.5 ml-2">
+            <div className="flex items-center gap-1 ml-2">
               <span className="text-[10px] text-slate-400">|</span>
+              <Link href={`/?filter=${currentFilter}`} className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap transition ${currentProject === "all" ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-semibold" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700"}`}>
+                {currentProject === "all" && "✓ "}All <span className="text-slate-400">({total})</span>
+              </Link>
               {top5Projects.map((p) => (
-                <Link key={p.id} href={`/?filter=open&project=${p.id}`} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition whitespace-nowrap">
-                  {p.name} <span className="text-slate-400">({p.count})</span>
+                <Link key={p.id} href={`/?filter=${currentFilter}&project=${p.id}`} className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap transition ${currentProject === p.id ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-semibold" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700"}`}>
+                  {currentProject === p.id && "✓ "}{p.name} <span className="text-slate-400">({p.count})</span>
                 </Link>
               ))}
             </div>

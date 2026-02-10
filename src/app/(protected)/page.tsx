@@ -50,7 +50,7 @@ export default async function Home({
 
   const isAdmin = user?.email === "ben@unpluggedperformance.com";
 
-  // Get user's linked owner_id for "my tasks" highlighting
+  // Get user's linked owner_id and team flags
   const { data: profile } = await supabase
     .from("profiles")
     .select("owner_id")
@@ -59,8 +59,19 @@ export default async function Home({
   
   const userOwnerId = profile?.owner_id ?? null;
 
+  // Get owner flags for project filtering
+  let userOwnerFlags: { is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_third_party_vendor?: boolean } | null = null;
+  if (userOwnerId) {
+    const { data: ownerData } = await supabase
+      .from("owners")
+      .select("is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor")
+      .eq("id", userOwnerId)
+      .maybeSingle();
+    userOwnerFlags = ownerData;
+  }
+
   const [{ data: projects }, { data: allTasks }] = await Promise.all([
-    supabase.from("projects").select("id, name").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit").order("name"),
     supabase
       .from("tasks")
       .select(
@@ -111,11 +122,28 @@ export default async function Home({
     return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, ownerIds, isMyTask, notes };
   }) ?? [];
 
+  // Non-admin users only see tasks they're associated with
+  const visibleTasks = isAdmin ? tasksWithDays : tasksWithDays.filter((t) => t.isMyTask);
+
+  // Non-admin users only see projects matching their team
+  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean };
+  const visibleProjects = isAdmin ? (projects as ProjectWithFlags[] ?? []) : ((projects as ProjectWithFlags[] ?? []).filter((p) => {
+    // If project has no flags, show to everyone
+    if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
+    // Show if user's team matches any of the project's flags
+    if (p.is_up && userOwnerFlags?.is_up_employee) return true;
+    if (p.is_bp && userOwnerFlags?.is_bp_employee) return true;
+    if (p.is_upfit && userOwnerFlags?.is_upfit_employee) return true;
+    // Vendors see all projects
+    if (userOwnerFlags?.is_third_party_vendor) return true;
+    return false;
+  }));
+
   // Filter tasks
   const filter = params.filter || "open";
   const projectFilter = params.project || "all";
   
-  let filteredTasks = tasksWithDays;
+  let filteredTasks = visibleTasks;
   
   if (filter === "open") {
     filteredTasks = filteredTasks.filter((t) => t.status === "open");
@@ -187,13 +215,13 @@ export default async function Home({
     filteredTasks.sort((a, b) => (a.projects?.name ?? "").localeCompare(b.projects?.name ?? ""));
   }
 
-  // Stats
+  // Stats (based on visible tasks for the user)
   const stats = {
-    total: allTasks?.length ?? 0,
-    open: tasksWithDays.filter((t) => t.status === "open").length,
-    closed: tasksWithDays.filter((t) => t.status === "closed").length,
-    gated: tasksWithDays.filter((t) => t.is_blocked).length,
-    stale: tasksWithDays.filter((t) => t.isStale).length,
+    total: visibleTasks.length,
+    open: visibleTasks.filter((t) => t.status === "open").length,
+    closed: visibleTasks.filter((t) => t.status === "closed").length,
+    gated: visibleTasks.filter((t) => t.is_blocked).length,
+    stale: visibleTasks.filter((t) => t.isStale).length,
   };
 
   const filters = [
@@ -226,7 +254,7 @@ export default async function Home({
           ))}
         </div>
         <ProjectFilter 
-          projects={projects ?? []} 
+          projects={visibleProjects} 
           currentFilter={filter} 
           currentProject={projectFilter} 
         />
@@ -241,7 +269,7 @@ export default async function Home({
       </div>
 
       {/* Table with resizable/reorderable columns */}
-      <TaskTable tasks={filteredTasks} total={stats.total} allTasks={tasksWithDays} />
+      <TaskTable tasks={filteredTasks} total={stats.total} allTasks={visibleTasks} currentProject={projectFilter} currentFilter={filter} />
     </div>
   );
 }

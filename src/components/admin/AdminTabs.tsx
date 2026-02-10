@@ -807,7 +807,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
                 </label>
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
-                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                  <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
               </div>
             </div>
@@ -845,7 +845,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
                 </label>
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
-                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                  <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
               </div>
             </div>
@@ -864,7 +864,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
               <th className="px-4 py-2 font-semibold">Project</th>
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
-              <th className="px-3 py-2 font-semibold text-center w-14">UF</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
               <th className="px-4 py-2 font-semibold">Description</th>
               <th className="px-4 py-2 font-semibold w-28">Created</th>
               <th className="px-4 py-2 font-semibold w-20">Actions</th>
@@ -1117,7 +1117,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                 </label>
                 <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
                   <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-purple-600" />
-                  <span className="text-slate-700 dark:text-slate-300">UP.FIT</span>
+                  <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
               </div>
             </div>
@@ -1177,7 +1177,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-4 py-2 font-semibold">Name</th>
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
-              <th className="px-3 py-2 font-semibold text-center w-14">UF</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>

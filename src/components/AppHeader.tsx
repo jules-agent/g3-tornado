@@ -118,9 +118,9 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </Link>
 
           <div className="flex items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 shadow-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-xs font-bold text-white">
+            <Link href="/profile" className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-xs font-bold text-white hover:opacity-80 transition" title="My Profile">
               {initials}
-            </div>
+            </Link>
             <div className="hidden text-sm sm:block">
               <div className="font-semibold text-slate-800 dark:text-slate-100">{displayName}</div>
               <div className="text-[10px] font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
