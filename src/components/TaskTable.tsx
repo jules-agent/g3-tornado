@@ -211,6 +211,25 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
   const rowMenuRef = useRef<HTMLDivElement>(null);
 
+  // Delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentIsAdmin, setCurrentIsAdmin] = useState(false);
+  const [currentOwnerId, setCurrentOwnerId] = useState<string | null>(null);
+
+  // Fetch current user admin/owner status
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from("profiles").select("role, owner_id").eq("id", user.id).maybeSingle();
+      setCurrentIsAdmin(profile?.role === "admin" || user.email === "ben@unpluggedperformance.com");
+      setCurrentOwnerId(profile?.owner_id || null);
+    };
+    fetchUserInfo();
+  }, []);
+
   const tableRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -707,6 +726,33 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
     router.refresh();
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (confirmDeleteId !== taskId) {
+      setConfirmDeleteId(taskId);
+      setTimeout(() => setConfirmDeleteId(null), 5000);
+      return;
+    }
+    setDeletingId(taskId);
+    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    if (res.ok) {
+      setRowMenuOpen(null);
+      setConfirmDeleteId(null);
+      router.refresh();
+    } else {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Failed to delete task");
+    }
+    setDeletingId(null);
+  };
+
+  const canDeleteTask = (task: Task) => {
+    if (currentIsAdmin) return true;
+    const ownerCount = task.ownerIds?.length || 0;
+    if (ownerCount > 1) return false;
+    if (ownerCount === 0) return true;
+    return currentOwnerId ? task.ownerIds.includes(currentOwnerId) : false;
+  };
+
   const currentProfile = allProfiles[currentProfileId] || DEFAULT_PROFILE;
 
   if (!loaded) {
@@ -1076,6 +1122,22 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-left"
                                   >
                                     <span>✅</span> Close Task
+                                  </button>
+                                </>
+                              )}
+                              {canDeleteTask(task) && (
+                                <>
+                                  <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                                  <button
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    disabled={deletingId === task.id}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left ${
+                                      confirmDeleteId === task.id
+                                        ? "bg-red-600 text-white"
+                                        : "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                    } disabled:opacity-50`}
+                                  >
+                                    <span>🗑️</span> {deletingId === task.id ? "Deleting..." : confirmDeleteId === task.id ? "Click again to confirm" : "Delete Task"}
                                   </button>
                                 </>
                               )}

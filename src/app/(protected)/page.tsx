@@ -124,9 +124,9 @@ export default async function Home({
     return { ...task, daysSinceMovement, daysSinceCreated, isStale, ownerNames: owners, ownerIds, isMyTask, notes };
   }) ?? [];
 
-  // Get voided user owner_ids to hide their tasks from non-admins
+  // Get voided user owner_ids to hide their tasks
   let voidedOwnerIds: Set<string> = new Set();
-  if (!viewAsAdmin) {
+  {
     const { data: voidedProfiles } = await supabase
       .from("profiles")
       .select("owner_id")
@@ -144,10 +144,9 @@ export default async function Home({
     allProjects.filter((p: ProjectWithFlags) => p.created_by === effectiveUser.effectiveUserId).map(p => p.id)
   );
 
-  // Non-admin users see tasks they own OR tasks in projects they created
-  const visibleTasks = viewAsAdmin
-    ? tasksWithDays
-    : tasksWithDays.filter((t) => {
+  // Everyone sees only their own tasks + tasks in projects they created
+  // Admin status gives management powers, not expanded visibility
+  const visibleTasks = tasksWithDays.filter((t) => {
         // Show if user is an owner on the task
         if (t.isMyTask) {
           // But hide if ALL owners are voided
@@ -161,7 +160,7 @@ export default async function Home({
         if (t.project_id && myProjectIds.has(t.project_id)) return true;
         return false;
       });
-  const visibleProjects = viewAsAdmin ? allProjects : allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
+  const visibleProjects = allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {
     // Personal projects: only visible to creator
     if (p.visibility === "personal") {
       return p.created_by === effectiveUser.effectiveUserId;
@@ -170,7 +169,8 @@ export default async function Home({
     if (p.visibility === "one_on_one") {
       return p.created_by === effectiveUser.effectiveUserId || (userOwnerId && p.one_on_one_owner_id === userOwnerId);
     }
-    // Shared projects: filter by team
+    // Shared projects: admins see all, others filter by team
+    if (isAdmin) return true;
     if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
     if (p.is_up && userOwnerFlags?.is_up_employee) return true;
     if (p.is_bp && userOwnerFlags?.is_bp_employee) return true;
