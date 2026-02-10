@@ -5,6 +5,12 @@ import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { filterContactsByProject, filterProjectsByUser } from "@/lib/utils";
 
+/** Auto-capitalize first letter of each word as user types */
+function autoCapitalizeWords(value: string): string {
+  return value.replace(/(^|\.\s+|\n)([a-z])/g, (_, prefix, char) => prefix + char.toUpperCase())
+              .replace(/(^|[^a-zA-Z])([a-z])/g, (_, prefix, char) => prefix + char.toUpperCase());
+}
+
 type Project = {
   id: string;
   name: string;
@@ -80,6 +86,12 @@ export default function TaskForm({
   );
   const [ownerIds, setOwnerIds] = useState<string[]>(selectedOwnerIds);
 
+  // Company association for this task (determines contact filtering)
+  const [taskIsUp, setTaskIsUp] = useState(false);
+  const [taskIsBp, setTaskIsBp] = useState(false);
+  const [taskIsUpfit, setTaskIsUpfit] = useState(false);
+  const [taskIsPersonal, setTaskIsPersonal] = useState(false);
+
   // Gate/Blocker state (create mode)
   const [hasGate, setHasGate] = useState(false);
   const [gateOwnerId, setGateOwnerId] = useState<string>("");
@@ -145,19 +157,23 @@ export default function TaskForm({
     return { employees: staff, vendors: vends };
   }, [owners]);
 
-  // Filter contacts based on selected project's company flags
+  // Filter contacts based on task-level company flags (or project flags as fallback)
   const { employees: filteredEmployees, vendors: filteredVendors } = useMemo(() => {
-    const selectedProject = projects.find(p => p.id === projectId);
+    // Use task-level company selection if any are set
+    const hasTaskFlags = taskIsUp || taskIsBp || taskIsUpfit;
+    const companyContext = hasTaskFlags
+      ? { is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit }
+      : taskIsPersonal
+        ? null // Personal = no company filtering, but limited to user
+        : projects.find(p => p.id === projectId) || null;
     
-    // Use utility function to filter contacts by project
-    const filteredContacts = filterContactsByProject(owners, selectedProject, isAdmin);
+    const filteredContacts = filterContactsByProject(owners, companyContext, isAdmin);
     
-    // Split into employees and vendors
     const employees = filteredContacts.filter(o => !o.is_third_party_vendor);
     const vendors = filteredContacts.filter(o => o.is_third_party_vendor);
     
     return { employees, vendors };
-  }, [owners, projects, projectId, isAdmin]);
+  }, [owners, projects, projectId, isAdmin, taskIsUp, taskIsBp, taskIsUpfit, taskIsPersonal]);
 
   const handleOwnerToggle = (ownerId: string) => {
     setOwnerIds((prev) =>
@@ -287,6 +303,21 @@ export default function TaskForm({
     }
 
     if (mode === "create") {
+      // Validate company selection
+      if (!taskIsUp && !taskIsBp && !taskIsUpfit && !taskIsPersonal) {
+        setError("Please select which company this task applies to (UP, BP, UPFIT, or Personal).");
+        setIsSaving(false);
+        return;
+      }
+
+      // Update project company flags to match task selection (for shared projects)
+      if (!taskIsPersonal && projectId && projectId !== NEW_PROJECT_VALUE) {
+        await supabase
+          .from("projects")
+          .update({ is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit })
+          .eq("id", projectId);
+      }
+
       // Auto-generate task number
       const { data: maxTask } = await supabase
         .from("tasks")
@@ -420,7 +451,7 @@ export default function TaskForm({
           <textarea
             required
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => setDescription(autoCapitalizeWords(event.target.value))}
             rows={3}
             className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
             placeholder="Describe the task, outcome, or blocker..."
@@ -446,6 +477,19 @@ export default function TaskForm({
               setIsAddingProject(false);
               setProjectId(value);
               setProjectError(null);
+              // Auto-populate company flags from selected project
+              const proj = projects.find(p => p.id === value);
+              if (proj) {
+                if (proj.visibility === "personal") {
+                  setTaskIsPersonal(true);
+                  setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false);
+                } else {
+                  setTaskIsPersonal(false);
+                  setTaskIsUp(!!proj.is_up);
+                  setTaskIsBp(!!proj.is_bp);
+                  setTaskIsUpfit(!!proj.is_upfit);
+                }
+              }
             }}
             disabled={isCreatingProject}
             className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
@@ -578,9 +622,47 @@ export default function TaskForm({
           )}
         </div>
 
-        {/* Cadence + Gate only show after project is selected */}
+        {/* Company association + Cadence + Gate only show after project is selected */}
         {canSubmitProject && (
         <>
+        {/* Company Association */}
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Which company does this apply to? <span className="text-red-400">*</span>
+          </label>
+          <p className="text-[10px] text-slate-400 mt-0.5 mb-2">Select one or more. This determines which contacts are available.</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => { setTaskIsUp(!taskIsUp); setTaskIsPersonal(false); }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsUp ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+            >
+              UP
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTaskIsBp(!taskIsBp); setTaskIsPersonal(false); }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsBp ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+            >
+              BP
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTaskIsUpfit(!taskIsUpfit); setTaskIsPersonal(false); }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsUpfit ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+            >
+              UPFIT
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTaskIsPersonal(!taskIsPersonal); setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold border transition ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+            >
+              🔒 Personal
+            </button>
+          </div>
+        </div>
+
         {/* Cadence */}
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
