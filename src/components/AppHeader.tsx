@@ -33,6 +33,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showProposeTemplate, setShowProposeTemplate] = useState(false);
   const [overdueCount, setOverdueCount] = useState<number | null>(null);
+  const [inboxTotal, setInboxTotal] = useState(0);
+  const [inboxUnread, setInboxUnread] = useState(0);
 
   // Check for overdue tasks on mount — auto-open Daily Actions if any exist
   useEffect(() => {
@@ -76,6 +78,36 @@ export default function AppHeader({ user }: AppHeaderProps) {
       }
     }
     checkOverdue();
+  }, []);
+
+  // Check inbox (bug reports/feature requests)
+  useEffect(() => {
+    async function checkInbox() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", authUser.id).maybeSingle();
+      const admin = profile?.role === "admin";
+
+      let query = supabase.from("bug_reports").select("id");
+      if (!admin) query = query.eq("reported_by", authUser.id);
+      const { data } = await query;
+
+      const total = (data || []).length;
+      setInboxTotal(total);
+
+      try {
+        const raw = localStorage.getItem("inbox_read_ids");
+        const readSet = new Set(raw ? JSON.parse(raw) : []);
+        const unread = (data || []).filter((r: { id: string }) => !readSet.has(r.id)).length;
+        setInboxUnread(unread);
+      } catch {
+        setInboxUnread(total);
+      }
+    }
+    checkInbox();
+    const interval = setInterval(checkInbox, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const displayName = user.fullName || user.email || "User";
@@ -199,13 +231,24 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             📋
           </button>
-          <Link
-            href="/my-reports"
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
-            title="My Reports"
-          >
-            🐛
-          </Link>
+          {inboxTotal > 0 && (
+            <Link
+              href="/inbox"
+              className={`relative px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                inboxUnread > 0
+                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+              title={inboxUnread > 0 ? `Inbox (${inboxUnread} new)` : "Inbox"}
+            >
+              {inboxUnread > 0 ? "📬" : "📭"}
+              {inboxUnread > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {inboxUnread}
+                </span>
+              )}
+            </Link>
+          )}
           <a
             href="/tutorial"
             target="_blank"
