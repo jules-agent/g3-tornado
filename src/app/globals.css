@@ -172,3 +172,22 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Parking lot age flashing */
+@keyframes pulse-orange {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgb(251 146 60 / 0.15); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgb(239 68 68 / 0.15); }
+}
+
+.animate-pulse-orange {
+  animation: pulse-orange 2s ease-in-out infinite;
+}
+
+.animate-pulse-red {
+  animation: pulse-red 1.5s ease-in-out infinite;
+}

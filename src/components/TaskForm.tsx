@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Project = {
@@ -49,7 +49,10 @@ export default function TaskForm({
   selectedOwnerIds = [],
 }: TaskFormProps) {
   const router = useRouter();
-  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const searchParams = useSearchParams();
+  const parkingId = searchParams.get("parking");
+  const parkingDesc = searchParams.get("desc");
+  const [description, setDescription] = useState(parkingDesc || (initialValues?.description ?? ""));
   const [projectId, setProjectId] = useState(
     initialValues?.project_id ?? projects[0]?.id ?? ""
   );
@@ -264,6 +267,15 @@ export default function TaskForm({
           setIsSaving(false);
           return;
         }
+      }
+
+      // Mark parking lot item as spawned
+      if (parkingId) {
+        await fetch("/api/parking-lot", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: parkingId, spawned_task_id: data.id }),
+        });
       }
 
       router.push(`/tasks/${data.id}`);

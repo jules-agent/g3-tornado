@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "./ThemeToggle";
+import { ParkingLot } from "./ParkingLot";
+import { FocusModeStandalone } from "./FocusMode";
 
 type AppHeaderProps = {
   user: {
@@ -18,6 +20,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showParkingLot, setShowParkingLot] = useState(false);
+  const [showFocusMode, setShowFocusMode] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
   const initials = displayName
@@ -87,6 +91,20 @@ export default function AppHeader({ user }: AppHeaderProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowParkingLot(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition"
+            title="Parking Lot"
+          >
+            🅿️
+          </button>
+          <button
+            onClick={() => setShowFocusMode(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 transition"
+            title="Focus Mode"
+          >
+            🎯
+          </button>
           <ThemeToggle />
           
           <Link
@@ -120,6 +138,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </div>
         </div>
       </div>
+      <ParkingLot isOpen={showParkingLot} onClose={() => setShowParkingLot(false)} />
+      <FocusModeStandalone isOpen={showFocusMode} onClose={() => setShowFocusMode(false)} />
     </header>
   );
 }
