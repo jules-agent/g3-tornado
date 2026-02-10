@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GateEditor } from "./GateEditor";
 import { OwnerEditor } from "./OwnerEditor";
+import { capitalizeFirst } from "@/lib/utils";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -1118,7 +1119,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                   <span className="text-sm flex-shrink-0">📝</span>
                                   {task.notes.length > 0 ? (
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-xs text-slate-800 dark:text-slate-300 line-clamp-2">{task.notes[0].content}</div>
+                                      <div className="text-xs text-slate-800 dark:text-slate-300 line-clamp-2">{capitalizeFirst(task.notes[0].content)}</div>
                                       <div className="text-[10px] text-slate-600 dark:text-slate-500 mt-0.5">
                                         {task.notes[0].profiles?.full_name || task.notes[0].profiles?.email || 'Unknown'} · {formatRelativeTime(task.notes[0].created_at)}
                                       </div>
@@ -1150,7 +1151,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                 {/* Task description */}
                                 <Link href={`/tasks/${task.id}`} className="group">
                                   <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>
-                                    {task.description}
+                                    {capitalizeFirst(task.description)}
                                   </span>
                                 </Link>
                                 
@@ -1239,7 +1240,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                               onClick={() => setEditingOwner({ taskId: task.id, ownerIds: [] })}
                             >
                               {task.ownerNames ? (
-                                <span className="text-slate-800 dark:text-slate-300 text-xs truncate block">{task.ownerNames}</span>
+                                <span className="text-slate-800 dark:text-slate-300 text-xs truncate block">{capitalizeFirst(task.ownerNames)}</span>
                               ) : (
                                 <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Assign</span>
                               )}
@@ -1301,7 +1302,7 @@ function renderCell(columnId: string, task: Task) {
       return (
         <>
           <Link href={`/tasks/${task.id}`} className="group">
-            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{task.description}</span>
+            <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{capitalizeFirst(task.description)}</span>
           </Link>
           {task.isStale && task.status !== "closed" && task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">🔥 URGENT</span>}
           {task.isStale && task.status !== "closed" && !task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>}
@@ -1309,14 +1310,14 @@ function renderCell(columnId: string, task: Task) {
         </>
       );
     case "project":
-      return <span className="text-slate-700 dark:text-slate-200 break-words text-sm">{task.projects?.name ?? "—"}</span>;
+      return <span className="text-slate-700 dark:text-slate-200 break-words text-sm">{capitalizeFirst(task.projects?.name) || "—"}</span>;
     case "currentGate": {
       const gates = task.gates || [];
       const currentIdx = gates.findIndex(g => !g.completed);
       if (currentIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[currentIdx];
-      const ownerPart = gate.owner_name || "—";
-      const taskPart = gate.task_name || gate.name || "";
+      const ownerPart = capitalizeFirst(gate.owner_name) || "—";
+      const taskPart = capitalizeFirst(gate.task_name || gate.name) || "";
       return (
         <span className="inline-flex flex-col px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
           <span className="font-semibold text-amber-800 break-words">{ownerPart}</span>
@@ -1330,8 +1331,8 @@ function renderCell(columnId: string, task: Task) {
       const nextIdx = currentIdx >= 0 ? gates.findIndex((g, i) => i > currentIdx && !g.completed) : -1;
       if (nextIdx === -1) return <span className="text-slate-400 text-xs">—</span>;
       const gate = gates[nextIdx];
-      const ownerPart = gate.owner_name || "—";
-      const taskPart = gate.task_name || gate.name || "";
+      const ownerPart = capitalizeFirst(gate.owner_name) || "—";
+      const taskPart = capitalizeFirst(gate.task_name || gate.name) || "";
       return (
         <span className="inline-flex flex-col px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-xs max-w-full" title={`${ownerPart}${taskPart ? " / " + taskPart : ""}`}>
           <span className="font-semibold text-indigo-800 break-words">{ownerPart}</span>
@@ -1340,7 +1341,7 @@ function renderCell(columnId: string, task: Task) {
       );
     }
     case "nextStep":
-      return <span className="text-slate-800 dark:text-slate-300 text-xs break-words">{task.next_step || "—"}</span>;
+      return <span className="text-slate-800 dark:text-slate-300 text-xs break-words">{capitalizeFirst(task.next_step) || "—"}</span>;
     case "notes":
       // Handled inline in table body for editing capability
       return null;
@@ -1361,7 +1362,7 @@ function renderCell(columnId: string, task: Task) {
       if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
       return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
     case "owner":
-      return <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{task.ownerNames || "—"}</span>;
+      return <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{capitalizeFirst(task.ownerNames) || "—"}</span>;
     case "gated": {
       const gates = task.gates || [];
       const hasOpenGate = gates.some(g => !g.completed);
