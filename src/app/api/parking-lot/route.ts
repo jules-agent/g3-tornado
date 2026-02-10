@@ -60,12 +60,16 @@ export async function PATCH(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id, spawned_task_id } = await request.json();
+  const { id, spawned_task_id, description } = await request.json();
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+  const updates: Record<string, unknown> = {};
+  if (spawned_task_id !== undefined) updates.spawned_task_id = spawned_task_id;
+  if (description !== undefined) updates.description = description;
 
   const { error } = await supabase
     .from("parking_lot")
-    .update({ spawned_task_id })
+    .update(updates)
     .eq("id", id)
     .eq("created_by", user.id);
 

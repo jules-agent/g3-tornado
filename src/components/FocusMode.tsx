@@ -107,9 +107,9 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const staleCount = tasks.filter((t) => t.isStale).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center pt-[8vh]" onClick={onClose}>
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-md" />
-      <div className="relative w-full max-w-5xl mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-5xl mx-4 mb-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
