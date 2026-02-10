@@ -84,9 +84,6 @@ export default function TaskForm({
   const [hasGate, setHasGate] = useState(false);
   const [gateOwnerId, setGateOwnerId] = useState<string>("");
   const [gateName, setGateName] = useState("");
-  const [blockerCategory, setBlockerCategory] = useState<string>("");
-  const [isAddingGateName, setIsAddingGateName] = useState(false);
-
   // Edit mode owner state
   const [isAddingOwner, setIsAddingOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
@@ -317,7 +314,7 @@ export default function TaskForm({
           task_number: nextNumber,
           is_blocked: hasGate,
           blocker_description: hasGate && gateName ? gateName : null,
-          blocker_category: hasGate ? blockerCategory || null : null,
+          blocker_category: null,
           gates: hasGate && gateOwnerId ? [{
             name: gateName || "Gate",
             owner_name: ownerLookup.get(gateOwnerId) || "",
@@ -614,77 +611,47 @@ export default function TaskForm({
           </div>
           {hasGate && (
             <div className="mt-4 space-y-3">
-              {/* Blocker Category */}
+              {/* Gate Contact — filtered by project company */}
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Blocker Category
+                  Gate Contact
                 </label>
                 <select
-                  value={blockerCategory}
-                  onChange={(e) => setBlockerCategory(e.target.value)}
+                  value={gateOwnerId}
+                  onChange={(e) => setGateOwnerId(e.target.value)}
                   className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
                 >
-                  <option value="">Select category...</option>
-                  <option value="vendor">🏭 Vendor</option>
-                  <option value="engineering">⚙️ Engineering</option>
-                  <option value="design">🎨 Design</option>
-                  <option value="decision">🧑‍💼 Waiting on Decision</option>
-                  <option value="other">❓ Other</option>
+                  <option value="">Select gate person...</option>
+                  {filteredEmployees.length > 0 && (
+                    <optgroup label="Employees">
+                      {filteredEmployees.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {filteredVendors.length > 0 && (
+                    <optgroup label="3rd Party Vendors">
+                      {filteredVendors.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Gate Selector
-              </label>
-              <select
-                value={gateOwnerId}
-                onChange={(e) => setGateOwnerId(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-              >
-                <option value="">Select gate person...</option>
-                {allStaff.length > 0 && (
-                  <optgroup label="Staff">
-                    {allStaff.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </optgroup>
-                )}
-                {allVendors.length > 0 && (
-                  <optgroup label="3rd Party Vendors">
-                    {allVendors.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-
-              {/* Gate Name */}
-              {isAddingGateName ? (
-                <div>
-                  <input
-                    value={gateName}
-                    onChange={(e) => setGateName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setIsAddingGateName(false); setGateName(""); } }}
-                    placeholder="Gate name (e.g. Waiting for parts, Approval needed...)"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingGateName(true)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                >
-                  + Add Gate Name
-                </button>
-              )}
-              {gateName && !isAddingGateName && (
-                <div className="text-xs text-slate-500">
-                  Gate: <span className="font-medium text-slate-700">{gateName}</span>
-                  <button type="button" onClick={() => { setIsAddingGateName(true); }} className="ml-2 text-slate-400 hover:text-slate-600">✏️</button>
-                </div>
-              )}
+              {/* Gate Name — always visible, required */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Gate Description <span className="text-red-400">*</span>
+                </label>
+                <input
+                  required={hasGate}
+                  value={gateName}
+                  onChange={(e) => setGateName(e.target.value)}
+                  placeholder="What needs to happen? (e.g. Waiting for parts, Approval needed...)"
+                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                />
+              </div>
             </div>
           )}
         </div>
