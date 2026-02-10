@@ -3,6 +3,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 type BugReport = {
   id: string;
   type: "bug" | "feature_request" | "tagline_downvote";
@@ -111,6 +122,7 @@ function markAsRead(ids: string[]) {
 }
 
 export default function InboxPage() {
+  const isMobile = useIsMobile();
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -472,37 +484,58 @@ export default function InboxPage() {
                   <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
                     👤 New User Signups
                   </h2>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
-                          <th className="px-4 py-2">User</th>
-                          <th className="px-4 py-2">Linked Owner</th>
-                          <th className="px-4 py-2">Signed Up</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {newUsers.map(u => (
-                          <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="px-4 py-2.5">
-                              <span className="font-medium text-slate-900 dark:text-white">{u.full_name || "—"}</span>
-                              <span className="text-xs text-slate-400 ml-2">{u.email}</span>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {u.owner_id ? (
-                                <span className="text-xs text-emerald-600 font-semibold">✅ Linked</span>
-                              ) : (
-                                <span className="text-xs text-amber-600 font-semibold">⚠️ Not linked</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-slate-400">
+                  {isMobile ? (
+                    <div className="space-y-3">
+                      {newUsers.map(u => (
+                        <div key={u.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                          <div className="font-medium text-slate-900 dark:text-white mb-1">{u.full_name || "—"}</div>
+                          <div className="text-xs text-slate-400 mb-2">{u.email}</div>
+                          <div className="flex items-center justify-between text-xs">
+                            {u.owner_id ? (
+                              <span className="text-emerald-600 font-semibold">✅ Linked</span>
+                            ) : (
+                              <span className="text-amber-600 font-semibold">⚠️ Not linked</span>
+                            )}
+                            <span className="text-slate-400">
                               {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </td>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                            <th className="px-4 py-2">User</th>
+                            <th className="px-4 py-2">Linked Owner</th>
+                            <th className="px-4 py-2">Signed Up</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          {newUsers.map(u => (
+                            <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                              <td className="px-4 py-2.5">
+                                <span className="font-medium text-slate-900 dark:text-white">{u.full_name || "—"}</span>
+                                <span className="text-xs text-slate-400 ml-2">{u.email}</span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                {u.owner_id ? (
+                                  <span className="text-xs text-emerald-600 font-semibold">✅ Linked</span>
+                                ) : (
+                                  <span className="text-xs text-amber-600 font-semibold">⚠️ Not linked</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-xs text-slate-400">
+                                {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 
