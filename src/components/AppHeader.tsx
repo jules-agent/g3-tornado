@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ParkingLot } from "./ParkingLot";
 import { FocusModeStandalone } from "./FocusMode";
 import { DailyActionList } from "./DailyActionList";
+import { Scorecard } from "./Scorecard";
 
 type AppHeaderProps = {
   user: {
@@ -24,6 +25,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [showParkingLot, setShowParkingLot] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showDailyActions, setShowDailyActions] = useState(false);
+  const [showScorecard, setShowScorecard] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
   const initials = displayName
@@ -94,6 +96,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
         {/* Right side */}
         <div className="flex items-center gap-4">
           <button
+            onClick={() => setShowScorecard(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:text-yellow-700 dark:hover:text-yellow-300 transition"
+            title="Scorecard"
+          >
+            🏆
+          </button>
+          <button
             onClick={() => setShowDailyActions(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
             title="Today's Actions"
@@ -159,6 +168,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       <ParkingLot isOpen={showParkingLot} onClose={() => setShowParkingLot(false)} />
       <FocusModeStandalone isOpen={showFocusMode} onClose={() => setShowFocusMode(false)} />
       <DailyActionList isOpen={showDailyActions} onClose={() => setShowDailyActions(false)} />
+      <Scorecard isOpen={showScorecard} onClose={() => setShowScorecard(false)} />
     </header>
   );
 }
