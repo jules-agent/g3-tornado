@@ -96,6 +96,9 @@ export default function TaskForm({
   const [hasGate, setHasGate] = useState(false);
   const [gateOwnerId, setGateOwnerId] = useState<string>("");
   const [gateName, setGateName] = useState("");
+  const [isAddingGateContact, setIsAddingGateContact] = useState(false);
+  const [newGateContactName, setNewGateContactName] = useState("");
+  const [isCreatingGateContact, setIsCreatingGateContact] = useState(false);
   // Edit mode owner state
   const [isAddingOwner, setIsAddingOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
@@ -282,6 +285,32 @@ export default function TaskForm({
       setOwnerError("Unable to create owner.");
     }
     setIsCreatingOwner(false);
+  };
+
+  const handleCreateGateContact = async () => {
+    if (isCreatingGateContact || !newGateContactName.trim()) return;
+    setIsCreatingGateContact(true);
+    const supabase = createClient();
+    const { data, error: insertErr } = await supabase
+      .from("owners")
+      .insert({
+        name: newGateContactName.trim(),
+        is_up_employee: taskIsUp,
+        is_bp_employee: taskIsBp,
+        is_upfit_employee: taskIsUpfit,
+        is_third_party_vendor: false,
+        is_internal: false,
+      })
+      .select("id")
+      .single();
+    if (!insertErr && data?.id) {
+      setGateOwnerId(data.id);
+      setNewGateContactName("");
+      setIsAddingGateContact(false);
+      // Refresh page to get updated owners list
+      router.refresh();
+    }
+    setIsCreatingGateContact(false);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -708,7 +737,7 @@ export default function TaskForm({
           </div>
           {hasGate && (
             <div className="mt-4 space-y-3">
-              {/* Gate Contact — filtered by project company */}
+              {/* Gate Contact — filtered by task company flags */}
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Gate Contact
@@ -734,9 +763,47 @@ export default function TaskForm({
                     </optgroup>
                   )}
                 </select>
+
+                {/* Add new gate contact inline */}
+                {isAddingGateContact ? (
+                  <div className="mt-2 space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+                    <input
+                      value={newGateContactName}
+                      onChange={(e) => setNewGateContactName(e.target.value)}
+                      placeholder="Contact name"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCreateGateContact}
+                        disabled={isCreatingGateContact || !newGateContactName.trim()}
+                        className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400"
+                      >
+                        {isCreatingGateContact ? "Adding..." : "Add Contact"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsAddingGateContact(false); setNewGateContactName(""); }}
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingGateContact(true)}
+                    className="mt-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700"
+                  >
+                    + Add New Contact
+                  </button>
+                )}
               </div>
 
-              {/* Gate Name — always visible, required */}
+              {/* Gate Description — always visible, required, auto-capitalize */}
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Gate Description <span className="text-red-400">*</span>
@@ -744,8 +811,8 @@ export default function TaskForm({
                 <input
                   required={hasGate}
                   value={gateName}
-                  onChange={(e) => setGateName(e.target.value)}
-                  placeholder="What needs to happen? (e.g. Waiting for parts, Approval needed...)"
+                  onChange={(e) => setGateName(autoCapitalizeWords(e.target.value))}
+                  placeholder="What needs to happen? (e.g. Waiting For Parts, Approval Needed...)"
                   className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
                 />
               </div>

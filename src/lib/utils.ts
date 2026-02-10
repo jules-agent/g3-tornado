@@ -51,8 +51,8 @@ export function filterContactsByProject<T extends {
     // Use company flags for ALL contacts (employees AND vendors)
     const contactFlags = getCompanyFlags(contact);
     
-    // If contact has no flags set, they're available to all projects
-    if (!contactFlags.up && !contactFlags.bp && !contactFlags.upfit) return true;
+    // Contacts with no flags set are hidden (they need company association)
+    if (!contactFlags.up && !contactFlags.bp && !contactFlags.upfit) return false;
     
     // Match at least one company flag
     if (project.is_up && contactFlags.up) return true;
