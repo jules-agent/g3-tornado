@@ -20,6 +20,7 @@ export default function TaskActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleRequestClose = async () => {
     if (isSaving) return;
@@ -79,6 +80,28 @@ export default function TaskActions({
     setIsSaving(false);
   };
 
+  const handleDeleteTask = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 5000);
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+
+    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Failed to delete task");
+      setIsSaving(false);
+      setConfirmDelete(false);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
+  };
+
   return (
     <div className="space-y-3">
       {status === "closed" ? (
@@ -113,6 +136,22 @@ export default function TaskActions({
         <div className="text-xs text-slate-500">
           Close requested on {new Date(closeRequestedAt).toLocaleDateString()}.
         </div>
+      )}
+
+      {/* Delete task — admin only */}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={handleDeleteTask}
+          disabled={isSaving}
+          className={`w-full rounded-xl px-4 py-2 text-sm font-semibold transition ${
+            confirmDelete
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "border border-red-200 text-red-500 hover:border-red-300 hover:text-red-700 hover:bg-red-50"
+          } disabled:cursor-not-allowed disabled:opacity-50`}
+        >
+          {isSaving ? "Deleting..." : confirmDelete ? "Click again to permanently delete" : "🗑️ Delete task"}
+        </button>
       )}
 
       {error && (
