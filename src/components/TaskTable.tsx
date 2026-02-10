@@ -529,12 +529,22 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
       return;
     }
 
-    const value = activeColumn === "cadence" ? parseInt(bulkEditValue, 10) : bulkEditValue;
-    
     const supabase = createClient();
-    const updates = taskIds.map(id => 
-      supabase.from("tasks").update({ [field]: value }).eq("id", id)
-    );
+    
+    // For nextStep, auto-prefix with current gate
+    const updates = taskIds.map(id => {
+      let value: string | number = activeColumn === "cadence" ? parseInt(bulkEditValue, 10) : bulkEditValue;
+      if (activeColumn === "nextStep") {
+        const task = tasks.find(t => t.id === id);
+        const gates = task?.gates || [];
+        const currentGate = gates.find(g => !g.completed);
+        if (currentGate) {
+          const prefix = capitalizeFirst(currentGate.owner_name) + (currentGate.task_name ? ` — ${capitalizeFirst(currentGate.task_name)}` : "");
+          value = `${prefix} — ${bulkEditValue}`;
+        }
+      }
+      return supabase.from("tasks").update({ [field]: value, updated_at: new Date().toISOString() }).eq("id", id);
+    });
     await Promise.all(updates);
     clearSelection();
     router.refresh();
@@ -856,6 +866,30 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
             </select>
           ) : activeColumn === "cadence" ? (
             <input type="number" min="1" max="90" placeholder="Days..." value={bulkEditValue} onChange={(e) => setBulkEditValue(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 w-24" />
+          ) : activeColumn === "nextStep" ? (
+            (() => {
+              // Show gate prefix for first selected task
+              const firstTask = tasks.find(t => t.id === selectedCells[0]?.taskId);
+              const currentGate = (firstTask?.gates || []).find(g => !g.completed);
+              const prefix = currentGate ? `${capitalizeFirst(currentGate.owner_name)}${currentGate.task_name ? ` — ${capitalizeFirst(currentGate.task_name)}` : ""} — ` : "";
+              return (
+                <div className="flex items-center gap-0">
+                  {prefix && <span className="text-teal-400 text-sm font-medium px-2 py-1.5 bg-slate-700 rounded-l-lg border border-r-0 border-slate-600 whitespace-nowrap">{prefix}</span>}
+                  <input
+                    type="text"
+                    placeholder="Add details..."
+                    value={bulkEditValue}
+                    onChange={(e) => {
+                      // Auto-capitalize first letter of each word
+                      const val = e.target.value;
+                      const capitalized = val.replace(/(?:^|\s)\S/g, (c) => c.toUpperCase());
+                      setBulkEditValue(capitalized);
+                    }}
+                    className={`bg-slate-800 text-white px-3 py-1.5 text-sm border border-slate-600 w-48 ${prefix ? "rounded-r-lg" : "rounded-lg"}`}
+                  />
+                </div>
+              );
+            })()
           ) : (
             <input type="text" placeholder={`Set ${getColumnLabel(activeColumn!)}...`} value={bulkEditValue} onChange={(e) => setBulkEditValue(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm border border-slate-600 w-48" />
           )}
