@@ -69,32 +69,44 @@ const sections: Section[] = [
     content: (
       <div className="space-y-4">
         <p>The dashboard is your home screen — a table of all tasks you have access to.</p>
-        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Table Columns</h3>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Table Columns (Default View)</h3>
         <ul className="list-disc ml-5 space-y-1 text-sm">
-          <li><strong>#</strong> — Task number (auto-generated)</li>
-          <li><strong>Description</strong> — What the task is about</li>
+          <li><strong>Task</strong> — Task description (includes task number)</li>
           <li><strong>Project</strong> — Which project it belongs to</li>
-          <li><strong>Cad.</strong> — Follow-up cadence in days (how often the task should be updated)</li>
+          <li><strong>Current Gate</strong> — Who&apos;s currently blocking (if gated)</li>
+          <li><strong>Next Gate</strong> — Who&apos;s next in the gate sequence</li>
+          <li><strong>Next Step</strong> — The next action needed</li>
+          <li><strong>Update</strong> — Most recent note/update</li>
+          <li><strong>Cad.</strong> — Follow-up cadence in days</li>
           <li><strong>Aging</strong> — Days since last movement/update</li>
-          <li><strong>Status</strong> — Open, Closed, etc.</li>
-          <li><strong>Contact</strong> — Who&apos;s responsible (hidden by default — click column settings to show)</li>
-          <li><strong>Gated</strong> — Whether the task is waiting on someone (hidden by default)</li>
+          <li><strong>Status</strong> — Open or Closed</li>
+        </ul>
+        <p className="text-sm mt-2">Hidden by default (enable via column settings):</p>
+        <ul className="list-disc ml-5 space-y-1 text-sm">
+          <li><strong>Contact</strong> — Who&apos;s responsible</li>
+          <li><strong>Gated</strong> — Whether the task is waiting on someone</li>
+          <li><strong>ID</strong> — Internal task ID</li>
         </ul>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Filters</h3>
         <p className="text-sm">Use the filter tabs at the top to narrow your view:</p>
         <ul className="list-disc ml-5 space-y-1 text-sm">
-          <li><strong>All</strong> — Every open task</li>
-          <li><strong>My Tasks</strong> — Tasks assigned to you</li>
+          <li><strong>All</strong> — Every task</li>
+          <li><strong>Open</strong> — Currently active tasks</li>
           <li><strong>Overdue</strong> — Tasks past their follow-up cadence</li>
           <li><strong>Gated</strong> — Tasks waiting on a gate/blocker</li>
+          <li><strong>Done</strong> — Completed/closed tasks</li>
+          <li><strong>Shared</strong> — Tasks with multiple contacts (appears only when shared tasks exist)</li>
         </ul>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Inline Editing</h3>
-        <p className="text-sm">You can edit certain fields directly in the table by clicking on them:</p>
+        <p className="text-sm">You can edit many fields directly in the table by clicking on them:</p>
         <ul className="list-disc ml-5 space-y-1 text-sm">
-          <li><strong>Description</strong> — Click to edit the task name</li>
+          <li><strong>Task</strong> — Click to edit the description</li>
+          <li><strong>Project</strong> — Click to reassign to a different project</li>
+          <li><strong>Current Gate / Next Gate</strong> — Click to edit gate assignments</li>
+          <li><strong>Next Step</strong> — Click to update the next action</li>
           <li><strong>Cadence</strong> — Click the number to change follow-up days</li>
           <li><strong>Status</strong> — Click to change between open/closed</li>
-          <li><strong>Contact</strong> — Click to reassign</li>
+          <li><strong>Contact</strong> — Click to reassign (when column is visible)</li>
         </ul>
         <Tip>Click a row to expand it and see more details, notes, and gate information.</Tip>
       </div>
@@ -127,7 +139,7 @@ const sections: Section[] = [
           <li>Gates are completed in order — the first incomplete gate is the &quot;active&quot; blocker.</li>
           <li>Tasks with incomplete gates show as <strong>🚧 Gated</strong>.</li>
         </ul>
-        <Warning>When creating a project, you must select at least one company (UP, BP, or UPFIT). This determines who can see the project and its tasks.</Warning>
+        <Warning>When creating a <strong>shared/team project</strong>, select the relevant companies (UP, BP, UPFIT). This determines who can see the project and which contacts are available. Personal and One-on-One projects don&apos;t require company selection.</Warning>
       </div>
     ),
   },
@@ -384,7 +396,7 @@ const sections: Section[] = [
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Keyboard Shortcuts</h3>
         <ul className="list-disc ml-5 space-y-1 text-sm">
           <li><Kbd>Enter</Kbd> in note field — Submit the note</li>
-          <li><Kbd>Escape</Kbd> — Close current panel/modal</li>
+          <li><Kbd>Escape</Kbd> — Close editor popups (gate editor, contact editor)</li>
         </ul>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Pro Tips</h3>
         <ul className="list-disc ml-5 space-y-2 text-sm">
