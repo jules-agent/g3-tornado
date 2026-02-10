@@ -1,3 +1,7 @@
+// IMPORTANT: Never send emails without explicit admin approval.
+// This endpoint is preview-only by default. It must NEVER be called from a cron job
+// or any automated system. Only an admin should manually trigger sends with preview=false.
+
 import { createClient } from "@supabase/supabase-js";
 import { sendNudgeEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
@@ -11,7 +15,11 @@ type GateEntry = {
   completed?: boolean;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  // Default to preview mode — emails are NOT sent unless explicitly set to false
+  const isPreview = searchParams.get("preview") !== "false";
+
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // Find all open, blocked tasks with overdue follow-up
@@ -27,7 +35,16 @@ export async function GET() {
   }
 
   const now = new Date();
-  const nudges: { task_number: string; gate_person: string; email: string }[] = [];
+  const previews: {
+    task_number: string;
+    gate_person: string;
+    email: string;
+    days_overdue: number;
+    blocker: string;
+    email_subject: string;
+    email_body_preview: string;
+  }[] = [];
+  const sent: { task_number: string; gate_person: string; email: string }[] = [];
   const errors: { task_number: string; error: string }[] = [];
 
   for (const task of tasks ?? []) {
@@ -50,7 +67,6 @@ export async function GET() {
     const incompleteGates = gates.filter((g) => g.completed === false && g.owner_name);
 
     for (const gate of incompleteGates) {
-      // Look up gate person email from owners table
       const { data: owner } = await supabase
         .from("owners")
         .select("name, email")
@@ -62,30 +78,49 @@ export async function GET() {
         continue;
       }
 
-      const result = await sendNudgeEmail({
-        to: owner.email,
-        name: owner.name,
-        taskNumber: task.task_number,
-        blockerDescription: task.blocker_description || gate.name || "",
-        daysOverdue: daysSince,
+      const blocker = task.blocker_description || gate.name || "";
+      const subject = `Action needed: Task ${task.task_number} is waiting on your input`;
+      const bodyPreview = `Hi ${owner.name}, task ${task.task_number} is waiting on your input. ${blocker}. This task is ${daysSince} day${daysSince === 1 ? "" : "s"} overdue. Please provide an update.`;
+
+      previews.push({
+        task_number: task.task_number,
+        gate_person: owner.name,
+        email: owner.email,
+        days_overdue: daysSince,
+        blocker,
+        email_subject: subject,
+        email_body_preview: bodyPreview,
       });
 
-      if (result.success) {
-        nudges.push({ task_number: task.task_number, gate_person: owner.name, email: owner.email });
-      } else {
-        errors.push({ task_number: task.task_number, error: result.error || "Send failed" });
+      // IMPORTANT: Only send if explicitly NOT preview mode (manual admin trigger only)
+      if (!isPreview) {
+        const result = await sendNudgeEmail({
+          to: owner.email,
+          name: owner.name,
+          taskNumber: task.task_number,
+          blockerDescription: blocker,
+          daysOverdue: daysSince,
+        });
+
+        if (result.success) {
+          sent.push({ task_number: task.task_number, gate_person: owner.name, email: owner.email });
+        } else {
+          errors.push({ task_number: task.task_number, error: result.error || "Send failed" });
+        }
       }
     }
 
-    // Update last_nudge_at if we sent any nudges for this task
-    if (nudges.some((n) => n.task_number === task.task_number)) {
+    // Update last_nudge_at only when emails were actually sent
+    if (!isPreview && sent.some((n) => n.task_number === task.task_number)) {
       await supabase.from("tasks").update({ last_nudge_at: now.toISOString() }).eq("id", task.id);
     }
   }
 
   return NextResponse.json({
-    nudges_sent: nudges.length,
-    nudges,
+    mode: isPreview ? "PREVIEW — no emails sent" : "LIVE — emails sent",
+    would_nudge: previews.length,
+    previews,
+    ...(isPreview ? {} : { sent: sent.length, sent_details: sent }),
     errors,
     checked: tasks?.length ?? 0,
   });
