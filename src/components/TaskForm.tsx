@@ -244,6 +244,16 @@ export default function TaskForm({
         return;
       }
       setProjectId(data.id);
+      // Transfer company flags from the new project form to the task-level selector
+      if (newProjectVisibility === "personal") {
+        setTaskIsPersonal(true);
+        setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false);
+      } else if (newProjectVisibility === "shared") {
+        setTaskIsPersonal(false);
+        setTaskIsUp(newProjectIsUp);
+        setTaskIsBp(newProjectIsBp);
+        setTaskIsUpfit(newProjectIsUpfit);
+      }
       setNewProjectName("");
       setIsAddingProject(false);
       setNewProjectVisibility("shared");
