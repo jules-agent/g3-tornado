@@ -487,9 +487,31 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   const getColumnLabel = (colId: string) => ALL_COLUMNS.find(c => c.id === colId)?.label || colId;
 
   const applyBulkEdit = async () => {
-    if (!activeColumn || selectedCells.length === 0) return;
-    console.log("Bulk edit:", { column: activeColumn, value: bulkEditValue, taskIds: selectedCells.map(c => c.taskId) });
+    if (!activeColumn || selectedCells.length === 0 || !bulkEditValue) return;
+    const taskIds = [...new Set(selectedCells.map(c => c.taskId))];
+    
+    const columnToField: Record<string, string> = {
+      cadence: "fu_cadence_days",
+      status: "status",
+      nextStep: "next_step",
+    };
+    
+    const field = columnToField[activeColumn];
+    if (!field) {
+      console.warn("Bulk edit not implemented for column:", activeColumn);
+      clearSelection();
+      return;
+    }
+
+    const value = activeColumn === "cadence" ? parseInt(bulkEditValue, 10) : bulkEditValue;
+    
+    const supabase = createClient();
+    const updates = taskIds.map(id => 
+      supabase.from("tasks").update({ [field]: value }).eq("id", id)
+    );
+    await Promise.all(updates);
     clearSelection();
+    router.refresh();
   };
 
   // Column visibility toggle

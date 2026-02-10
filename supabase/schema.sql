@@ -157,6 +157,8 @@ CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.
 
 -- Projects: all authenticated users can read
 CREATE POLICY "Projects viewable by authenticated users" ON projects FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "All users can insert projects" ON projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "All users can update projects" ON projects FOR UPDATE USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can manage projects" ON projects FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
