@@ -23,7 +23,7 @@ export default async function TaskDetailPage({
       user
         ? supabase
             .from("profiles")
-            .select("id, role")
+            .select("id, role, owner_id")
             .eq("id", user.id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -216,6 +216,8 @@ export default async function TaskDetailPage({
                 status={task.status}
                 isAdmin={isAdmin}
                 closeRequestedAt={task.close_requested_at}
+                ownerCount={selectedOwnerIds.length}
+                isMyTask={!!profile?.owner_id && selectedOwnerIds.includes(profile.owner_id)}
               />
             </div>
           </div>

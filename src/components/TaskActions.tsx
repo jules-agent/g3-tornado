@@ -9,6 +9,8 @@ type TaskActionsProps = {
   status: string;
   isAdmin: boolean;
   closeRequestedAt?: string | null;
+  ownerCount?: number;
+  isMyTask?: boolean;
 };
 
 export default function TaskActions({
@@ -16,6 +18,8 @@ export default function TaskActions({
   status,
   isAdmin,
   closeRequestedAt,
+  ownerCount = 0,
+  isMyTask = false,
 }: TaskActionsProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -138,8 +142,8 @@ export default function TaskActions({
         </div>
       )}
 
-      {/* Delete task — admin only */}
-      {isAdmin && (
+      {/* Delete task — anyone can delete single-owner tasks; admins can delete anything */}
+      {(isAdmin || (ownerCount <= 1 && isMyTask) || ownerCount === 0) && (
         <button
           type="button"
           onClick={handleDeleteTask}
@@ -152,6 +156,9 @@ export default function TaskActions({
         >
           {isSaving ? "Deleting..." : confirmDelete ? "Click again to permanently delete" : "🗑️ Delete task"}
         </button>
+      )}
+      {!isAdmin && ownerCount > 1 && (
+        <p className="text-[10px] text-slate-400 text-center">Shared tasks with multiple owners cannot be deleted. Ask an admin.</p>
       )}
 
       {error && (
