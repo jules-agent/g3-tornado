@@ -116,6 +116,10 @@ export default function InboxPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  // Admin sections
+  const [newUsers, setNewUsers] = useState<{ id: string; email: string; full_name: string | null; created_at: string; owner_id: string | null }[]>([]);
+  const [newContacts, setNewContacts] = useState<{ id: string; name: string; created_by_email: string | null; created_at: string }[]>([]);
+  const [taglineVotes, setTaglineVotes] = useState<{ id: string; tagline: string; vote: string; user_email: string | null; created_at: string }[]>([]);
 
   const fetchReports = useCallback(async () => {
     const supabase = createClient();
@@ -141,6 +145,35 @@ export default function InboxPage() {
     const { data } = await query;
     setReports(data || []);
     setReadIds(getReadIds());
+
+    // Admin: fetch extra sections
+    if (admin) {
+      // New users (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data: users } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, created_at, owner_id")
+        .gte("created_at", thirtyDaysAgo)
+        .order("created_at", { ascending: false });
+      setNewUsers(users || []);
+
+      // New contacts (last 30 days, user-created)
+      const { data: contacts } = await supabase
+        .from("owners")
+        .select("id, name, created_by_email, created_at")
+        .gte("created_at", thirtyDaysAgo)
+        .order("created_at", { ascending: false });
+      setNewContacts(contacts || []);
+
+      // Tagline votes (last 30 days)
+      const { data: votes } = await supabase
+        .from("tagline_votes")
+        .select("id, tagline, vote, user_email, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setTaglineVotes(votes || []);
+    }
+
     setLoading(false);
   }, []);
 
@@ -419,6 +452,119 @@ export default function InboxPage() {
               </>
             )}
           </div>
+
+          {/* Admin-only sections */}
+          {isAdmin && (
+            <>
+              {/* New User Signups */}
+              {newUsers.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                    👤 New User Signups
+                  </h2>
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-2">User</th>
+                          <th className="px-4 py-2">Linked Owner</th>
+                          <th className="px-4 py-2">Signed Up</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {newUsers.map(u => (
+                          <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="px-4 py-2.5">
+                              <span className="font-medium text-slate-900 dark:text-white">{u.full_name || "—"}</span>
+                              <span className="text-xs text-slate-400 ml-2">{u.email}</span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {u.owner_id ? (
+                                <span className="text-xs text-emerald-600 font-semibold">✅ Linked</span>
+                              ) : (
+                                <span className="text-xs text-amber-600 font-semibold">⚠️ Not linked</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-slate-400">
+                              {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* New Contacts (user-created) */}
+              {newContacts.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                    📇 New Contacts
+                  </h2>
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-2">Contact Name</th>
+                          <th className="px-4 py-2">Created By</th>
+                          <th className="px-4 py-2">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {newContacts.map(c => (
+                          <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white">{c.name}</td>
+                            <td className="px-4 py-2.5 text-xs text-slate-500">{c.created_by_email || "System"}</td>
+                            <td className="px-4 py-2.5 text-xs text-slate-400">
+                              {new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Tagline Votes */}
+              {taglineVotes.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                    🗳️ Daily Motto Votes
+                  </h2>
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-2">Motto</th>
+                          <th className="px-4 py-2">Vote</th>
+                          <th className="px-4 py-2">User</th>
+                          <th className="px-4 py-2">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {taglineVotes.map(v => (
+                          <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white text-xs">{v.tagline}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-sm ${v.vote === "up" ? "" : ""}`}>
+                                {v.vote === "up" ? "👍" : "👎"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-slate-500">{v.user_email?.split("@")[0] || "—"}</td>
+                            <td className="px-4 py-2.5 text-xs text-slate-400">
+                              {new Date(v.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
     </div>

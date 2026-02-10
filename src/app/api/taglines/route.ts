@@ -20,12 +20,12 @@ export async function GET() {
   return NextResponse.json({ blocked });
 }
 
-// POST: submit a thumbs down report
+// POST: submit a vote (up or down)
 export async function POST(request: Request) {
   const body = await request.json();
   const { tagline, vote } = body;
 
-  if (!tagline || vote !== "down") {
+  if (!tagline || !["up", "down"].includes(vote)) {
     return NextResponse.json({ error: "Invalid" }, { status: 400 });
   }
 
@@ -39,25 +39,33 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Check if already reported
-  const { data: existing } = await supabaseAdmin
-    .from("bug_reports")
-    .select("id")
-    .eq("type", "tagline_downvote")
-    .eq("description", tagline)
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    return NextResponse.json({ ok: true, already: true });
-  }
-
-  await supabaseAdmin.from("bug_reports").insert({
-    type: "tagline_downvote",
-    description: tagline,
-    status: "pending",
-    reported_by: user.id,
-    reported_by_email: user.email,
+  // Save vote to tagline_votes table
+  await supabaseAdmin.from("tagline_votes").insert({
+    tagline,
+    vote,
+    user_id: user.id,
+    user_email: user.email,
   });
+
+  // If thumbs down, also create bug_report to block it
+  if (vote === "down") {
+    const { data: existing } = await supabaseAdmin
+      .from("bug_reports")
+      .select("id")
+      .eq("type", "tagline_downvote")
+      .eq("description", tagline)
+      .limit(1);
+
+    if (!existing || existing.length === 0) {
+      await supabaseAdmin.from("bug_reports").insert({
+        type: "tagline_downvote",
+        description: tagline,
+        status: "pending",
+        reported_by: user.id,
+        reported_by_email: user.email,
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

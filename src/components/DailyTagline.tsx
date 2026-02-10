@@ -100,14 +100,12 @@ export function DailyTagline() {
 
     setVoted(vote);
 
-    if (vote === "down") {
-      // Report to admin inbox
-      await fetch("/api/taglines", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tagline, vote: "down" }),
-      }).catch(() => {});
-    }
+    // Save vote server-side (both up and down)
+    await fetch("/api/taglines", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tagline, vote }),
+    }).catch(() => {});
   };
 
   if (!tagline) return null;
