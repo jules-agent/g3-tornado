@@ -120,6 +120,8 @@ export default function InboxPage() {
   const [newUsers, setNewUsers] = useState<{ id: string; email: string; full_name: string | null; created_at: string; owner_id: string | null }[]>([]);
   const [newContacts, setNewContacts] = useState<{ id: string; name: string; created_by_email: string | null; created_at: string }[]>([]);
   const [taglineVotes, setTaglineVotes] = useState<{ id: string; tagline: string; vote: string; user_email: string | null; created_at: string }[]>([]);
+  const [usageStats, setUsageStats] = useState<{ period_date: string; user_email: string; tasks_created: number; tasks_closed: number; notes_added: number; bugs_submitted: number }[]>([]);
+  const [usageView, setUsageView] = useState<"daily" | "weekly" | "monthly">("daily");
 
   const fetchReports = useCallback(async () => {
     const supabase = createClient();
@@ -172,6 +174,14 @@ export default function InboxPage() {
         .order("created_at", { ascending: false })
         .limit(50);
       setTaglineVotes(votes || []);
+
+      // Usage stats
+      const { data: stats } = await supabase
+        .from("usage_stats")
+        .select("period_date, user_email, tasks_created, tasks_closed, notes_added, bugs_submitted, period_type")
+        .order("period_date", { ascending: false })
+        .limit(100);
+      setUsageStats(stats || []);
     }
 
     setLoading(false);
@@ -524,6 +534,80 @@ export default function InboxPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* Usage Stats */}
+              {usageStats.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      📊 User Activity
+                    </h2>
+                    <div className="flex gap-1">
+                      {(["daily", "weekly", "monthly"] as const).map(v => (
+                        <button key={v} onClick={() => setUsageView(v)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition ${
+                            usageView === v
+                              ? "bg-teal-500 text-white"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200"
+                          }`}
+                        >
+                          {v.charAt(0).toUpperCase() + v.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {(() => {
+                    const filtered = usageStats.filter((s: any) => s.period_type === usageView);
+                    // Group by date
+                    const dates = [...new Set(filtered.map(s => s.period_date))].slice(0, 7);
+                    return dates.map(date => {
+                      const dayStats = filtered
+                        .filter(s => s.period_date === date)
+                        .sort((a, b) => (b.tasks_created + b.tasks_closed + b.notes_added + b.bugs_submitted) - (a.tasks_created + a.tasks_closed + a.notes_added + a.bugs_submitted));
+                      return (
+                        <div key={date} className="mb-4">
+                          <h3 className="text-xs font-semibold text-slate-400 mb-2">
+                            {new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                          </h3>
+                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                                  <th className="px-3 py-2 w-6">#</th>
+                                  <th className="px-3 py-2">User</th>
+                                  <th className="px-3 py-2 text-center">Created</th>
+                                  <th className="px-3 py-2 text-center">Closed</th>
+                                  <th className="px-3 py-2 text-center">Notes</th>
+                                  <th className="px-3 py-2 text-center">Bugs</th>
+                                  <th className="px-3 py-2 text-center">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {dayStats.map((s, i) => {
+                                  const total = s.tasks_created + s.tasks_closed + s.notes_added + s.bugs_submitted;
+                                  return (
+                                    <tr key={s.user_email} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                      <td className="px-3 py-2 text-xs font-bold text-slate-400">{i + 1}</td>
+                                      <td className="px-3 py-2 text-xs font-medium text-slate-900 dark:text-white">
+                                        {s.user_email?.split("@")[0] || "—"}
+                                      </td>
+                                      <td className="px-3 py-2 text-center text-xs">{s.tasks_created || "—"}</td>
+                                      <td className="px-3 py-2 text-center text-xs">{s.tasks_closed || "—"}</td>
+                                      <td className="px-3 py-2 text-center text-xs">{s.notes_added || "—"}</td>
+                                      <td className="px-3 py-2 text-center text-xs">{s.bugs_submitted || "—"}</td>
+                                      <td className="px-3 py-2 text-center text-xs font-bold text-teal-600">{total}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
 
