@@ -745,7 +745,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
     setLoading(false);
   };
 
-  const toggleProjectFlag = async (projectId: string, field: string, value: boolean) => {
+  const toggleProjectFlag = async (projectId: string, field: string, value: boolean | string) => {
     try {
       const res = await fetch("/api/admin/projects", {
         method: "PATCH",
