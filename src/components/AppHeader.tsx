@@ -107,6 +107,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </button>
           <ThemeToggle />
           
+          <button
+            onClick={() => setShowParkingLot(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Parking
+          </button>
           <Link
             href="/tasks/new"
             className="hidden sm:inline-flex items-center gap-2 btn-primary text-sm"
