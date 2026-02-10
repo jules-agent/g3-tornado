@@ -11,6 +11,7 @@ import { DailyActionList } from "./DailyActionList";
 import { Scorecard } from "./Scorecard";
 import { ProjectHealth } from "./ProjectHealth";
 import { BugReport } from "./BugReport";
+import { ProposeTemplate } from "./ProposeTemplate";
 
 type AppHeaderProps = {
   user: {
@@ -30,6 +31,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [showScorecard, setShowScorecard] = useState(false);
   const [showProjectHealth, setShowProjectHealth] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showProposeTemplate, setShowProposeTemplate] = useState(false);
   const [overdueCount, setOverdueCount] = useState<number | null>(null);
 
   // Check for overdue tasks on mount — auto-open Daily Actions if any exist
@@ -190,6 +192,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             💬
           </button>
+          <button
+            onClick={() => setShowProposeTemplate(true)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition"
+            title="Propose Template"
+          >
+            📋
+          </button>
           <Link
             href="/my-reports"
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
@@ -254,6 +263,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       <Scorecard isOpen={showScorecard} onClose={() => setShowScorecard(false)} />
       <ProjectHealth isOpen={showProjectHealth} onClose={() => setShowProjectHealth(false)} />
       <BugReport isOpen={showBugReport} onClose={() => setShowBugReport(false)} />
+      <ProposeTemplate isOpen={showProposeTemplate} onClose={() => setShowProposeTemplate(false)} />
     </header>
   );
 }

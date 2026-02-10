@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AdminTemplates } from "@/components/AdminTemplates";
 
 type Profile = {
   id: string;
@@ -84,6 +85,7 @@ export function AdminTabs({
     { key: "owners", label: "Contacts", count: owners.length, href: "/admin?tab=owners" },
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
     { key: "bugs", label: "Feedback", count: undefined, href: "/admin?tab=bugs" },
+    { key: "templates", label: "Templates", count: undefined, href: "/admin?tab=templates" },
   ];
 
   return (
@@ -112,6 +114,7 @@ export function AdminTabs({
         {activeTab === "owners" && <OwnersTab owners={owners} />}
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
         {activeTab === "bugs" && <BugsTab />}
+        {activeTab === "templates" && <AdminTemplates />}
       </div>
     </div>
   );

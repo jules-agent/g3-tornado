@@ -92,6 +92,17 @@ export default function TaskForm({
   const [taskIsUpfit, setTaskIsUpfit] = useState(false);
   const [taskIsPersonal, setTaskIsPersonal] = useState(false);
 
+  // Template state
+  const [templates, setTemplates] = useState<{ id: string; name: string; gates: { name: string; owner_name: string }[]; company_scope: { is_up: boolean; is_bp: boolean; is_upfit: boolean } }[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+
+  // Fetch approved templates
+  useEffect(() => {
+    fetch("/api/templates").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setTemplates(data.filter((t: { status: string }) => t.status === "approved"));
+    }).catch(() => {});
+  }, []);
+
   // Gate/Blocker state (create mode)
   const [hasGate, setHasGate] = useState(false);
   const [gateOwnerId, setGateOwnerId] = useState<string>("");
@@ -706,6 +717,44 @@ export default function TaskForm({
             </button>
           </div>
         </div>
+
+        {/* Use Template */}
+        {(() => {
+          const matching = templates.filter(t => {
+            const s = t.company_scope;
+            return (taskIsUp && s.is_up) || (taskIsBp && s.is_bp) || (taskIsUpfit && s.is_upfit);
+          });
+          if (matching.length === 0) return null;
+          return (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Use Template <span className="text-slate-400">(optional)</span>
+              </label>
+              <select
+                value={selectedTemplate}
+                onChange={(e) => {
+                  const tpl = matching.find(t => t.id === e.target.value);
+                  setSelectedTemplate(e.target.value);
+                  if (tpl) {
+                    setHasGate(true);
+                    setGateName(tpl.gates[0]?.name || "");
+                    // Find matching owner for first gate
+                    const match = owners.find(o => o.name.toLowerCase() === tpl.gates[0]?.owner_name?.toLowerCase());
+                    if (match) setGateOwnerId(match.id);
+                  } else {
+                    setSelectedTemplate("");
+                  }
+                }}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+              >
+                <option value="">No template — manual setup</option>
+                {matching.map(t => (
+                  <option key={t.id} value={t.id}>📋 {t.name} ({t.gates.length} gates)</option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
 
         {/* Cadence */}
         <div>
