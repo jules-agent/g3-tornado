@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const TAGLINES = [
+const ALL_TAGLINES = [
   "Get Shit Done",
   "Own It",
   "Ship It",
@@ -42,69 +42,72 @@ const TAGLINES = [
   "Touge Mode",
 ];
 
-function getTodaysTagline(): string {
-  // Deterministic: same tagline for everyone each weekday
-  // Rotate through all taglines, prioritize unvoted, recycle upvoted
+function getWeekdayIndex(): number {
+  const epoch = new Date("2026-02-10"); // launch day = index 0
   const now = new Date();
-  const dayOfWeek = now.getDay();
-
-  // Weekends: no tagline change, show last Friday's
-  // Get days since epoch, only count weekdays
-  const epoch = new Date("2026-02-10"); // launch day = "Get Shit Done"
   const diffMs = now.getTime() - epoch.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  // Count only weekdays
   let weekdays = 0;
   for (let i = 0; i <= diffDays; i++) {
     const d = new Date(epoch.getTime() + i * 86400000);
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) weekdays++;
   }
+  return Math.max(0, weekdays - 1);
+}
 
-  // Day 0 = "Get Shit Done" (index 0)
-  // After cycling through all, recycle upvoted ones from localStorage
-  if (weekdays <= 0) return TAGLINES[0];
-
-  const idx = (weekdays - 1) % TAGLINES.length;
-  return TAGLINES[idx];
+function pickTagline(blocked: Set<string>): string {
+  const available = ALL_TAGLINES.filter(t => !blocked.has(t));
+  if (available.length === 0) return ALL_TAGLINES[0]; // fallback
+  const idx = getWeekdayIndex() % available.length;
+  return available[idx];
 }
 
 export function DailyTagline() {
   const [tagline, setTagline] = useState("");
   const [voted, setVoted] = useState<"up" | "down" | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [blocked, setBlocked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const t = getTodaysTagline();
-    setTagline(t);
+    // Fetch blocked taglines, then pick today's
+    fetch("/api/taglines")
+      .then(r => r.json())
+      .then(data => {
+        const blockedSet = new Set<string>(data.blocked || []);
+        setBlocked(blockedSet);
+        setTagline(pickTagline(blockedSet));
+      })
+      .catch(() => {
+        setTagline(pickTagline(new Set()));
+      });
 
     // Check if already voted today
     try {
       const votes = JSON.parse(localStorage.getItem("tagline_votes") || "{}");
       const today = new Date().toISOString().slice(0, 10);
-      if (votes[today]) {
-        setVoted(votes[today]);
-      }
+      if (votes[today]) setVoted(votes[today]);
     } catch {}
   }, []);
 
-  const handleVote = (vote: "up" | "down") => {
+  const handleVote = async (vote: "up" | "down") => {
     const today = new Date().toISOString().slice(0, 10);
     try {
       const votes = JSON.parse(localStorage.getItem("tagline_votes") || "{}");
       votes[today] = vote;
       localStorage.setItem("tagline_votes", JSON.stringify(votes));
-
-      // Track aggregate: which taglines get upvoted for recycling
-      const agg = JSON.parse(localStorage.getItem("tagline_agg") || "{}");
-      agg[tagline] = (agg[tagline] || 0) + (vote === "up" ? 1 : -1);
-      localStorage.setItem("tagline_agg", JSON.stringify(agg));
     } catch {}
 
     setVoted(vote);
-    setShowFeedback(true);
-    setTimeout(() => setShowFeedback(false), 1500);
+
+    if (vote === "down") {
+      // Report to admin inbox
+      await fetch("/api/taglines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagline, vote: "down" }),
+      }).catch(() => {});
+    }
   };
 
   if (!tagline) return null;
@@ -131,14 +134,10 @@ export function DailyTagline() {
             👎
           </button>
         </span>
-      ) : showFeedback ? (
-        <span className="text-[9px] text-slate-400 animate-pulse">
-          {voted === "up" ? "🔥" : "👌"}
-        </span>
+      ) : voted === "up" ? (
+        <span className="text-[9px]">🔥</span>
       ) : (
-        <span className="text-[9px] text-slate-300">
-          {voted === "up" ? "👍" : "👎"}
-        </span>
+        <span className="text-[9px] text-slate-300">👎</span>
       )}
     </div>
   );

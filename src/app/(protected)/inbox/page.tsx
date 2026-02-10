@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type BugReport = {
   id: string;
-  type: "bug" | "feature_request";
+  type: "bug" | "feature_request" | "tagline_downvote";
   description: string;
   status: string;
   resolution: string | null;
@@ -273,7 +273,7 @@ export default function InboxPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {isUnread && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />}
-                            <span className="text-xs">{report.type === "bug" ? "🐛" : "💡"}</span>
+                            <span className="text-xs">{report.type === "bug" ? "🐛" : report.type === "tagline_downvote" ? "👎" : "💡"}</span>
                             <StatusBadge status={report.status} />
                             {isAdmin && report.reported_by_email && (
                               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-full px-2 py-0.5">
@@ -328,12 +328,27 @@ export default function InboxPage() {
                                 </div>
                               ) : (
                                 <div className="flex flex-wrap gap-1.5">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleMarkComplete(report.id); }}
-                                    className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
-                                  >
-                                    ✅ Complete
-                                  </button>
+                                  {report.type === "tagline_downvote" ? (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const supabase = createClient();
+                                        await supabase.from("bug_reports").update({ status: "rejected" }).eq("id", report.id);
+                                        markAsRead([report.id]);
+                                        fetchReports();
+                                      }}
+                                      className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                                    >
+                                      🔄 Restore To Rotation
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarkComplete(report.id); }}
+                                      className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                                    >
+                                      ✅ Complete
+                                    </button>
+                                  )}
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleReject(report.id); }}
                                     className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-2.5 py-1 text-[11px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
@@ -383,7 +398,7 @@ export default function InboxPage() {
                       className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs">{report.type === "bug" ? "🐛" : "💡"}</span>
+                        <span className="text-xs">{report.type === "bug" ? "🐛" : report.type === "tagline_downvote" ? "👎" : "💡"}</span>
                         <StatusBadge status={report.status} />
                         {isAdmin && report.reported_by_email && (
                           <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-full px-2 py-0.5">
