@@ -260,9 +260,11 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     let userOwnerId: string | null = null;
+    let isAdmin = false;
     if (user) {
-      const { data: profile } = await supabase.from("profiles").select("owner_id").eq("id", user.id).maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("owner_id, role, email").eq("id", user.id).maybeSingle();
       userOwnerId = profile?.owner_id ?? null;
+      isAdmin = profile?.role === "admin" || profile?.email === "ben@unpluggedperformance.com";
     }
 
     const { data: allTasks } = await supabase
@@ -284,8 +286,8 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
       return { ...task, daysSinceMovement, daysSinceCreated: 0, isStale, ownerNames, ownerIds, isMyTask } as Task;
     });
 
-    // Only show tasks belonging to the current user (non-admin sees own tasks only)
-    const myTasks = userOwnerId ? processed.filter((t: Task) => t.isMyTask) : processed;
+    // Non-admin without owner_id sees nothing (not everything)
+    const myTasks = isAdmin ? processed : userOwnerId ? processed.filter((t: Task) => t.isMyTask) : [];
     setTasks(myTasks);
     setLoaded(true);
   };
