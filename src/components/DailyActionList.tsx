@@ -493,12 +493,10 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const content = (
     <div
-      className="fixed inset-0 z-[9999] bg-white dark:bg-slate-950 overflow-y-auto"
-      style={{ isolation: "isolate" }}
+      className="fixed left-0 right-0 bottom-0 z-[100] bg-white dark:bg-slate-950 overflow-y-auto"
+      style={{ isolation: "isolate", top: "var(--header-height, 57px)" }}
     >
-      <style>{`body { overflow: hidden !important; }`}</style>
-
-      {/* Top bar */}
+      {/* Sub-header for Daily Actions */}
       <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-xl">📋</span>

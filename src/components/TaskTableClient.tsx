@@ -60,7 +60,7 @@ export function TaskTableClient({ tasks, userId }: TaskTableClientProps) {
             </Link>
             {task.isStale && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                STALE
+                OVERDUE
               </span>
             )}
             {task.is_blocked && (

@@ -194,7 +194,7 @@ export default async function Home({
     filteredTasks = filteredTasks.filter((t) => t.status === "closed");
   } else if (filter === "blocked") {
     filteredTasks = filteredTasks.filter((t) => t.is_blocked);
-  } else if (filter === "stale") {
+  } else if (filter === "overdue") {
     filteredTasks = filteredTasks.filter((t) => t.isStale);
   } else if (filter === "shared") {
     filteredTasks = filteredTasks.filter((t) => t.project_id && oneOnOneProjectIds.has(t.project_id));
@@ -266,7 +266,7 @@ export default async function Home({
     open: visibleTasks.filter((t) => t.status === "open").length,
     closed: visibleTasks.filter((t) => t.status === "closed").length,
     gated: visibleTasks.filter((t) => t.is_blocked).length,
-    stale: visibleTasks.filter((t) => t.isStale).length,
+    overdue: visibleTasks.filter((t) => t.isStale).length,
   };
 
   // Count shared (one-on-one) tasks
@@ -275,7 +275,7 @@ export default async function Home({
   const filters = [
     { key: "all", label: "All", count: stats.total },
     { key: "open", label: "Open", count: stats.open },
-    { key: "stale", label: "Stale", count: stats.stale, color: "text-amber-600" },
+    { key: "overdue", label: "Overdue", count: stats.overdue, color: "text-amber-600" },
     { key: "blocked", label: "Gated", count: stats.gated, color: "text-slate-600" },
     { key: "closed", label: "Done", count: stats.closed },
     ...(sharedCount > 0 ? [{ key: "shared", label: "Shared", count: sharedCount }] : []),

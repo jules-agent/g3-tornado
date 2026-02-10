@@ -1160,7 +1160,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">🔥 URGENT</span>
                                 )}
                                 {task.isStale && task.status !== "closed" && !task.isMyTask && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">OVERDUE</span>
                                 )}
                                 {task.is_blocked && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>
@@ -1305,7 +1305,7 @@ function renderCell(columnId: string, task: Task) {
             <span className={`group-hover:text-cyan-500 transition text-sm ${task.status === "closed" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white font-medium"}`}>{capitalizeFirst(task.description)}</span>
           </Link>
           {task.isStale && task.status !== "closed" && task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">🔥 URGENT</span>}
-          {task.isStale && task.status !== "closed" && !task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">STALE</span>}
+          {task.isStale && task.status !== "closed" && !task.isMyTask && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">OVERDUE</span>}
           {task.is_blocked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">GATED</span>}
         </>
       );

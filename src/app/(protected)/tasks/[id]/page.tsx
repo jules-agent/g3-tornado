@@ -145,7 +145,7 @@ export default async function TaskDetailPage({
                     isStale ? "text-amber-600" : "text-emerald-600"
                   }`}
                 >
-                  {daysSinceMovement} days since update {isStale && "(stale)"}
+                  {daysSinceMovement} days since update {isStale && "(overdue)"}
                 </div>
               </div>
             </div>

@@ -35,7 +35,7 @@ export default async function IssuesPage() {
   // Process tasks to identify issues
   const issues: {
     id: string;
-    type: "stale" | "gated" | "close_requested" | "inactive";
+    type: "overdue" | "gated" | "close_requested" | "inactive";
     severity: "critical" | "warning" | "info";
     title: string;
     description: string;
@@ -71,9 +71,9 @@ export default async function IssuesPage() {
       const daysPastCadence = daysInactive - task.fu_cadence_days;
       issues.push({
         id: `stale-${task.id}`,
-        type: "stale",
+        type: "overdue",
         severity: daysPastCadence > 7 ? "critical" : "warning",
-        title: `Stale: ${task.description.substring(0, 50)}...`,
+        title: `Overdue: ${task.description.substring(0, 50)}...`,
         description: `${daysPastCadence} days past ${task.fu_cadence_days}-day follow-up cadence`,
         taskId: task.id,
         taskNumber: task.task_number,
@@ -135,7 +135,7 @@ export default async function IssuesPage() {
   const infoCount = issues.filter((i) => i.severity === "info").length;
 
   const gatedCount = issues.filter((i) => i.type === "gated").length;
-  const staleCount = issues.filter((i) => i.type === "stale").length;
+  const staleCount = issues.filter((i) => i.type === "overdue").length;
   const closeRequestCount = issues.filter((i) => i.type === "close_requested").length;
 
   return (
@@ -225,7 +225,7 @@ export default async function IssuesPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">
-                        {issue.type === "stale" && "⏰"}
+                        {issue.type === "overdue" && "⏰"}
                         {issue.type === "gated" && "🚧"}
                         {issue.type === "close_requested" && "✋"}
                         {issue.type === "inactive" && "💤"}

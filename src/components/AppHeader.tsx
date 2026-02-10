@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "./ThemeToggle";
 import { ParkingLot } from "./ParkingLot";
@@ -30,6 +30,48 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [showScorecard, setShowScorecard] = useState(false);
   const [showProjectHealth, setShowProjectHealth] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [overdueCount, setOverdueCount] = useState<number | null>(null);
+
+  // Check for overdue tasks on mount — auto-open Daily Actions if any exist
+  useEffect(() => {
+    async function checkOverdue() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      const { data: profile } = await supabase.from("profiles").select("owner_id, role").eq("id", authUser.id).maybeSingle();
+      const isAdmin = profile?.role === "admin" || authUser.email === "ben@unpluggedperformance.com";
+
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("id, fu_cadence_days, last_movement_at, task_owners (owner_id)")
+        .eq("status", "open");
+
+      if (!tasks) { setOverdueCount(0); return; }
+
+      let count = 0;
+      const userOwnerId = profile?.owner_id;
+
+      for (const task of tasks as any[]) {
+        const daysSince = Math.floor(
+          (Date.now() - new Date(task.last_movement_at).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSince <= task.fu_cadence_days) continue;
+        
+        if (!isAdmin) {
+          const ownerIds = task.task_owners?.map((to: any) => to.owner_id).filter(Boolean) || [];
+          if (!userOwnerId || !ownerIds.includes(userOwnerId)) continue;
+        }
+        count++;
+      }
+
+      setOverdueCount(count);
+      if (count > 0) {
+        setShowDailyActions(true);
+      }
+    }
+    checkOverdue();
+  }, []);
 
   const displayName = user.fullName || user.email || "User";
   const initials = displayName
@@ -113,13 +155,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
           >
             🏆
           </button>
-          <button
-            onClick={() => setShowDailyActions(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-700 dark:hover:text-teal-300 transition"
-            title="Today's Actions"
-          >
-            📋
-          </button>
+          {overdueCount !== null && overdueCount > 0 && (
+            <button
+              onClick={() => setShowDailyActions(true)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition animate-pulse-urgent"
+              title={`Today's Actions (${overdueCount} overdue)`}
+            >
+              📋 {overdueCount}
+            </button>
+          )}
           <button
             onClick={() => setShowParkingLot(true)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition"
