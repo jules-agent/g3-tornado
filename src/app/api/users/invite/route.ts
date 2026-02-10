@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   let emailSent = false;
   let emailError = "";
   
-  if (process.env.RESEND_API_KEY) {
+  if (process.env.SMTP_USER || process.env.RESEND_API_KEY) {
     const result = await sendInviteEmail({
       to: email,
       signupUrl,
