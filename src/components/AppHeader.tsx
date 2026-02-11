@@ -169,38 +169,67 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </div>
         </Link>
 
-        {/* Desktop: Right side - compact user pill + action buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Desktop: Text nav + action buttons — all in one row */}
+        <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
+          {/* Text menu links */}
+          <nav className="flex items-center gap-3 text-[11px] mr-auto ml-6">
+            {overdueCount !== null && overdueCount > 0 && (
+              <button onClick={() => setShowDailyActions(true)} className="font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition whitespace-nowrap">
+                Daily Actions ({overdueCount})
+              </button>
+            )}
+            {overdueCount !== null && overdueCount > 0 && (
+              <button onClick={() => setShowFocusMode(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition whitespace-nowrap">
+                Focus
+              </button>
+            )}
+            <button onClick={() => setShowScorecard(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition whitespace-nowrap">
+              Scorecard
+            </button>
+            {isAdmin && (
+              <button onClick={() => setShowProjectHealth(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+                Health
+              </button>
+            )}
+            <button onClick={() => setShowParkingLot(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition whitespace-nowrap">
+              Parking
+            </button>
+            <Link href="/contacts" className="font-medium text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition whitespace-nowrap">
+              Contacts
+            </Link>
+            <Link href="/projects" className="font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition whitespace-nowrap">
+              Projects
+            </Link>
+            <button onClick={() => setShowBugReport(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition whitespace-nowrap">
+              Feedback
+            </button>
+            <button onClick={() => setShowProposeTemplate(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition whitespace-nowrap">
+              Templates
+            </button>
+            {inboxTotal > 0 && (
+              <Link href="/inbox" className={`font-medium transition whitespace-nowrap ${inboxUnread > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400 hover:text-slate-700"}`}>
+                Inbox {inboxUnread > 0 && `(${inboxUnread})`}
+              </Link>
+            )}
+            <a href="/tutorial" target="_blank" rel="noopener noreferrer" className="font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+              Tutorial
+            </a>
+          </nav>
+
+          {/* Right actions */}
           <ThemeToggle />
-          <button
-            onClick={() => setShowParkingLot(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm"
-          >
+          <button onClick={() => setShowParkingLot(true)} className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm whitespace-nowrap">
             + Parking
           </button>
-          <Link
-            href="/tasks/new"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold btn-primary"
-          >
+          <Link href="/tasks/new" className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold btn-primary whitespace-nowrap">
             + Task
           </Link>
-          <div className="flex items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 shadow-sm">
-            <Link href="/profile" className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-xs font-bold text-white hover:opacity-80 transition" title="My Profile">
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 shadow-sm">
+            <Link href="/profile" className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-[10px] font-bold text-white hover:opacity-80 transition" title="My Profile">
               {initials}
             </Link>
-            <div className="hidden text-sm sm:block">
-              <div className="font-semibold text-slate-800 dark:text-slate-100">{displayName}</div>
-              <div className="text-[10px] font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
-                {isAdmin ? "Admin" : "User"}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className="ml-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 transition hover:text-red-500"
-            >
-              {isSigningOut ? "..." : "Sign out"}
+            <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 transition hover:text-red-500">
+              {isSigningOut ? "..." : "Out"}
             </button>
           </div>
         </div>
@@ -223,90 +252,6 @@ export default function AppHeader({ user }: AppHeaderProps) {
             {initials}
           </Link>
         </div>
-      </div>
-
-      {/* Desktop Text Menu Bar */}
-      <div className="hidden md:flex items-center justify-center gap-5 px-4 py-1.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-        {overdueCount !== null && overdueCount > 0 && (
-          <button
-            onClick={() => setShowDailyActions(true)}
-            className="font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
-          >
-            Daily Actions ({overdueCount})
-          </button>
-        )}
-        {overdueCount !== null && overdueCount > 0 && (
-          <button
-            onClick={() => setShowFocusMode(true)}
-            className="font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
-          >
-            Focus Mode
-          </button>
-        )}
-        <button
-          onClick={() => setShowScorecard(true)}
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition"
-        >
-          Scorecard
-        </button>
-        {isAdmin && (
-          <button
-            onClick={() => setShowProjectHealth(true)}
-            className="font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
-          >
-            Project Health
-          </button>
-        )}
-        <button
-          onClick={() => setShowParkingLot(true)}
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
-        >
-          Parking Lot
-        </button>
-        <Link
-          href="/contacts"
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition"
-        >
-          Contacts
-        </Link>
-        <Link
-          href="/projects"
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition"
-        >
-          Projects
-        </Link>
-        <button
-          onClick={() => setShowBugReport(true)}
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition"
-        >
-          Feedback
-        </button>
-        <button
-          onClick={() => setShowProposeTemplate(true)}
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
-        >
-          Templates
-        </button>
-        {inboxTotal > 0 && (
-          <Link
-            href="/inbox"
-            className={`font-medium transition ${
-              inboxUnread > 0
-                ? "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-            }`}
-          >
-            Inbox {inboxUnread > 0 && `(${inboxUnread})`}
-          </Link>
-        )}
-        <a
-          href="/tutorial"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
-        >
-          Tutorial
-        </a>
       </div>
 
       {/* Mobile Menu Slide-out */}
