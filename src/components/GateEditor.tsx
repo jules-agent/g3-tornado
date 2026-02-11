@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { RestartClockModal } from "./RestartClockModal";
+import { ContactCreationDialog } from "./ContactCreationDialog";
 
 type Owner = {
   id: string;
@@ -32,9 +33,8 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
   const [gates, setGates] = useState<Gate[]>(
     initialGates.length > 0 ? initialGates : [{ name: "", owner_name: "", task_name: "", completed: false }]
   );
-  const [showAddOwner, setShowAddOwner] = useState(false);
-  const [newOwnerName, setNewOwnerName] = useState("");
-  const [addingForIdx, setAddingForIdx] = useState<number | null>(null);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [contactDialogForIdx, setContactDialogForIdx] = useState<number | null>(null);
   const [completingGateIdx, setCompletingGateIdx] = useState<number | null>(null);
   const [showRestartClock, setShowRestartClock] = useState(false);
   const [pendingGateCompletion, setPendingGateCompletion] = useState<number | null>(null);
@@ -96,21 +96,18 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
     setGates(updated);
   };
 
-  async function handleAddOwner(idx: number) {
-    if (!newOwnerName.trim()) return;
-    const { data, error } = await supabase
-      .from("owners")
-      .insert({ name: newOwnerName.trim() })
-      .select("id, name")
-      .single();
-    if (data && !error) {
-      setOwners([...owners, data].sort((a, b) => a.name.localeCompare(b.name)));
-      updateGate(idx, "owner_name", data.name);
-      setNewOwnerName("");
-      setShowAddOwner(false);
-      setAddingForIdx(null);
-    }
-  }
+  const handleContactCreated = async (contactName: string, gateIdx: number) => {
+    // Reload owners list
+    const { data } = await supabase.from("owners").select("id, name").order("name");
+    setOwners(data || []);
+    
+    // Set the contact as the gate owner
+    updateGate(gateIdx, "owner_name", contactName);
+    
+    // Close dialog
+    setShowContactDialog(false);
+    setContactDialogForIdx(null);
+  };
 
   async function handleSave() {
     setSaving(true);
@@ -260,48 +257,24 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
                     {/* Gate fields */}
                     <div className="flex-1 space-y-1.5">
                       <div className="flex gap-1.5">
-                        {showAddOwner && addingForIdx === idx ? (
-                          <div className="flex gap-1 flex-1">
-                            <input
-                              value={newOwnerName}
-                              onChange={e => setNewOwnerName(e.target.value)}
-                              placeholder="New person name..."
-                              className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
-                              autoFocus
-                              onKeyDown={e => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddOwner(idx);
-                                }
-                                if (e.key === "Escape") { 
-                                  setShowAddOwner(false); 
-                                  setAddingForIdx(null);
-                                  setNewOwnerName("");
-                                }
-                              }}
-                            />
-                            <button onClick={() => handleAddOwner(idx)} className="px-2 py-1 bg-teal-500 text-white rounded text-xs font-semibold">Add</button>
-                          </div>
-                        ) : (
-                          <select
-                            value={gate.owner_name}
-                            onChange={e => {
-                              if (e.target.value === "__add__") {
-                                setShowAddOwner(true);
-                                setAddingForIdx(idx);
-                              } else {
-                                updateGate(idx, "owner_name", e.target.value);
-                              }
-                            }}
-                            className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                          >
-                            <option value="">Select person...</option>
-                            {owners.map(o => (
-                              <option key={o.id} value={o.name}>{o.name}</option>
-                            ))}
-                            <option value="__add__">+ Add new person...</option>
-                          </select>
-                        )}
+                        <select
+                          value={gate.owner_name}
+                          onChange={e => {
+                            if (e.target.value === "__add__") {
+                              setShowContactDialog(true);
+                              setContactDialogForIdx(idx);
+                            } else {
+                              updateGate(idx, "owner_name", e.target.value);
+                            }
+                          }}
+                          className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                          <option value="">Select person...</option>
+                          {owners.map(o => (
+                            <option key={o.id} value={o.name}>{o.name}</option>
+                          ))}
+                          <option value="__add__">+ Add new person...</option>
+                        </select>
                         <input
                           value={gate.task_name || ""}
                           onChange={e => updateGate(idx, "task_name", e.target.value)}
@@ -422,6 +395,20 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
         onConfirm={handleRestartClockConfirm}
         onCancel={handleRestartClockCancel}
         currentCadenceDays={currentCadenceDays}
+      />
+
+      {/* Contact Creation Dialog */}
+      <ContactCreationDialog
+        isOpen={showContactDialog}
+        onClose={() => {
+          setShowContactDialog(false);
+          setContactDialogForIdx(null);
+        }}
+        onContactCreated={(contactName) => {
+          if (contactDialogForIdx !== null) {
+            handleContactCreated(contactName, contactDialogForIdx);
+          }
+        }}
       />
     </div>
   );
