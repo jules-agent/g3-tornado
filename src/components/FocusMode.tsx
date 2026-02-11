@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { RestartClockModal } from "./RestartClockModal";
 
 type Gate = {
   name: string;
@@ -46,6 +47,9 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteValue, setNoteValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showRestartClock, setShowRestartClock] = useState(false);
+  const [pendingNoteTaskId, setPendingNoteTaskId] = useState<string | null>(null);
+  const [pendingNoteCadence, setPendingNoteCadence] = useState<number>(1);
 
   // Get overdue tasks sorted by priority, grouped by gate person
   const focusedTasks = useMemo(() => {
@@ -86,7 +90,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     return overdueTasks.slice(0, 3);
   }, [tasks, completedIds]);
 
-  const addNote = useCallback(async (taskId: string) => {
+  const addNote = useCallback(async (taskId: string, taskCadence: number) => {
     if (!noteValue.trim()) return;
     setSaving(true);
     const supabase = createClient();
@@ -94,14 +98,40 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
       task_id: taskId,
       content: noteValue.trim(),
     });
-    // Touch last_movement_at
-    await supabase.from("tasks").update({ last_movement_at: new Date().toISOString() }).eq("id", taskId);
+    setSaving(false);
     setEditingNote(null);
     setNoteValue("");
-    setSaving(false);
     setCompletedIds((prev) => new Set([...prev, taskId]));
+    
+    // Show restart clock modal
+    setPendingNoteTaskId(taskId);
+    setPendingNoteCadence(taskCadence);
+    setShowRestartClock(true);
+  }, [noteValue]);
+
+  const handleRestartClockConfirm = useCallback(async (newCadenceDays: number) => {
+    if (!pendingNoteTaskId) return;
+    
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({
+        last_movement_at: new Date().toISOString(),
+        fu_cadence_days: newCadenceDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", pendingNoteTaskId);
+
+    setShowRestartClock(false);
+    setPendingNoteTaskId(null);
     router.refresh();
-  }, [noteValue, router]);
+  }, [pendingNoteTaskId, router]);
+
+  const handleRestartClockCancel = useCallback(() => {
+    setShowRestartClock(false);
+    setPendingNoteTaskId(null);
+    router.refresh();
+  }, [router]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -198,13 +228,13 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                           type="text"
                           value={noteValue}
                           onChange={(e) => setNoteValue(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && addNote(task.id)}
+                          onKeyDown={(e) => e.key === "Enter" && addNote(task.id, task.fu_cadence_days)}
                           placeholder="Add update note..."
                           className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
                           autoFocus
                         />
                         <button
-                          onClick={() => addNote(task.id)}
+                          onClick={() => addNote(task.id, task.fu_cadence_days)}
                           disabled={saving || !noteValue.trim()}
                           className="px-2.5 py-1.5 rounded-lg bg-teal-500 text-white text-xs font-medium hover:bg-teal-600 disabled:opacity-50 transition"
                         >
@@ -240,6 +270,14 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
           </div>
         )}
       </div>
+
+      {/* Restart Clock Modal */}
+      <RestartClockModal
+        isOpen={showRestartClock}
+        onConfirm={handleRestartClockConfirm}
+        onCancel={handleRestartClockCancel}
+        currentCadenceDays={pendingNoteCadence}
+      />
     </div>,
     document.body
   );
