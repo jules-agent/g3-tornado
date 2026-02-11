@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { capitalizeFirst } from "@/lib/utils";
 import { RestartClockModal } from "./RestartClockModal";
+import SpeechInput from "@/components/SpeechInput";
 
 type Owner = {
   id: string;
@@ -234,6 +235,10 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                 disabled={saving}
                 className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
               />
+              <SpeechInput
+                onResult={(spoken) => setNoteText(prev => prev ? prev + ' ' + spoken : spoken)}
+                disabled={saving}
+              />
               {noteText.trim() && (
                 <button
                   onClick={handleNoteSubmit}
@@ -312,13 +317,18 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                   </select>
                   {blockerOwner && (
                     <>
-                      <input
-                        type="text"
-                        value={blockerDesc}
-                        onChange={(e) => setBlockerDesc(e.target.value)}
-                        placeholder="What do they need to do?"
-                        className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={blockerDesc}
+                          onChange={(e) => setBlockerDesc(e.target.value)}
+                          placeholder="What do they need to do?"
+                          className="flex-1 px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                        <SpeechInput
+                          onResult={(spoken) => setBlockerDesc(prev => prev ? prev + ' ' + spoken : spoken)}
+                        />
+                      </div>
                       {item.gates.length > 0 && (
                         <select
                           value={blockerPosition}
