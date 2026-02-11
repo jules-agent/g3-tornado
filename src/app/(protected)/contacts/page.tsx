@@ -44,6 +44,16 @@ export default function ContactsPage() {
   const [newIsPrivate, setNewIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editIsUp, setEditIsUp] = useState(false);
+  const [editIsBp, setEditIsBp] = useState(false);
+  const [editIsUpfit, setEditIsUpfit] = useState(false);
+  const [editIsVendor, setEditIsVendor] = useState(false);
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editError, setEditError] = useState("");
 
   const supabase = createClient();
 
@@ -185,6 +195,84 @@ export default function ContactsPage() {
     setSaving(false);
   }
 
+  function startEdit(owner: Owner) {
+    setEditingId(owner.id);
+    setEditName(owner.name);
+    setEditEmail(owner.email || "");
+    setEditPhone(owner.phone || "");
+    setEditIsUp(owner.is_up_employee || false);
+    setEditIsBp(owner.is_bp_employee || false);
+    setEditIsUpfit(owner.is_upfit_employee || false);
+    setEditIsVendor(owner.is_third_party_vendor || false);
+    setEditIsPrivate(owner.is_private || false);
+    setEditError("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError("");
+  }
+
+  async function handleEdit() {
+    if (!editName.trim()) {
+      setEditError("Name is required");
+      return;
+    }
+
+    // Validate associations
+    const validation = validateContactAssociations({
+      is_up: editIsUp,
+      is_bp: editIsBp,
+      is_upfit_employee: editIsUpfit,
+      is_third_party_vendor: editIsVendor,
+      is_private: editIsPrivate,
+    });
+
+    if (!validation.valid) {
+      setEditError(validation.error || "Invalid contact associations");
+      return;
+    }
+
+    // Check if user can edit this contact's private status
+    const owner = owners.find(o => o.id === editingId);
+    if (!owner) return;
+
+    // User cannot make a contact private if:
+    // 1. It's currently shared (is_private = false/null)
+    // 2. AND they didn't create it (created_by !== userId)
+    if (editIsPrivate && !owner.is_private && owner.created_by !== userId) {
+      setEditError("You can only make private contacts that you created");
+      return;
+    }
+
+    setSaving(true);
+    setEditError("");
+
+    const { error: updateError } = await supabase
+      .from("owners")
+      .update({
+        name: capitalizeFirst(editName.trim()),
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null,
+        is_internal: editIsUp || editIsBp || editIsUpfit,
+        is_up_employee: editIsUp,
+        is_bp_employee: editIsBp,
+        is_upfit_employee: editIsUpfit,
+        is_third_party_vendor: editIsVendor,
+        is_private: editIsPrivate,
+        private_owner_id: editIsPrivate ? owner.private_owner_id || userId : null,
+      })
+      .eq("id", editingId!);
+
+    if (!updateError) {
+      setEditingId(null);
+      await load();
+    } else {
+      setEditError(updateError.message);
+    }
+    setSaving(false);
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin h-6 w-6 border-2 border-slate-300 border-t-slate-900 rounded-full" /></div>;
   }
@@ -281,6 +369,7 @@ export default function ContactsPage() {
               <th className="px-4 py-3">Phone</th>
               <th className="px-4 py-3">Associations</th>
               <th className="px-4 py-3">Created By</th>
+              <th className="px-4 py-3 w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -292,58 +381,169 @@ export default function ContactsPage() {
                 is_third_party_vendor: o.is_third_party_vendor || false,
                 is_private: o.is_private || false,
               });
+              const canEdit = o.created_by === userId;
+              const isEditing = editingId === o.id;
 
               return (
-                <tr key={o.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition ${unassociated ? "flash-red" : ""}`}>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
-                    {o.is_private && <span className="mr-1.5" title="Private contact">🔒</span>}
-                    {o.name}
-                    {unassociated && <span className="ml-2 text-xs text-red-600 dark:text-red-400">⚠️ No association</span>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.email || "—"}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.phone || "—"}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {o.is_up_employee && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">
-                          UP
-                        </span>
+                <>
+                  <tr key={o.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition ${unassociated ? "flash-red" : ""}`}>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
+                      {o.is_private && <span className="mr-1.5" title="Private contact">🔒</span>}
+                      {o.name}
+                      {unassociated && <span className="ml-2 text-xs text-red-600 dark:text-red-400">⚠️ No association</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.email || "—"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.phone || "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {o.is_up_employee && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">
+                            UP
+                          </span>
+                        )}
+                        {o.is_bp_employee && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                            BP
+                          </span>
+                        )}
+                        {o.is_upfit_employee && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                            UPFIT
+                          </span>
+                        )}
+                        {o.is_third_party_vendor && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            Vendor
+                          </span>
+                        )}
+                        {o.is_private && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                            {userRole === "admin" && o.private_owner_id
+                              ? `🔒 Private (${ownerNames[o.private_owner_id] || "unknown"})`
+                              : "🔒 Private"}
+                          </span>
+                        )}
+                        {unassociated && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                            ⚠️ None
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                        {o.created_by_email ? o.created_by_email.split("@")[0] : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {canEdit && !isEditing && (
+                        <button
+                          onClick={() => startEdit(o)}
+                          className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold"
+                        >
+                          Edit
+                        </button>
                       )}
-                      {o.is_bp_employee && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
-                          BP
-                        </span>
-                      )}
-                      {o.is_upfit_employee && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                          UPFIT
-                        </span>
-                      )}
-                      {o.is_third_party_vendor && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                          Vendor
-                        </span>
-                      )}
-                      {o.is_private && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
-                          {userRole === "admin" && o.private_owner_id
-                            ? `🔒 Private (${ownerNames[o.private_owner_id] || "unknown"})`
-                            : "🔒 Private"}
-                        </span>
-                      )}
-                      {unassociated && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-                          ⚠️ None
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                      {o.created_by_email ? o.created_by_email.split("@")[0] : "—"}
-                    </span>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  {isEditing && (
+                    <tr className="bg-amber-50 dark:bg-amber-900/10">
+                      <td colSpan={6} className="px-4 py-4">
+                        <div className="max-w-2xl">
+                          <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-3">✏️ Editing: {o.name}</h4>
+                          
+                          {editError && (
+                            <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                              {editError}
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            <input
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              placeholder="Name *"
+                              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <input
+                                value={editEmail}
+                                onChange={e => setEditEmail(e.target.value)}
+                                placeholder="Email (optional)"
+                                type="email"
+                                className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              />
+                              <input
+                                value={editPhone}
+                                onChange={e => setEditPhone(e.target.value)}
+                                placeholder="Phone (optional)"
+                                type="tel"
+                                className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Company Association *</label>
+                              <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => setEditIsUp(!editIsUp)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsUp ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                                  {editIsUp ? "✓ " : ""}UP
+                                </button>
+                                <button type="button" onClick={() => setEditIsBp(!editIsBp)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsBp ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                                  {editIsBp ? "✓ " : ""}BP
+                                </button>
+                                <button type="button" onClick={() => setEditIsUpfit(!editIsUpfit)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsUpfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                                  {editIsUpfit ? "✓ " : ""}UPFIT
+                                </button>
+                                <button type="button" onClick={() => setEditIsVendor(!editIsVendor)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsVendor ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                                  {editIsVendor ? "✓ " : ""}3rd Party Vendor
+                                </button>
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                              <label className="flex items-start gap-3 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={editIsPrivate}
+                                  onChange={e => setEditIsPrivate(e.target.checked)}
+                                  disabled={!o.is_private && o.created_by !== userId}
+                                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-amber-500 focus:ring-2 focus:ring-amber-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                                    🔒 Make Private
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {!o.is_private && o.created_by !== userId
+                                      ? "You can only make private contacts that you created"
+                                      : "Private contacts are hidden from other members and only visible to your account"}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-4">
+                            <button
+                              onClick={handleEdit}
+                              disabled={saving || !editName.trim()}
+                              className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 transition"
+                            >
+                              {saving ? "Saving..." : "Save Changes"}
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="text-sm text-slate-500 hover:text-slate-700 px-3"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               );
             })}
           </tbody>

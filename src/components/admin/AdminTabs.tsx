@@ -39,6 +39,9 @@ type Owner = {
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
   is_third_party_vendor?: boolean;
+  is_private?: boolean;
+  private_owner_id?: string | null;
+  created_by?: string | null;
   created_by_email: string | null;
   created_at: string;
 };
@@ -93,7 +96,7 @@ export function AdminTabs({
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="flex rounded border border-slate-200 bg-white text-xs mb-4 dark:border-slate-700 dark:bg-slate-800 overflow-x-auto">
+      <div className="flex rounded border border-slate-200 bg-white text-xs mb-4 dark:border-slate-700 dark:bg-slate-800 overflow-x-auto sticky top-0 z-20">
         {tabs.map((tab) => (
           <Link
             key={tab.key}
@@ -1312,67 +1315,88 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">Private</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>
+              <th className="px-4 py-2 font-semibold w-28">Created By</th>
               <th className="px-4 py-2 font-semibold w-16">⋮</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {owners.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
               </tr>
             ) : (
-              owners.map((owner) => (
-                <tr key={owner.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
-                    <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <input type="checkbox" checked={owner.is_up_employee || false} onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <input type="checkbox" checked={owner.is_bp_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <input type="checkbox" checked={owner.is_upfit_employee || false} onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />
-                  </td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                    <EditableCell value={owner.email || ""} onSave={(v) => updateOwnerField(owner.id, "email", v)} placeholder="Add email" type="email" />
-                  </td>
-                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                    <EditableCell value={owner.phone || ""} onSave={(v) => updateOwnerField(owner.id, "phone", v)} placeholder="Add phone" type="tel" />
-                  </td>
-                  <td className="px-4 py-2 relative">
-                    <button
-                      onClick={() => setOwnerMenuOpen(ownerMenuOpen === owner.id ? null : owner.id)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-2 py-1 text-xs"
-                    >
-                      ⋮
-                    </button>
-                    {ownerMenuOpen === owner.id && (
-                      <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[9999] min-w-[160px] py-1">
-                        <button
-                          onClick={() => startEdit(owner)}
-                          className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                        >
-                          ✏️ Edit All Fields
-                        </button>
-                        <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
-                        <button
-                          onClick={() => deleteOwner(owner.id)}
-                          className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-                        >
-                          🗑️ Delete Owner
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
+              owners.map((owner) => {
+                const isVendor = owner.is_third_party_vendor;
+                const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee;
+                const vendorWarning = isVendor && !hasCompany;
+                
+                return (
+                  <tr key={owner.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${vendorWarning ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
+                    <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
+                      <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
+                      {vendorWarning && (
+                        <div className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">
+                          ⚠️ Vendor needs company
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_up_employee || false} onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_bp_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_upfit_employee || false} onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_private || false} onChange={(e) => toggleFlag(owner.id, "is_private", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
+                    </td>
+                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                      <EditableCell value={owner.email || ""} onSave={(v) => updateOwnerField(owner.id, "email", v)} placeholder="Add email" type="email" />
+                    </td>
+                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                      <EditableCell value={owner.phone || ""} onSave={(v) => updateOwnerField(owner.id, "phone", v)} placeholder="Add phone" type="tel" />
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                        {owner.created_by_email ? owner.created_by_email.split("@")[0] : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 relative">
+                      <button
+                        onClick={() => setOwnerMenuOpen(ownerMenuOpen === owner.id ? null : owner.id)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-2 py-1 text-xs"
+                      >
+                        ⋮
+                      </button>
+                      {ownerMenuOpen === owner.id && (
+                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[9999] min-w-[160px] py-1">
+                          <button
+                            onClick={() => startEdit(owner)}
+                            className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          >
+                            ✏️ Edit All Fields
+                          </button>
+                          <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                          <button
+                            onClick={() => deleteOwner(owner.id)}
+                            className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                          >
+                            🗑️ Delete Owner
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

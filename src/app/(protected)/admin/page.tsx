@@ -58,6 +58,9 @@ export default async function AdminPage({
       is_bp_employee,
       is_upfit_employee,
       is_third_party_vendor,
+      is_private,
+      private_owner_id,
+      created_by,
       created_by_email, 
       created_at
     `).order("name"),

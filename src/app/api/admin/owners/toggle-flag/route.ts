@@ -19,20 +19,31 @@ export async function POST(request: Request) {
 
   const { ownerId, field, value } = await request.json();
   
-  const allowedFields = ["is_up_employee", "is_bp_employee", "is_upfit_employee", "is_third_party_vendor"];
+  const allowedFields = ["is_up_employee", "is_bp_employee", "is_upfit_employee", "is_third_party_vendor", "is_private"];
   if (!ownerId || !allowedFields.includes(field) || typeof value !== "boolean") {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   // If setting vendor=true, clear employee flags; if setting employee=true, clear vendor
-  const updateData: Record<string, boolean> = { [field]: value };
+  const updateData: Record<string, boolean | string | null> = { [field]: value };
   
   if (value && field === "is_third_party_vendor") {
     updateData.is_up_employee = false;
     updateData.is_bp_employee = false;
     updateData.is_upfit_employee = false;
-  } else if (value && field !== "is_third_party_vendor") {
+  } else if (value && field !== "is_third_party_vendor" && field !== "is_private") {
     updateData.is_third_party_vendor = false;
+  }
+  
+  // Handle is_private toggle
+  if (field === "is_private") {
+    if (value) {
+      // Setting private to true - set private_owner_id to current admin user
+      updateData.private_owner_id = user.id;
+    } else {
+      // Setting private to false - clear private_owner_id
+      updateData.private_owner_id = null;
+    }
   }
 
   const { data, error } = await supabase
