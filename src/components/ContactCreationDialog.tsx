@@ -18,6 +18,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,6 +35,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       setIsBp(false);
       setIsUpfit(false);
       setIsVendor(false);
+      setIsPrivate(false);
       setError("");
     }
   }, [isOpen]);
@@ -106,6 +108,8 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
           is_internal: isUp || isBp || isUpfit,
           created_by: user.id,
           created_by_email: profile?.email || user.email || null,
+          is_private: isPrivate,
+          private_owner_id: isPrivate ? user.id : null,
         })
         .select("name")
         .single();
@@ -243,6 +247,25 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
                 {isVendor ? "✓ " : ""}3rd Party Vendor
               </button>
             </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={e => setIsPrivate(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                  🔒 Make Private
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Private contacts are hidden from other members and only visible to your account
+                </p>
+              </div>
+            </label>
           </div>
         </form>
 

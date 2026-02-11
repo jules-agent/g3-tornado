@@ -12,6 +12,8 @@ type Owner = {
   is_internal: boolean;
   created_by: string | null;
   created_by_email: string | null;
+  is_private: boolean | null;
+  private_owner_id: string | null;
 };
 
 export default function ContactsPage() {
@@ -26,6 +28,7 @@ export default function ContactsPage() {
   const [newIsBp, setNewIsBp] = useState(false);
   const [newIsUpfit, setNewIsUpfit] = useState(false);
   const [newIsVendor, setNewIsVendor] = useState(false);
+  const [newIsPrivate, setNewIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -37,9 +40,16 @@ export default function ContactsPage() {
 
     const { data } = await supabase
       .from("owners")
-      .select("id, name, email, phone, is_internal, created_by, created_by_email")
+      .select("id, name, email, phone, is_internal, created_by, created_by_email, is_private, private_owner_id")
       .order("name");
-    setOwners(data || []);
+    
+    // Filter out private contacts that don't belong to the current user
+    const filtered = (data || []).filter(owner => {
+      if (!owner.is_private) return true; // Public contacts visible to all
+      return owner.private_owner_id === user.id; // Private contacts only visible to owner
+    });
+    
+    setOwners(filtered);
     setLoading(false);
   }
 
@@ -48,6 +58,13 @@ export default function ContactsPage() {
   async function handleAdd() {
     if (!newName.trim()) return;
     setSaving(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase.from("owners").insert({
       name: newName.trim(),
       email: newEmail.trim() || null,
@@ -57,10 +74,13 @@ export default function ContactsPage() {
       is_bp_employee: newIsBp,
       is_upfit_employee: newIsUpfit,
       is_third_party_vendor: newIsVendor,
+      is_private: newIsPrivate,
+      private_owner_id: newIsPrivate ? user.id : null,
     });
     if (!error) {
       setNewName(""); setNewEmail(""); setNewPhone("");
       setNewIsUp(false); setNewIsBp(false); setNewIsUpfit(false); setNewIsVendor(false);
+      setNewIsPrivate(false);
       setShowAdd(false);
       await load();
     }
@@ -119,6 +139,24 @@ export default function ContactsPage() {
                 </button>
               </div>
             </div>
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={newIsPrivate}
+                  onChange={e => setNewIsPrivate(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                    🔒 Make Private
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Private contacts are hidden from other members and only visible to your account
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={saving || !newName.trim()} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-40 transition">
@@ -142,7 +180,10 @@ export default function ContactsPage() {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {owners.map(o => (
               <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{o.name}</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
+                  {o.is_private && <span className="mr-1.5" title="Private contact">🔒</span>}
+                  {o.name}
+                </td>
                 <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.email || "—"}</td>
                 <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.phone || "—"}</td>
                 <td className="px-4 py-3">

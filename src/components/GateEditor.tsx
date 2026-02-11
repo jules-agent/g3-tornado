@@ -44,8 +44,16 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
 
   useEffect(() => {
     async function loadOwners() {
-      const { data } = await supabase.from("owners").select("id, name").order("name");
-      setOwners(data || []);
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.from("owners").select("id, name, is_private, private_owner_id").order("name");
+      
+      // Filter out private contacts that don't belong to the current user
+      const filtered = (data || []).filter(owner => {
+        if (!owner.is_private) return true; // Public contacts visible to all
+        return owner.private_owner_id === user?.id; // Private contacts only visible to owner
+      });
+      
+      setOwners(filtered);
       setLoading(false);
     }
     loadOwners();
