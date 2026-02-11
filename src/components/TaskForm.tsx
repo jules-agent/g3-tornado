@@ -506,25 +506,25 @@ export default function TaskForm({
   // ========== CREATE MODE ==========
   if (mode === "create") {
     return (
-      <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
-        {/* Description */}
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-xl">
+        {/* Description - Larger for mobile */}
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2 block">
             Task description
           </label>
           <textarea
             required
             value={description}
             onChange={(event) => setDescription(autoCapitalizeWords(event.target.value))}
-            rows={3}
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+            rows={4}
+            className="mt-2 w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-200 focus:outline-none min-h-[120px]"
             placeholder="Describe the task, outcome, or blocker..."
           />
         </div>
 
-        {/* Project */}
+        {/* Project - Larger for mobile */}
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2 block">
             Project
           </label>
           <select
@@ -556,7 +556,7 @@ export default function TaskForm({
               }
             }}
             disabled={isCreatingProject}
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+            className="mt-2 w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-200 focus:outline-none min-h-[56px]"
           >
             <option value="" disabled>
               {hasProjects ? "Select a project" : "Add a project"}
@@ -585,29 +585,29 @@ export default function TaskForm({
             <option value={NEW_PROJECT_VALUE}>+ New Project</option>
           </select>
           {isAddingProject && (
-            <div className="mt-2 space-y-3">
-              {/* Visibility selector */}
+            <div className="mt-3 space-y-4">
+              {/* Visibility selector - Larger buttons */}
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setNewProjectVisibility("personal")}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "personal" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold border-2 transition min-h-[56px] ${newProjectVisibility === "personal" ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 active:bg-slate-50"}`}
                 >
                   🔒 Personal
                 </button>
                 <button
                   type="button"
                   onClick={() => setNewProjectVisibility("shared")}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "shared" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold border-2 transition min-h-[56px] ${newProjectVisibility === "shared" ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 active:bg-slate-50"}`}
                 >
-                  👥 Shared / Team
+                  👥 Shared
                 </button>
                 <button
                   type="button"
                   onClick={() => setNewProjectVisibility("one_on_one")}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition ${newProjectVisibility === "one_on_one" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold border-2 transition min-h-[56px] ${newProjectVisibility === "one_on_one" ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 active:bg-slate-50"}`}
                 >
-                  🤝 One on One
+                  🤝 1-on-1
                 </button>
               </div>
 
@@ -619,7 +619,7 @@ export default function TaskForm({
                   if (event.key === "Escape") { setIsAddingProject(false); setProjectId(""); }
                 }}
                 placeholder="Project name"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-200 focus:outline-none min-h-[56px]"
                 autoFocus
               />
 
@@ -689,9 +689,9 @@ export default function TaskForm({
         {/* Company association + Cadence + Gate only show after project is selected */}
         {canSubmitProject && (
         <>
-        {/* Company Association */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {/* Company Association - Larger buttons */}
+        <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-5">
+          <label className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3 block">
             Which company does this apply to? <span className="text-red-400">*</span>
           </label>
           {(() => {
@@ -700,42 +700,42 @@ export default function TaskForm({
             return (
               <>
                 {selectedProject && hasNoFlags && (
-                  <p className="text-[10px] text-amber-600 mt-1 mb-2 font-medium">⚠️ This project has no company set yet — please select one below.</p>
+                  <p className="text-xs text-amber-600 mt-1 mb-3 font-medium">⚠️ This project has no company set yet — please select one below.</p>
                 )}
                 {!hasNoFlags && (
-                  <p className="text-[10px] text-slate-400 mt-0.5 mb-2">
+                  <p className="text-xs text-slate-400 mt-0.5 mb-3">
                     {taskIsPersonal ? "Personal — only you will see this." : `Applies to: ${[taskIsUp && "UP", taskIsBp && "BP", taskIsUpfit && "UPFIT"].filter(Boolean).join(", ")}`}
                   </p>
                 )}
               </>
             );
           })()}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => { setTaskIsUp(!taskIsUp); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsUp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
+              className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsUp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
             >
               UP
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsBp(!taskIsBp); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsBp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
+              className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsBp ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
             >
               BP
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsUpfit(!taskIsUpfit); setTaskIsPersonal(false); }}
-              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsUpfit ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
+              className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsUpfit ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
             >
               UPFIT
             </button>
             <button
               type="button"
               onClick={() => { setTaskIsPersonal(!taskIsPersonal); setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); }}
-              className={`rounded-xl px-5 py-3 text-sm font-bold border-2 transition ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}
+              className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
             >
               🔒 Personal
             </button>
@@ -907,18 +907,18 @@ export default function TaskForm({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
           <button
             type="submit"
             disabled={isSaving || !canSubmitProject}
-            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="rounded-xl bg-slate-900 px-6 py-4 text-base font-semibold text-white shadow-md transition hover:bg-slate-800 active:bg-slate-950 disabled:cursor-not-allowed disabled:bg-slate-400 min-h-[56px]"
           >
             {isSaving ? "Creating..." : "Create task"}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            className="rounded-xl border-2 border-slate-200 px-6 py-4 text-base font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 active:bg-slate-50 min-h-[56px]"
           >
             Cancel
           </button>
@@ -1186,18 +1186,18 @@ export default function TaskForm({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
         <button
           type="submit"
           disabled={isSaving || !canSubmitProject}
-          className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="rounded-xl bg-slate-900 px-6 py-4 text-base font-semibold text-white shadow-md transition hover:bg-slate-800 active:bg-slate-950 disabled:cursor-not-allowed disabled:bg-slate-400 min-h-[56px]"
         >
           {isSaving ? "Saving..." : "Save changes"}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          className="rounded-xl border-2 border-slate-200 px-6 py-4 text-base font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 active:bg-slate-50 min-h-[56px]"
         >
           Cancel
         </button>
