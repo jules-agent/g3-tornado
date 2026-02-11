@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst, validateContactAssociations } from "@/lib/utils";
+import SpeechInput from "@/components/SpeechInput";
 
 type ContactCreationDialogProps = {
   isOpen: boolean;
@@ -165,14 +166,19 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Name <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Enter contact name..."
-              className="w-full px-5 py-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[56px]"
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Enter contact name..."
+                className="flex-1 px-5 py-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[56px]"
+                autoFocus
+              />
+              <SpeechInput
+                onResult={(spoken) => setName(prev => prev ? prev + ' ' + spoken : spoken)}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
