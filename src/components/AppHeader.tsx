@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { capitalizeFirst } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { ParkingLot } from "./ParkingLot";
 import { FocusModeStandalone } from "./FocusMode";
@@ -309,6 +310,82 @@ export default function AppHeader({ user }: AppHeaderProps) {
             {initials}
           </Link>
         </div>
+      </div>
+
+      {/* Desktop Text Menu Bar - Below icon buttons */}
+      <div className="hidden md:flex items-center justify-center gap-6 px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <button
+          onClick={() => setShowProjectHealth(true)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+        >
+          Project Health
+        </button>
+        <button
+          onClick={() => setShowScorecard(true)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition"
+        >
+          Scorecard
+        </button>
+        {overdueCount !== null && overdueCount > 0 && (
+          <>
+            <button
+              onClick={() => setShowDailyActions(true)}
+              className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
+            >
+              Daily Actions {overdueCount > 0 && `(${overdueCount})`}
+            </button>
+            <button
+              onClick={() => setShowFocusMode(true)}
+              className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
+            >
+              Focus Mode
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setShowParkingLot(true)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+        >
+          Parking Lot
+        </button>
+        <button
+          onClick={() => setShowBugReport(true)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition"
+        >
+          Feedback
+        </button>
+        <button
+          onClick={() => setShowProposeTemplate(true)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+        >
+          Propose Template
+        </button>
+        {inboxTotal > 0 && (
+          <Link
+            href="/inbox"
+            className={`text-sm font-medium transition ${
+              inboxUnread > 0
+                ? "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            Inbox {inboxUnread > 0 && `(${inboxUnread})`}
+          </Link>
+        )}
+        <a
+          href="/tutorial"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+        >
+          Tutorial
+        </a>
+        <Link
+          href="/profile"
+          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition"
+        >
+          My Profile
+        </Link>
       </div>
 
       {/* Mobile Menu Slide-out */}
