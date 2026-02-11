@@ -96,20 +96,24 @@ export function AdminTabs({
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="flex rounded border border-slate-200 bg-white text-xs mb-4 dark:border-slate-700 dark:bg-slate-800 overflow-x-auto sticky top-0 z-20">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            className={`px-4 py-2 border-r border-slate-200 dark:border-slate-700 last:border-r-0 whitespace-nowrap ${
-              activeTab === tab.key
-                ? "bg-teal-500 text-white"
-                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            }`}
-          >
-            {tab.label} {tab.count !== undefined && <span className={activeTab === tab.key ? "text-teal-100" : "text-slate-400"}>{tab.count}</span>}
-          </Link>
-        ))}
+      <div className="relative sticky top-0 z-20 mb-4">
+        <div className="flex rounded border border-slate-200 bg-white text-xs dark:border-slate-700 dark:bg-slate-800 overflow-x-auto scrollbar-hide">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              href={tab.href}
+              className={`px-4 py-2.5 border-r border-slate-200 dark:border-slate-700 last:border-r-0 whitespace-nowrap min-h-[44px] flex items-center ${
+                activeTab === tab.key
+                  ? "bg-teal-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+            >
+              {tab.label} {tab.count !== undefined && <span className={`ml-1 ${activeTab === tab.key ? "text-teal-100" : "text-slate-400"}`}>{tab.count}</span>}
+            </Link>
+          ))}
+        </div>
+        {/* Scroll fade hint for mobile */}
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-800 to-transparent pointer-events-none rounded-r md:hidden" />
       </div>
 
       {/* Tab Content */}

@@ -353,6 +353,16 @@ export default function AppHeader({ user }: AppHeaderProps) {
                     <span className="text-base">Project Health</span>
                   </button>
                 )}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
+                  >
+                    <span className="text-2xl">⚙️</span>
+                    <span className="text-base">Admin Panel</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => { setShowScorecard(true); setMobileMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"

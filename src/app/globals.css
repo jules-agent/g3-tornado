@@ -267,6 +267,15 @@ body {
   }
 }
 
+/* Hide scrollbar but keep scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* iPhone SE (375px) specific adjustments */
 @media (max-width: 375px) {
   .card {
