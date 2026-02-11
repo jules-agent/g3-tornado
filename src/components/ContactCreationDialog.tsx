@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { capitalizeFirst } from "@/lib/utils";
+import { capitalizeFirst, validateContactAssociations } from "@/lib/utils";
 
 type ContactCreationDialogProps = {
   isOpen: boolean;
@@ -70,9 +70,17 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       return;
     }
 
-    // At least one company association required
-    if (!isUp && !isBp && !isUpfit && !isVendor) {
-      setError("Please select at least one company association");
+    // Validate associations using shared validation function
+    const validation = validateContactAssociations({
+      is_up: isUp,
+      is_bp: isBp,
+      is_upfit_employee: isUpfit,
+      is_third_party_vendor: isVendor,
+      is_private: isPrivate,
+    });
+
+    if (!validation.valid) {
+      setError(validation.error || "Invalid contact associations");
       return;
     }
 

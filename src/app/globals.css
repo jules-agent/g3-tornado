@@ -199,6 +199,16 @@ body {
   animation: pulse-red 1.5s ease-in-out infinite;
 }
 
+/* Unassociated contact flashing */
+@keyframes flash-red {
+  0%, 100% { background-color: rgba(239, 68, 68, 0.1); }
+  50% { background-color: rgba(239, 68, 68, 0.3); }
+}
+
+.flash-red {
+  animation: flash-red 1.5s ease-in-out infinite;
+}
+
 /* ========== Mobile Optimizations ========== */
 
 /* Ensure body respects safe areas on iOS */

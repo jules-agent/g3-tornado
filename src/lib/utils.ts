@@ -99,3 +99,53 @@ export function filterProjectsByUser<T extends {
     return false;
   });
 }
+
+/**
+ * Validate contact associations according to business rules.
+ * Returns validation result with error message if invalid.
+ */
+export function validateContactAssociations(contact: {
+  is_up?: boolean;
+  is_bp?: boolean;
+  is_upfit_employee?: boolean;
+  is_third_party_vendor?: boolean;
+  is_private?: boolean;
+}): { valid: boolean; error?: string } {
+  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
+  const isVendor = contact.is_third_party_vendor;
+  const isPrivate = contact.is_private;
+  
+  // Rule 6: Vendor cannot be private without company
+  if (isVendor && isPrivate && !hasCompany) {
+    return { 
+      valid: false, 
+      error: "Vendor contacts must have at least one company association (UP, BP, or UPFIT)" 
+    };
+  }
+  
+  // Rule 5: Must have at least one association
+  if (!hasCompany && !isVendor && !isPrivate) {
+    return { 
+      valid: false, 
+      error: "Contact must have at least one association (company, vendor, or private)" 
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Check if a contact has no associations (for sorting/highlighting).
+ */
+export function hasNoAssociations(contact: {
+  is_up?: boolean;
+  is_bp?: boolean;
+  is_upfit_employee?: boolean;
+  is_third_party_vendor?: boolean;
+  is_private?: boolean;
+}): boolean {
+  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
+  const isVendor = contact.is_third_party_vendor;
+  const isPrivate = contact.is_private;
+  return !hasCompany && !isVendor && !isPrivate;
+}
