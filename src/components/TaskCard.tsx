@@ -152,9 +152,9 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
   return (
     <div className={cardClasses}>
       {/* Card Header */}
-      <div className="flex items-start justify-between gap-3 p-4 pb-3">
+      <div className="flex items-start justify-between gap-3 p-5 pb-4">
         <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0">
-          <h3 className={`text-base font-semibold leading-tight ${
+          <h3 className={`text-lg font-semibold leading-snug ${
             task.status === "closed" 
               ? "text-emerald-700 dark:text-emerald-400"
               : "text-slate-900 dark:text-white"
@@ -162,19 +162,19 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
             {capitalizeFirst(task.description)}
           </h3>
           {task.projects && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
               {capitalizeFirst(task.projects.name)}
             </p>
           )}
         </Link>
 
-        {/* Menu Button */}
-        <div className="relative">
+        {/* Menu Button - Larger touch target */}
+        <div className="relative -mr-2">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+            className="p-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
+            <svg className="w-6 h-6" viewBox="0 0 16 16" fill="currentColor">
               <circle cx="8" cy="3" r="1.5" />
               <circle cx="8" cy="8" r="1.5" />
               <circle cx="8" cy="13" r="1.5" />
@@ -187,41 +187,41 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
                 className="fixed inset-0 z-10"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 min-w-[180px] py-1">
+              <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-20 min-w-[200px] py-2">
                 <Link
                   href={`/tasks/${task.id}`}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="flex items-center gap-3 px-5 py-3 text-base text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 min-h-[44px]"
                 >
-                  <span>📝</span> Edit Task
+                  <span className="text-lg">📝</span> <span>Edit Task</span>
                 </Link>
                 <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
                 {task.status === "closed" ? (
                   <button
                     onClick={handleReopenTask}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 text-left"
+                    className="w-full flex items-center gap-3 px-5 py-3 text-base text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 active:bg-amber-100 dark:active:bg-amber-900/50 text-left min-h-[44px]"
                   >
-                    <span>↩️</span> Reopen Task
+                    <span className="text-lg">↩️</span> <span>Reopen Task</span>
                   </button>
                 ) : task.status === "close_requested" ? (
                   <button
                     onClick={handleCloseTask}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-left"
+                    className="w-full flex items-center gap-3 px-5 py-3 text-base text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:bg-emerald-100 dark:active:bg-emerald-900/50 text-left min-h-[44px]"
                   >
-                    <span>✅</span> Approve Close
+                    <span className="text-lg">✅</span> <span>Approve Close</span>
                   </button>
                 ) : (
                   <>
                     <button
                       onClick={handleRequestClose}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-left"
+                      className="w-full flex items-center gap-3 px-5 py-3 text-base text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 text-left min-h-[44px]"
                     >
-                      <span>🙋</span> Request Close
+                      <span className="text-lg">🙋</span> <span>Request Close</span>
                     </button>
                     <button
                       onClick={handleCloseTask}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-left"
+                      className="w-full flex items-center gap-3 px-5 py-3 text-base text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:bg-emerald-100 dark:active:bg-emerald-900/50 text-left min-h-[44px]"
                     >
-                      <span>✅</span> Close Task
+                      <span className="text-lg">✅</span> <span>Close Task</span>
                     </button>
                   </>
                 )}
@@ -231,13 +231,13 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left ${
+                      className={`w-full flex items-center gap-3 px-5 py-3 text-base text-left min-h-[44px] ${
                         confirmDelete
                           ? "bg-red-600 text-white"
-                          : "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
+                          : "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50"
                       } disabled:opacity-50`}
                     >
-                      <span>🗑️</span> {deleting ? "Deleting..." : confirmDelete ? "Click to confirm" : "Delete Task"}
+                      <span className="text-lg">🗑️</span> <span>{deleting ? "Deleting..." : confirmDelete ? "Click to confirm" : "Delete Task"}</span>
                     </button>
                   </>
                 )}
@@ -247,46 +247,46 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
         </div>
       </div>
 
-      {/* Status Badges */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
+      {/* Status Badges - Larger for mobile */}
+      <div className="flex flex-wrap items-center gap-2 px-5 pb-4">
         {task.isStale && task.status !== "closed" && task.isMyTask && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-500 text-white animate-pulse">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-red-500 text-white animate-pulse">
             🔥 URGENT
           </span>
         )}
         {task.isStale && task.status !== "closed" && !task.isMyTask && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-500 text-white">
             OVERDUE
           </span>
         )}
         {task.is_blocked && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-slate-400 text-white">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-400 text-white">
             GATED
           </span>
         )}
         {task.status === "closed" ? (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-emerald-500 text-white">
             ✓ DONE
           </span>
         ) : task.status === "close_requested" ? (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-blue-500 text-white">
             PENDING
           </span>
         ) : (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-emerald-500 text-white">
             OPEN
           </span>
         )}
       </div>
 
-      {/* Gate Progress */}
+      {/* Gate Progress - Better sizing */}
       {gates.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+        <div className="px-5 pb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
               Gates: {completedGates}/{gates.length}
             </span>
-            <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 transition-all"
                 style={{ width: `${(completedGates / gates.length) * 100}%` }}
@@ -294,12 +294,12 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
             </div>
           </div>
           {currentGate && (
-            <div className="inline-flex flex-col px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
-              <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+            <div className="inline-flex flex-col px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
                 Current: {capitalizeFirst(currentGate.owner_name)}
               </span>
               {currentGate.task_name && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                   {capitalizeFirst(currentGate.task_name)}
                 </span>
               )}
@@ -308,49 +308,49 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
         </div>
       )}
 
-      {/* Next Step */}
+      {/* Next Step - Larger text */}
       {task.next_step && (
-        <div className="px-4 pb-3">
-          <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+        <div className="px-5 pb-4">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             Next Step
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed">
             {capitalizeFirst(task.next_step)}
           </p>
         </div>
       )}
 
-      {/* Latest Note */}
+      {/* Latest Note - Larger text */}
       {task.notes.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+        <div className="px-5 pb-4">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
             <span>💬 Latest Update</span>
             {task.notes.length > 1 && (
               <span className="text-blue-500">({task.notes.length} total)</span>
             )}
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+          <p className="text-base text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed">
             {capitalizeFirst(task.notes[0].content)}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
             {task.notes[0].profiles?.full_name || task.notes[0].profiles?.email || "Unknown"} · {formatRelativeTime(task.notes[0].created_at)}
           </p>
         </div>
       )}
 
-      {/* Footer Stats */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 rounded-b-lg">
+      {/* Footer Stats - Larger and more readable */}
+      <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 rounded-b-lg">
         {/* Aging Indicator */}
-        <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${agingColor}`} />
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            {task.daysSinceMovement}d / {task.fu_cadence_days}d cadence
+        <div className="flex items-center gap-2.5">
+          <span className={`w-4 h-4 rounded-full ${agingColor}`} />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            {task.daysSinceMovement}d / {task.fu_cadence_days}d
           </span>
         </div>
         
         {/* Owner */}
         {task.ownerNames && (
-          <span className="text-xs text-slate-600 dark:text-slate-400 truncate max-w-[40%]">
+          <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[50%]">
             {capitalizeFirst(task.ownerNames)}
           </span>
         )}
