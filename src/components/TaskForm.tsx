@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { filterContactsByProject, filterProjectsByUser } from "@/lib/utils";
+import SpeechInput from "@/components/SpeechInput";
 
 /** Auto-capitalize first letter of each word as user types */
 function autoCapitalizeWords(value: string): string {
@@ -512,14 +513,21 @@ export default function TaskForm({
           <label className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2 block">
             Task description
           </label>
-          <textarea
-            required
-            value={description}
-            onChange={(event) => setDescription(autoCapitalizeWords(event.target.value))}
-            rows={4}
-            className="mt-2 w-full rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-200 focus:outline-none min-h-[120px]"
-            placeholder="Describe the task, outcome, or blocker..."
-          />
+          <div className="flex items-start gap-2">
+            <textarea
+              required
+              value={description}
+              onChange={(event) => setDescription(autoCapitalizeWords(event.target.value))}
+              rows={4}
+              className="mt-2 flex-1 rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-200 focus:outline-none min-h-[120px]"
+              placeholder="Describe the task, outcome, or blocker..."
+            />
+            <div className="mt-2">
+              <SpeechInput
+                onResult={(spoken) => setDescription(prev => prev ? prev + ' ' + spoken : spoken)}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Project - Larger for mobile */}
@@ -936,14 +944,21 @@ export default function TaskForm({
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Task description
             </label>
-            <textarea
-              required
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-              placeholder="Describe the task, outcome, or blocker..."
-            />
+            <div className="flex items-start gap-2">
+              <textarea
+                required
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={4}
+                className="mt-2 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                placeholder="Describe the task, outcome, or blocker..."
+              />
+              <div className="mt-2">
+                <SpeechInput
+                  onResult={(spoken) => setDescription(prev => prev ? prev + ' ' + spoken : spoken)}
+                />
+              </div>
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -1069,13 +1084,20 @@ export default function TaskForm({
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Blocker description
                 </label>
-                <textarea
-                  value={blockerDescription}
-                  onChange={(event) => setBlockerDescription(event.target.value)}
-                  rows={2}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
-                  placeholder="What is blocking progress?"
-                />
+                <div className="flex items-start gap-2">
+                  <textarea
+                    value={blockerDescription}
+                    onChange={(event) => setBlockerDescription(event.target.value)}
+                    rows={2}
+                    className="mt-2 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none"
+                    placeholder="What is blocking progress?"
+                  />
+                  <div className="mt-2">
+                    <SpeechInput
+                      onResult={(spoken) => setBlockerDescription(prev => prev ? prev + ' ' + spoken : spoken)}
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -199,6 +199,22 @@ body {
   animation: pulse-red 1.5s ease-in-out infinite;
 }
 
+/* Microphone pulsing animation for speech input */
+@keyframes pulse-microphone {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-pulse-microphone {
+  animation: pulse-microphone 1.5s ease-in-out infinite;
+}
+
 /* Unassociated contact flashing */
 @keyframes flash-red {
   0%, 100% { background-color: rgba(239, 68, 68, 0.1); }
