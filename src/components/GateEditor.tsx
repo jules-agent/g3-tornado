@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { RestartClockModal } from "./RestartClockModal";
 
 type Owner = {
   id: string;
@@ -21,9 +22,10 @@ type GateEditorProps = {
   gates: Gate[];
   onClose: () => void;
   onSave: (updatedGates: Gate[]) => void;
+  currentCadenceDays: number;
 };
 
-export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: GateEditorProps) {
+export function GateEditor({ taskId, gates: initialGates, onClose, onSave, currentCadenceDays }: GateEditorProps) {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,6 +35,9 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
   const [showAddOwner, setShowAddOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
   const [addingForIdx, setAddingForIdx] = useState<number | null>(null);
+  const [completingGateIdx, setCompletingGateIdx] = useState<number | null>(null);
+  const [showRestartClock, setShowRestartClock] = useState(false);
+  const [pendingGateCompletion, setPendingGateCompletion] = useState<number | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -127,6 +132,66 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
       onClose();
     }
   }
+
+  // Complete gate with confirmation and clock restart
+  const handleCompleteGate = (idx: number) => {
+    setCompletingGateIdx(idx);
+  };
+
+  const confirmCompleteGate = async () => {
+    if (completingGateIdx === null) return;
+    
+    // Mark gate as completed
+    const updated = [...gates];
+    updated[completingGateIdx] = { ...updated[completingGateIdx], completed: true };
+    
+    // Save to database
+    setSaving(true);
+    const validGates = updated.filter(g => g.owner_name || g.name || g.task_name);
+    
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        gates: validGates,
+        is_blocked: validGates.some(g => !g.completed && g.owner_name),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId);
+
+    setSaving(false);
+    
+    if (!error) {
+      setGates(updated);
+      setCompletingGateIdx(null);
+      // Show restart clock modal
+      setPendingGateCompletion(completingGateIdx);
+      setShowRestartClock(true);
+    }
+  };
+
+  const handleRestartClockConfirm = async (newCadenceDays: number) => {
+    // Update last_movement_at and cadence
+    await supabase
+      .from("tasks")
+      .update({
+        last_movement_at: new Date().toISOString(),
+        fu_cadence_days: newCadenceDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId);
+
+    setShowRestartClock(false);
+    setPendingGateCompletion(null);
+    onSave(gates);
+    onClose();
+  };
+
+  const handleRestartClockCancel = () => {
+    setShowRestartClock(false);
+    setPendingGateCompletion(null);
+    onSave(gates);
+    onClose();
+  };
 
   // Find current (first incomplete) gate index
   const currentGateIdx = gates.findIndex(g => !g.completed);
@@ -237,6 +302,16 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
                           className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
                         />
                       </div>
+                      {/* Complete button for incomplete gates */}
+                      {!gate.completed && (
+                        <button
+                          onClick={() => handleCompleteGate(idx)}
+                          className="w-full rounded border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition flex items-center justify-center gap-1"
+                          title="Complete this gate"
+                        >
+                          ✅ Complete Gate
+                        </button>
+                      )}
                     </div>
 
                     {/* Reorder + Delete */}
@@ -293,6 +368,54 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave }: Gat
           </div>
         </div>
       </div>
+
+      {/* Confirmation modal for completing gate */}
+      {completingGateIdx !== null && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setCompletingGateIdx(null)}
+        >
+          <div
+            className="w-full max-w-sm mx-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white">Complete Gate?</h3>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Are you sure you want to complete Gate {completingGateIdx + 1}?
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                {gates[completingGateIdx]?.owner_name && `${gates[completingGateIdx].owner_name}${gates[completingGateIdx]?.task_name ? ` — ${gates[completingGateIdx].task_name}` : ""}`}
+              </p>
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              <button
+                onClick={confirmCompleteGate}
+                disabled={saving}
+                className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 transition"
+              >
+                {saving ? "Completing..." : "Complete"}
+              </button>
+              <button
+                onClick={() => setCompletingGateIdx(null)}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Clock Modal */}
+      <RestartClockModal
+        isOpen={showRestartClock}
+        onConfirm={handleRestartClockConfirm}
+        onCancel={handleRestartClockCancel}
+        currentCadenceDays={currentCadenceDays}
+      />
     </div>
   );
 }

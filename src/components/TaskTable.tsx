@@ -207,7 +207,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   
   // Gate editor state
-  const [editingGate, setEditingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[] } | null>(null);
+  const [editingGate, setEditingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[]; currentCadenceDays: number } | null>(null);
   
   // Owner editor state
   const [editingOwner, setEditingOwner] = useState<{ taskId: string; ownerIds: string[] } | null>(null);
@@ -1167,7 +1167,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                 <span>💬</span> Add Note
                               </button>
                               <button
-                                onClick={() => setEditingGate({ taskId: task.id, gateIndex: 0, gates: task.gates || [] })}
+                                onClick={() => setEditingGate({ taskId: task.id, gateIndex: 0, gates: task.gates || [], currentCadenceDays: task.fu_cadence_days })}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-left"
                               >
                                 <span>🚧</span> Edit Gates
@@ -1359,7 +1359,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                             <td
                               key={col.id}
                               className="px-3 py-2 overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                              onClick={() => setEditingGate({ taskId: task.id, gateIndex: targetGateIndex, gates: gates })}
+                              onClick={() => setEditingGate({ taskId: task.id, gateIndex: targetGateIndex, gates: gates, currentCadenceDays: task.fu_cadence_days })}
                             >
                               {gate ? (
                                 <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs max-w-full ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
@@ -1422,6 +1422,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           taskId={editingGate.taskId}
           gateIndex={editingGate.gateIndex}
           gates={editingGate.gates}
+          currentCadenceDays={editingGate.currentCadenceDays}
           onClose={() => setEditingGate(null)}
           onSave={() => router.refresh()}
         />
