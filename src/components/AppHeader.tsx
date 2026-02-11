@@ -134,17 +134,17 @@ export default function AppHeader({ user }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-md">
       <div className="flex items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
-        {/* Hamburger Menu Button - Mobile Only */}
+        {/* Hamburger Menu Button - Mobile Only - Larger touch target */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition"
           aria-label="Toggle menu"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
         </button>
@@ -320,58 +320,58 @@ export default function AppHeader({ user }: AppHeaderProps) {
             onClick={() => setMobileMenuOpen(false)}
           />
           
-          {/* Menu Panel */}
-          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 md:hidden overflow-y-auto shadow-2xl">
-            <div className="p-6 space-y-6">
+          {/* Menu Panel - Improved safe area padding */}
+          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 md:hidden overflow-y-auto shadow-2xl" style={{ paddingTop: 'max(1.5rem, var(--safe-area-top))', paddingBottom: 'max(1.5rem, var(--safe-area-bottom))' }}>
+            <div className="px-6 space-y-6">
               {/* User Info */}
-              <div className="flex items-center gap-3 pb-6 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-base font-bold text-white">
+              <div className="flex items-center gap-4 pb-6 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-lg font-bold text-white">
                   {initials}
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900 dark:text-white">{displayName}</div>
-                  <div className="text-xs font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
+                  <div className="font-semibold text-lg text-slate-900 dark:text-white">{displayName}</div>
+                  <div className="text-sm font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
                     {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
                   </div>
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="space-y-2">
+              {/* Quick Actions - Larger touch targets */}
+              <div className="space-y-3">
                 <Link
                   href="/tasks/new"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-semibold shadow-sm active:scale-95 transition"
+                  className="flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-semibold shadow-md active:scale-95 transition min-h-[56px]"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>New Task</span>
+                  <span className="text-lg">New Task</span>
                 </Link>
                 <button
                   onClick={() => { setShowParkingLot(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 text-white font-semibold shadow-sm active:scale-95 transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl bg-blue-500 text-white font-semibold shadow-md active:scale-95 transition min-h-[56px]"
                 >
-                  <span className="text-xl">🅿️</span>
-                  <span>New Parking</span>
+                  <span className="text-2xl">🅿️</span>
+                  <span className="text-lg">New Parking</span>
                 </button>
               </div>
 
-              {/* Main Actions */}
-              <div className="space-y-1">
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-4 mb-2">
+              {/* Main Actions - Better spacing and touch targets */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 mb-3">
                   Actions
                 </div>
                 {overdueCount !== null && overdueCount > 0 && (
                   <button
                     onClick={() => { setShowDailyActions(true); setMobileMenuOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-medium active:bg-red-100 dark:active:bg-red-900/30 transition"
+                    className="w-full flex items-center justify-between px-5 py-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-semibold active:bg-red-100 dark:active:bg-red-900/30 transition min-h-[56px]"
                   >
                     <span className="flex items-center gap-3">
-                      <span className="text-xl">📋</span>
-                      <span>Today's Actions</span>
+                      <span className="text-2xl">📋</span>
+                      <span className="text-base">Today's Actions</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    <span className="px-3 py-1 rounded-full bg-red-500 text-white text-sm font-bold min-h-[28px] min-w-[28px] flex items-center justify-center">
                       {overdueCount}
                     </span>
                   </button>
@@ -379,42 +379,42 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 {overdueCount !== null && overdueCount > 0 && (
                   <button
                     onClick={() => { setShowFocusMode(true); setMobileMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                    className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                   >
-                    <span className="text-xl">🎯</span>
-                    <span>Focus Mode</span>
+                    <span className="text-2xl">🎯</span>
+                    <span className="text-base">Focus Mode</span>
                   </button>
                 )}
                 <button
                   onClick={() => { setShowProjectHealth(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">📊</span>
-                  <span>Project Health</span>
+                  <span className="text-2xl">📊</span>
+                  <span className="text-base">Project Health</span>
                 </button>
                 <button
                   onClick={() => { setShowScorecard(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">🏆</span>
-                  <span>Scorecard</span>
+                  <span className="text-2xl">🏆</span>
+                  <span className="text-base">Scorecard</span>
                 </button>
                 {inboxTotal > 0 && (
                   <Link
                     href="/inbox"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium transition ${
+                    className={`w-full flex items-center justify-between px-5 py-4 rounded-xl font-semibold transition min-h-[56px] ${
                       inboxUnread > 0
-                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                        : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 active:bg-blue-100 dark:active:bg-blue-900/30"
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300"
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <span className="text-xl">{inboxUnread > 0 ? "📬" : "📭"}</span>
-                      <span>Inbox</span>
+                      <span className="text-2xl">{inboxUnread > 0 ? "📬" : "📭"}</span>
+                      <span className="text-base">Inbox</span>
                     </span>
                     {inboxUnread > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold">
+                      <span className="px-3 py-1 rounded-full bg-blue-500 text-white text-sm font-bold min-h-[28px] min-w-[28px] flex items-center justify-center">
                         {inboxUnread}
                       </span>
                     )}
@@ -422,52 +422,52 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 )}
                 <button
                   onClick={() => { setShowBugReport(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">💬</span>
-                  <span>Feedback</span>
+                  <span className="text-2xl">💬</span>
+                  <span className="text-base">Feedback</span>
                 </button>
                 <button
                   onClick={() => { setShowProposeTemplate(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">📋</span>
-                  <span>Propose Template</span>
+                  <span className="text-2xl">📋</span>
+                  <span className="text-base">Propose Template</span>
                 </button>
                 <a
                   href="/tutorial"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">📖</span>
-                  <span>Tutorial</span>
+                  <span className="text-2xl">📖</span>
+                  <span className="text-base">Tutorial</span>
                 </a>
                 <Link
                   href="/profile"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition"
+                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
                 >
-                  <span className="text-xl">👤</span>
-                  <span>My Profile</span>
+                  <span className="text-2xl">👤</span>
+                  <span className="text-base">My Profile</span>
                 </Link>
               </div>
 
-              {/* Theme Toggle */}
+              {/* Theme Toggle - Larger touch area */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between px-4 py-2">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Theme</span>
+                <div className="flex items-center justify-between px-5 py-3 min-h-[56px]">
+                  <span className="text-base font-semibold text-slate-700 dark:text-slate-300">Theme</span>
                   <ThemeToggle />
                 </div>
               </div>
 
-              {/* Sign Out */}
+              {/* Sign Out - Larger button */}
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={handleSignOut}
                   disabled={isSigningOut}
-                  className="w-full px-4 py-3 rounded-lg text-center font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
+                  className="w-full px-5 py-4 rounded-xl text-center text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 transition disabled:opacity-50 min-h-[56px]"
                 >
                   {isSigningOut ? "Signing out..." : "Sign Out"}
                 </button>
