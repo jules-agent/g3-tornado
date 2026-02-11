@@ -4,10 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { RestartClockModal } from "./RestartClockModal";
 import { ContactCreationDialog } from "./ContactCreationDialog";
+import { hasNoAssociations } from "@/lib/utils";
 
 type Owner = {
   id: string;
   name: string;
+  is_up_employee: boolean | null;
+  is_bp_employee: boolean | null;
+  is_upfit_employee: boolean | null;
+  is_third_party_vendor: boolean | null;
+  is_private: boolean | null;
+  unassociated?: boolean;
 };
 
 type Gate = {
@@ -45,7 +52,7 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
   useEffect(() => {
     async function loadOwners() {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from("owners").select("id, name, is_private, private_owner_id").order("name");
+      const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
       
       // Filter out private contacts that don't belong to the current user
       const filtered = (data || []).filter(owner => {
@@ -53,7 +60,26 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
         return owner.private_owner_id === user?.id; // Private contacts only visible to owner
       });
       
-      setOwners(filtered);
+      // Mark unassociated contacts and sort them to top
+      const withUnassociated = filtered.map(owner => ({
+        ...owner,
+        unassociated: hasNoAssociations({
+          is_up: owner.is_up_employee || false,
+          is_bp: owner.is_bp_employee || false,
+          is_upfit_employee: owner.is_upfit_employee || false,
+          is_third_party_vendor: owner.is_third_party_vendor || false,
+          is_private: owner.is_private || false,
+        })
+      }));
+
+      // Sort: unassociated first, then alphabetically
+      const sorted = withUnassociated.sort((a, b) => {
+        if (a.unassociated && !b.unassociated) return -1;
+        if (!a.unassociated && b.unassociated) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      
+      setOwners(sorted);
       setLoading(false);
     }
     loadOwners();
@@ -105,9 +131,35 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
   };
 
   const handleContactCreated = async (contactName: string, gateIdx: number) => {
-    // Reload owners list
-    const { data } = await supabase.from("owners").select("id, name").order("name");
-    setOwners(data || []);
+    // Reload owners list with full data
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
+    
+    // Filter private contacts
+    const filtered = (data || []).filter(owner => {
+      if (!owner.is_private) return true;
+      return owner.private_owner_id === user?.id;
+    });
+    
+    // Mark unassociated and sort
+    const withUnassociated = filtered.map(owner => ({
+      ...owner,
+      unassociated: hasNoAssociations({
+        is_up: owner.is_up_employee || false,
+        is_bp: owner.is_bp_employee || false,
+        is_upfit_employee: owner.is_upfit_employee || false,
+        is_third_party_vendor: owner.is_third_party_vendor || false,
+        is_private: owner.is_private || false,
+      })
+    }));
+
+    const sorted = withUnassociated.sort((a, b) => {
+      if (a.unassociated && !b.unassociated) return -1;
+      if (!a.unassociated && b.unassociated) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    setOwners(sorted);
     
     // Set the contact as the gate owner
     updateGate(gateIdx, "owner_name", contactName);
@@ -279,7 +331,13 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
                         >
                           <option value="">Select person...</option>
                           {owners.map(o => (
-                            <option key={o.id} value={o.name}>{o.name}</option>
+                            <option 
+                              key={o.id} 
+                              value={o.name}
+                              className={o.unassociated ? "text-red-600 font-bold" : ""}
+                            >
+                              {o.unassociated ? "⚠️ " : ""}{o.name}{o.unassociated ? " (No association)" : ""}
+                            </option>
                           ))}
                           <option value="__add__">+ Add new person...</option>
                         </select>
