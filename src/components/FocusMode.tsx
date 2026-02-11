@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { RestartClockModal } from "./RestartClockModal";
+import SpeechInput from "@/components/SpeechInput";
 
 type Gate = {
   name: string;
@@ -232,6 +233,10 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                           placeholder="Add update note..."
                           className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
                           autoFocus
+                        />
+                        <SpeechInput
+                          onResult={(spoken) => setNoteValue(prev => prev ? prev + ' ' + spoken : spoken)}
+                          disabled={saving}
                         />
                         <button
                           onClick={() => addNote(task.id, task.fu_cadence_days)}
