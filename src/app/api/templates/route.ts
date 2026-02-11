@@ -2,13 +2,38 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET: List templates (approved for all users, + own proposals)
+// GET: List templates (approved for all users, + own proposals, admins see ALL)
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // RLS handles filtering: approved OR own proposals
+  // Check if admin
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, email")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.role === "admin" || profile?.email === "ben@unpluggedperformance.com";
+
+  if (isAdmin) {
+    // Admins see ALL templates (including other users' proposals) via service role
+    const serviceClient = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data, error } = await serviceClient
+      .from("task_templates")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
+  // Non-admins: RLS handles filtering (approved + own proposals)
   const { data, error } = await supabase
     .from("task_templates")
     .select("*")

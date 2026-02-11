@@ -19,6 +19,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
+  const [isPersonal, setIsPersonal] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +37,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       setIsBp(false);
       setIsUpfit(false);
       setIsVendor(false);
+      setIsPersonal(false);
       setIsPrivate(false);
       setError("");
     }
@@ -77,6 +79,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       is_bp: isBp,
       is_upfit_employee: isUpfit,
       is_third_party_vendor: isVendor,
+      is_personal: isPersonal,
       is_private: isPrivate,
     });
 
@@ -114,6 +117,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
           is_bp_employee: isBp,
           is_upfit_employee: isUpfit,
           is_third_party_vendor: isVendor,
+          is_personal: isPersonal,
           is_internal: isUp || isBp || isUpfit,
           created_by: user.id,
           created_by_email: profile?.email || user.email || null,
@@ -140,7 +144,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
 
   if (!isOpen) return null;
 
-  const hasAnyAssociation = isUp || isBp || isUpfit || isVendor || isPrivate;
+  const hasAnyAssociation = isUp || isBp || isUpfit || isVendor || isPersonal || isPrivate;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -259,6 +263,17 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
                 }`}
               >
                 {isVendor ? "✓ " : ""}3rd Party
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPersonal(!isPersonal)}
+                className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                  isPersonal
+                    ? "border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 shadow-sm"
+                    : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
+                }`}
+              >
+                {isPersonal ? "✓ " : ""}Personal
               </button>
             </div>
           </div>

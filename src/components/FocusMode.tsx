@@ -51,6 +51,11 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const [showRestartClock, setShowRestartClock] = useState(false);
   const [pendingNoteTaskId, setPendingNoteTaskId] = useState<string | null>(null);
   const [pendingNoteCadence, setPendingNoteCadence] = useState<number>(1);
+  const [managingGates, setManagingGates] = useState<string | null>(null);
+  const [editGates, setEditGates] = useState<Gate[]>([]);
+  const [newGateName, setNewGateName] = useState("");
+  const [newGateOwner, setNewGateOwner] = useState("");
+  const [savingGates, setSavingGates] = useState(false);
 
   // Get overdue tasks sorted by priority, grouped by gate person
   const focusedTasks = useMemo(() => {
@@ -133,6 +138,55 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     setPendingNoteTaskId(null);
     router.refresh();
   }, [router]);
+
+  // Gate management
+  const startGateManagement = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId) || focusedTasks.find(t => t.id === taskId);
+    if (task?.gates) {
+      setEditGates([...task.gates]);
+    } else {
+      setEditGates([]);
+    }
+    setManagingGates(taskId);
+    setNewGateName("");
+    setNewGateOwner("");
+  }, [tasks, focusedTasks]);
+
+  const addGateToTask = useCallback(() => {
+    if (!newGateName.trim()) return;
+    setEditGates(prev => [...prev, {
+      name: newGateName.trim(),
+      owner_name: newGateOwner.trim(),
+      completed: false,
+    }]);
+    setNewGateName("");
+    setNewGateOwner("");
+  }, [newGateName, newGateOwner]);
+
+  const moveGate = useCallback((idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= editGates.length) return;
+    const updated = [...editGates];
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    setEditGates(updated);
+  }, [editGates]);
+
+  const removeGate = useCallback((idx: number) => {
+    setEditGates(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const saveGates = useCallback(async () => {
+    if (!managingGates) return;
+    setSavingGates(true);
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({ gates: editGates, updated_at: new Date().toISOString() })
+      .eq("id", managingGates);
+    setSavingGates(false);
+    setManagingGates(null);
+    router.refresh();
+  }, [managingGates, editGates, router]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -223,7 +277,53 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                   </div>
 
                   <div className="mt-auto pt-3 border-t border-slate-50 dark:border-slate-700/50">
-                    {editingNote === task.id ? (
+                    {/* Gate management inline */}
+                    {managingGates === task.id ? (
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Gates</div>
+                        {editGates.map((gate, idx) => (
+                          <div key={idx} className={`flex items-center gap-1.5 text-xs ${gate.completed ? "opacity-40 line-through" : ""}`}>
+                            <span className="text-slate-400 w-4">{idx + 1}.</span>
+                            <span className="flex-1 text-slate-700 dark:text-slate-300 truncate">{gate.name}</span>
+                            {gate.owner_name && <span className="text-slate-400 text-[10px]">→ {gate.owner_name}</span>}
+                            <div className="flex gap-0.5">
+                              <button onClick={() => moveGate(idx, -1)} disabled={idx === 0} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-30">▲</button>
+                              <button onClick={() => moveGate(idx, 1)} disabled={idx === editGates.length - 1} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-30">▼</button>
+                              {!gate.completed && <button onClick={() => removeGate(idx)} className="text-[10px] text-red-400 hover:text-red-600 ml-1">✕</button>}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex gap-1.5 pt-1">
+                          <input
+                            type="text"
+                            value={newGateName}
+                            onChange={(e) => setNewGateName(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addGateToTask()}
+                            placeholder="New gate..."
+                            className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          />
+                          <input
+                            type="text"
+                            value={newGateOwner}
+                            onChange={(e) => setNewGateOwner(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addGateToTask()}
+                            placeholder="Who?"
+                            className="w-20 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          />
+                          <button onClick={addGateToTask} disabled={!newGateName.trim()} className="text-teal-500 hover:text-teal-600 text-xs font-bold disabled:opacity-30">+</button>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={saveGates}
+                            disabled={savingGates}
+                            className="flex-1 rounded-lg bg-teal-500 text-white text-[11px] font-semibold py-1.5 hover:bg-teal-600 disabled:opacity-50 transition"
+                          >
+                            {savingGates ? "Saving..." : "Save Gates"}
+                          </button>
+                          <button onClick={() => setManagingGates(null)} className="text-[11px] text-slate-400 hover:text-slate-600">Cancel</button>
+                        </div>
+                      </div>
+                    ) : editingNote === task.id ? (
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -258,7 +358,13 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                           onClick={() => setEditingNote(task.id)}
                           className="flex-1 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-xs font-medium py-2 hover:bg-teal-50 hover:text-teal-600 dark:hover:bg-teal-900/30 dark:hover:text-teal-300 transition"
                         >
-                          📝 Add Update
+                          📝 Update
+                        </button>
+                        <button
+                          onClick={() => startGateManagement(task.id)}
+                          className="rounded-lg bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-xs font-medium py-2 px-3 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300 transition"
+                        >
+                          🚦 Gates
                         </button>
                         <a
                           href={`/tasks/${task.id}`}

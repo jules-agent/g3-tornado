@@ -39,6 +39,7 @@ type Owner = {
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
   is_third_party_vendor?: boolean;
+  is_personal?: boolean;
   is_private?: boolean;
   private_owner_id?: string | null;
   created_by?: string | null;
@@ -1324,6 +1325,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">Personal</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Private</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>
@@ -1334,7 +1336,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {owners.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
+                <td colSpan={11} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
               </tr>
             ) : (
               owners.map((owner) => {
@@ -1379,6 +1381,9 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                       <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />
                     </td>
                     <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_personal || false} onChange={(e) => toggleFlag(owner.id, "is_personal", e.target.checked)} className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={owner.is_private || false} onChange={(e) => toggleFlag(owner.id, "is_private", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
                     </td>
                     <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
@@ -1388,7 +1393,13 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                       <EditableCell value={owner.phone || ""} onSave={(v) => updateOwnerField(owner.id, "phone", v)} placeholder="Add phone" type="tel" />
                     </td>
                     <td className="px-4 py-2">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        (owner.is_personal || owner.is_private) 
+                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" 
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                      }`}>
+                        {owner.is_private && "🔒 "}
+                        {owner.is_personal && !owner.is_private && "👤 "}
                         {owner.created_by_email ? owner.created_by_email.split("@")[0] : "—"}
                       </span>
                     </td>
@@ -1573,16 +1584,29 @@ type BugReportItem = {
   created_at: string;
 };
 
+// Unified status colors — must match inbox/page.tsx STATUS_CONFIG
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300",
-  investigating: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  analyzing: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  fixing: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  deployed: "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
   fixed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-  escalated: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
-  duplicate: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
+  wont_fix: "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300",
   reviewing: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
-  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-  dismissed: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
 };
+
+// Unified status options — synced with inbox/page.tsx
+const UNIFIED_STATUS_OPTIONS = [
+  { value: "pending", label: "📩 Pending" },
+  { value: "analyzing", label: "🔍 Analyzing" },
+  { value: "fixing", label: "🔧 Fixing" },
+  { value: "deployed", label: "🚀 Deployed" },
+  { value: "fixed", label: "✅ Complete" },
+  { value: "reviewing", label: "👀 Reviewing" },
+  { value: "wont_fix", label: "⏭️ Won't Fix" },
+];
+
+const CLOSED_STATUSES = ["fixed", "wont_fix"];
 
 function BugsTab() {
   const [items, setItems] = useState<BugReportItem[]>([]);
@@ -1590,9 +1614,15 @@ function BugsTab() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "bug" | "feature_request">("all");
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [sendingResponse, setSendingResponse] = useState(false);
 
   useEffect(() => {
     fetchItems();
+    // Poll every 15s to stay synced with inbox
+    const interval = setInterval(fetchItems, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchItems = async () => {
@@ -1603,13 +1633,16 @@ function BugsTab() {
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string, resolution?: string) => {
     setUpdatingId(id);
     try {
+      const body: Record<string, unknown> = { status };
+      if (status === "fixed") body.resolution = resolution || "Marked complete by admin";
+      if (resolution) body.resolution = resolution;
       const res = await fetch(`/api/bugs/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -1619,7 +1652,45 @@ function BugsTab() {
     setUpdatingId(null);
   };
 
+  const handleSendResponse = async (reportId: string) => {
+    if (!responseText.trim()) return;
+    setSendingResponse(true);
+    const report = items.find(r => r.id === reportId);
+    await updateStatus(reportId, "reviewing", responseText.trim());
+
+    // Relay response notification
+    await fetch("/api/admin/respond-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reportId,
+        reportDescription: report?.description,
+        reporterEmail: report?.reported_by_email,
+        response: responseText.trim(),
+      }),
+    }).catch(() => {});
+
+    setRespondingTo(null);
+    setResponseText("");
+    setSendingResponse(false);
+    fetchItems();
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm("Reject and remove this report?")) return;
+    try {
+      const res = await fetch(`/api/bugs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "wont_fix", resolution: "Rejected by admin" }),
+      });
+      if (res.ok) fetchItems();
+    } catch { /* ignore */ }
+  };
+
   const filtered = filter === "all" ? items : items.filter((i) => (i.type || "bug") === filter);
+  const openItems = filtered.filter(i => !CLOSED_STATUSES.includes(i.status));
+  const closedItems = filtered.filter(i => CLOSED_STATUSES.includes(i.status));
   const bugCount = items.filter((i) => (i.type || "bug") === "bug").length;
   const featureCount = items.filter((i) => i.type === "feature_request").length;
 
@@ -1668,80 +1739,145 @@ function BugsTab() {
               <th className="px-4 py-2 font-semibold w-16">Image</th>
               <th className="px-4 py-2 font-semibold w-40">Reporter</th>
               <th className="px-4 py-2 font-semibold w-32">Status</th>
+              <th className="px-4 py-2 font-semibold w-48">Actions</th>
               <th className="px-4 py-2 font-semibold w-24">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {filtered.length === 0 ? (
+            {openItems.length === 0 && closedItems.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No feedback yet. 🎉</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">No feedback yet. 🎉</td>
               </tr>
             ) : (
-              filtered.map((item) => {
-                const isFeature = item.type === "feature_request";
-                const statusOptions = isFeature
-                  ? [
-                      { value: "pending", label: "Pending" },
-                      { value: "reviewing", label: "Reviewing" },
-                      { value: "approved", label: "Approved" },
-                      { value: "dismissed", label: "Dismissed" },
-                    ]
-                  : [
-                      { value: "pending", label: "Pending" },
-                      { value: "investigating", label: "Investigating" },
-                      { value: "fixed", label: "Fixed" },
-                      { value: "escalated", label: "Escalated" },
-                      { value: "duplicate", label: "Duplicate" },
-                    ];
-
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                    <td className="px-4 py-2 text-center">
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          isFeature
-                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
-                            : "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
-                        }`}
-                      >
-                        {isFeature ? "💡" : "🐛"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-slate-900 dark:text-white max-w-xs">
-                      <div className="line-clamp-3">{item.description}</div>
-                      {item.resolution && (
-                        <div className="mt-1 text-[10px] text-slate-400 italic">Resolution: {item.resolution}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {item.screenshot_url ? (
-                        <button onClick={() => setExpandedImage(item.screenshot_url)}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.screenshot_url} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-600 hover:opacity-80 transition" />
-                        </button>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{item.reported_by_email || "—"}</td>
-                    <td className="px-4 py-2">
-                      <select
-                        value={item.status}
-                        onChange={(e) => updateStatus(item.id, e.target.value)}
-                        disabled={updatingId === item.id}
-                        className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[item.status] || STATUS_COLORS.pending}`}
-                      >
-                        {statusOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
-                      {new Date(item.created_at).toLocaleDateString()}
+              <>
+                {openItems.map((item) => {
+                  const isFeature = item.type === "feature_request";
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${isFeature ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"}`}>
+                          {isFeature ? "💡" : "🐛"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-slate-900 dark:text-white max-w-xs">
+                        <div className="line-clamp-3">{item.description}</div>
+                        {item.resolution && (
+                          <div className="mt-1 text-[10px] text-slate-400 italic">Resolution: {item.resolution}</div>
+                        )}
+                        {respondingTo === item.id && (
+                          <div className="mt-2 space-y-2">
+                            <textarea
+                              value={responseText}
+                              onChange={(e) => setResponseText(e.target.value)}
+                              placeholder="Type your response..."
+                              className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                              rows={2}
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSendResponse(item.id)}
+                                disabled={sendingResponse || !responseText.trim()}
+                                className="rounded-lg bg-teal-500 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-teal-600 disabled:opacity-40 transition"
+                              >
+                                {sendingResponse ? "Sending..." : "Send"}
+                              </button>
+                              <button onClick={() => { setRespondingTo(null); setResponseText(""); }} className="text-[10px] text-slate-500 hover:text-slate-700">Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {item.screenshot_url ? (
+                          <button onClick={() => setExpandedImage(item.screenshot_url)}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.screenshot_url} alt="" className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-600 hover:opacity-80 transition" />
+                          </button>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{item.reported_by_email || "—"}</td>
+                      <td className="px-4 py-2">
+                        <select
+                          value={item.status}
+                          onChange={(e) => updateStatus(item.id, e.target.value)}
+                          disabled={updatingId === item.id}
+                          className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[item.status] || STATUS_COLORS.pending}`}
+                        >
+                          {UNIFIED_STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          <button
+                            onClick={() => updateStatus(item.id, "fixed")}
+                            className="rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
+                          >
+                            ✅
+                          </button>
+                          <button
+                            onClick={() => handleReject(item.id)}
+                            className="rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-2 py-1 text-[10px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100"
+                          >
+                            ❌
+                          </button>
+                          <button
+                            onClick={() => setRespondingTo(respondingTo === item.id ? null : item.id)}
+                            className="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1 text-[10px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100"
+                          >
+                            💬
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {closedItems.length > 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Closed ({closedItems.length})</span>
                     </td>
                   </tr>
-                );
-              })
+                )}
+                {closedItems.map((item) => {
+                  const isFeature = item.type === "feature_request";
+                  return (
+                    <tr key={item.id} className="opacity-60 hover:opacity-80">
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${isFeature ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"}`}>
+                          {isFeature ? "💡" : "🐛"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-slate-500 dark:text-slate-400 max-w-xs line-through">
+                        <div className="line-clamp-2">{item.description}</div>
+                        {item.resolution && <div className="mt-1 text-[10px] no-underline italic">✓ {item.resolution}</div>}
+                      </td>
+                      <td className="px-4 py-2"><span className="text-slate-300">—</span></td>
+                      <td className="px-4 py-2 text-slate-400">{item.reported_by_email || "—"}</td>
+                      <td className="px-4 py-2">
+                        <select
+                          value={item.status}
+                          onChange={(e) => updateStatus(item.id, e.target.value)}
+                          disabled={updatingId === item.id}
+                          className={`rounded px-2 py-1 text-xs font-semibold ${STATUS_COLORS[item.status] || STATUS_COLORS.pending}`}
+                        >
+                          {UNIFIED_STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">—</td>
+                      <td className="px-4 py-2 text-slate-400">{new Date(item.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  );
+                })}
+              </>
             )}
           </tbody>
         </table>

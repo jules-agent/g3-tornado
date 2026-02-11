@@ -110,12 +110,14 @@ export function validateContactAssociations(contact: {
   is_upfit_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
+  is_personal?: boolean;
 }): { valid: boolean; error?: string } {
   const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
   const isVendor = contact.is_third_party_vendor;
   const isPrivate = contact.is_private;
+  const isPersonal = contact.is_personal;
   
-  // Rule 6: Vendor cannot be private without company
+  // Rule: Vendor cannot be private without company
   if (isVendor && isPrivate && !hasCompany) {
     return { 
       valid: false, 
@@ -123,11 +125,11 @@ export function validateContactAssociations(contact: {
     };
   }
   
-  // Rule 5: Must have at least one association
-  if (!hasCompany && !isVendor && !isPrivate) {
+  // Rule: Must have at least one association (company, vendor, personal, or private)
+  if (!hasCompany && !isVendor && !isPrivate && !isPersonal) {
     return { 
       valid: false, 
-      error: "Contact must have at least one association (company, vendor, or private)" 
+      error: "Contact must have at least one association (company, vendor, personal, or private)" 
     };
   }
   
@@ -143,9 +145,11 @@ export function hasNoAssociations(contact: {
   is_upfit_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
+  is_personal?: boolean;
 }): boolean {
   const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
   const isVendor = contact.is_third_party_vendor;
   const isPrivate = contact.is_private;
-  return !hasCompany && !isVendor && !isPrivate;
+  const isPersonal = contact.is_personal;
+  return !hasCompany && !isVendor && !isPrivate && !isPersonal;
 }

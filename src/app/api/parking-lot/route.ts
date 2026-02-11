@@ -1,9 +1,38 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function GET() {
+/**
+ * Helper: Get user from either cookie-based session or Authorization Bearer token.
+ * This supports both web (cookies) and mobile (Bearer token) auth.
+ */
+async function getAuthUser(request?: NextRequest) {
+  // Try cookie-based auth first (web app)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (user) return { user, supabase };
+
+  // Try Authorization header (mobile app)
+  if (request) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const serviceClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: { user: tokenUser } } = await serviceClient.auth.getUser(token);
+      if (tokenUser) {
+        return { user: tokenUser, supabase: serviceClient };
+      }
+    }
+  }
+
+  return { user: null, supabase };
+}
+
+export async function GET(request: NextRequest) {
+  const { user, supabase } = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase
@@ -18,15 +47,20 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function POST(request: NextRequest) {
+  const { user, supabase } = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { description } = await request.json();
   if (!description?.trim()) return NextResponse.json({ error: "Description required" }, { status: 400 });
 
-  const { data, error } = await supabase
+  // Use service client for insert to bypass RLS issues with token auth
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data, error } = await serviceClient
     .from("parking_lot")
     .insert({ description: description.trim(), created_by: user.id })
     .select()
@@ -36,16 +70,20 @@ export async function POST(request: Request) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function DELETE(request: NextRequest) {
+  const { user } = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
-  const { error } = await supabase
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await serviceClient
     .from("parking_lot")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
@@ -55,9 +93,8 @@ export async function DELETE(request: Request) {
   return NextResponse.json({ success: true });
 }
 
-export async function PATCH(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function PATCH(request: NextRequest) {
+  const { user } = await getAuthUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, spawned_task_id, description } = await request.json();
@@ -67,7 +104,12 @@ export async function PATCH(request: Request) {
   if (spawned_task_id !== undefined) updates.spawned_task_id = spawned_task_id;
   if (description !== undefined) updates.description = description;
 
-  const { error } = await supabase
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await serviceClient
     .from("parking_lot")
     .update(updates)
     .eq("id", id)
