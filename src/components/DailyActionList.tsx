@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { capitalizeFirst } from "@/lib/utils";
+import { RestartClockModal } from "./RestartClockModal";
 
 type Owner = {
   id: string;
@@ -49,6 +50,7 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
   const [savingChanges, setSavingChanges] = useState(false);
   const [closingTask, setClosingTask] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
+  const [showRestartClock, setShowRestartClock] = useState(false);
   const noteInputRef = useRef<HTMLInputElement>(null);
   const cadenceInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,17 +75,35 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
       content: noteText.trim(),
     });
 
-    if (!noteError) {
-      await supabase
-        .from("tasks")
-        .update({ last_movement_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("id", item.taskId);
+    setSaving(false);
 
+    if (!noteError) {
       setNoteText("");
       setNoteSaved(true);
-      setExpanded("manage");
+      // Show restart clock modal
+      setShowRestartClock(true);
     }
-    setSaving(false);
+  }
+
+  async function handleRestartClockConfirm(newCadenceDays: number) {
+    await supabase
+      .from("tasks")
+      .update({
+        last_movement_at: new Date().toISOString(),
+        fu_cadence_days: newCadenceDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.taskId);
+
+    setShowRestartClock(false);
+    setExpanded("manage");
+    onUpdate();
+  }
+
+  function handleRestartClockCancel() {
+    setShowRestartClock(false);
+    setExpanded("manage");
+    onUpdate();
   }
 
   function handleCadenceChange(val: number) {
@@ -369,6 +389,14 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
           </div>
         </div>
       </div>
+
+      {/* Restart Clock Modal */}
+      <RestartClockModal
+        isOpen={showRestartClock}
+        onConfirm={handleRestartClockConfirm}
+        onCancel={handleRestartClockCancel}
+        currentCadenceDays={item.fuCadenceDays}
+      />
     </div>
   );
 }
