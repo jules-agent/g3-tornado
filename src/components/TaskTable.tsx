@@ -9,6 +9,7 @@ import { OwnerEditor } from "./OwnerEditor";
 import { capitalizeFirst } from "@/lib/utils";
 import { CloseTaskGateCheck } from "./CloseTaskGateCheck";
 import { TaskCard } from "./TaskCard";
+import { RestartClockModal } from "./RestartClockModal";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -214,6 +215,10 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   
   // Close task gate check
   const [closingTaskWithGates, setClosingTaskWithGates] = useState<{ taskId: string; gates: Gate[]; currentCadenceDays: number } | null>(null);
+  
+  // Complete gate state
+  const [completingGate, setCompletingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[]; currentCadenceDays: number } | null>(null);
+  const [showRestartClock, setShowRestartClock] = useState(false);
   
   // Row actions menu state
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
@@ -775,6 +780,54 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
       alert(data?.error || "Failed to delete task");
     }
     setDeletingId(null);
+  };
+
+  const handleConfirmCompleteGate = async () => {
+    if (!completingGate) return;
+    
+    const supabase = createClient();
+    const { taskId, gateIndex, gates } = completingGate;
+    
+    // Mark gate as completed
+    const updatedGates = gates.map((g, i) => 
+      i === gateIndex ? { ...g, completed: true } : g
+    );
+    
+    await supabase
+      .from("tasks")
+      .update({
+        gates: updatedGates,
+        is_blocked: updatedGates.some(g => !g.completed && g.owner_name),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId);
+    
+    // Show restart clock modal
+    setShowRestartClock(true);
+  };
+
+  const handleRestartClockConfirm = async (newCadenceDays: number) => {
+    if (!completingGate) return;
+    
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({
+        last_movement_at: new Date().toISOString(),
+        fu_cadence_days: newCadenceDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", completingGate.taskId);
+    
+    setShowRestartClock(false);
+    setCompletingGate(null);
+    router.refresh();
+  };
+
+  const handleRestartClockCancel = () => {
+    setShowRestartClock(false);
+    setCompletingGate(null);
+    router.refresh();
   };
 
   const canDeleteTask = (task: Task) => {
@@ -1361,14 +1414,31 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                               className="px-3 py-2 overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                               onClick={() => setEditingGate({ taskId: task.id, gateIndex: targetGateIndex, gates: gates, currentCadenceDays: task.fu_cadence_days })}
                             >
-                              {gate ? (
-                                <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs max-w-full ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
-                                  <span className={`font-semibold break-words ${textColor}`}>{gate.owner_name}</span>
-                                  {gate.task_name && <span className={`break-words text-[10px] ${subColor}`}>{gate.task_name}</span>}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Add gate</span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {gate ? (
+                                  <>
+                                    <span className={`inline-flex flex-col px-2 py-0.5 rounded border text-xs max-w-full ${bgColor}`} title={`${gate.owner_name}${gate.task_name ? " / " + gate.task_name : ""} - Click to edit`}>
+                                      <span className={`font-semibold break-words ${textColor}`}>{gate.owner_name}</span>
+                                      {gate.task_name && <span className={`break-words text-[10px] ${subColor}`}>{gate.task_name}</span>}
+                                    </span>
+                                    {/* Complete Gate button for current gate only */}
+                                    {col.id === 'currentGate' && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCompletingGate({ taskId: task.id, gateIndex: gateIndex, gates, currentCadenceDays: task.fu_cadence_days });
+                                        }}
+                                        className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                                        title="Complete this gate"
+                                      >
+                                        ✅
+                                      </button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-400 text-xs hover:text-teal-500 transition-colors">+ Add gate</span>
+                                )}
+                              </div>
                             </td>
                           );
                         }
@@ -1443,6 +1513,60 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           currentCadenceDays={closingTaskWithGates.currentCadenceDays}
           onClose={() => setClosingTaskWithGates(null)}
           onComplete={() => { setClosingTaskWithGates(null); router.refresh(); }}
+        />
+      )}
+
+      {/* Complete Gate Confirmation Modal */}
+      {completingGate && !showRestartClock && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setCompletingGate(null)}
+        >
+          <div
+            className="w-full max-w-sm mx-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white">Complete Gate?</h3>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Are you sure you want to complete this gate?
+              </p>
+              {completingGate.gates[completingGate.gateIndex] && (
+                <p className="text-xs text-slate-400 mt-2">
+                  {completingGate.gates[completingGate.gateIndex].owner_name}
+                  {completingGate.gates[completingGate.gateIndex].task_name && 
+                    ` — ${completingGate.gates[completingGate.gateIndex].task_name}`
+                  }
+                </p>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              <button
+                onClick={handleConfirmCompleteGate}
+                className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 transition"
+              >
+                Complete
+              </button>
+              <button
+                onClick={() => setCompletingGate(null)}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Clock Modal */}
+      {completingGate && (
+        <RestartClockModal
+          isOpen={showRestartClock}
+          onConfirm={handleRestartClockConfirm}
+          onCancel={handleRestartClockCancel}
+          currentCadenceDays={completingGate.currentCadenceDays}
         />
       )}
     </div>
