@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { capitalizeFirst, validateContactAssociations, hasNoAssociations } from "@/lib/utils";
 
 type Owner = {
   id: string;
@@ -10,6 +11,10 @@ type Owner = {
   email: string | null;
   phone: string | null;
   is_internal: boolean;
+  is_up_employee: boolean | null;
+  is_bp_employee: boolean | null;
+  is_upfit_employee: boolean | null;
+  is_third_party_vendor: boolean | null;
   created_by: string | null;
   created_by_email: string | null;
   is_private: boolean | null;
@@ -30,6 +35,7 @@ export default function ContactsPage() {
   const [newIsVendor, setNewIsVendor] = useState(false);
   const [newIsPrivate, setNewIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const supabase = createClient();
 
@@ -40,7 +46,7 @@ export default function ContactsPage() {
 
     const { data } = await supabase
       .from("owners")
-      .select("id, name, email, phone, is_internal, created_by, created_by_email, is_private, private_owner_id")
+      .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, created_by, created_by_email, is_private, private_owner_id")
       .order("name");
     
     // Filter out private contacts that don't belong to the current user
@@ -49,15 +55,56 @@ export default function ContactsPage() {
       return owner.private_owner_id === user.id; // Private contacts only visible to owner
     });
     
-    setOwners(filtered);
+    // Sort: unassociated contacts first, then alphabetically
+    const sorted = filtered.sort((a, b) => {
+      const aUnassociated = hasNoAssociations({
+        is_up: a.is_up_employee || false,
+        is_bp: a.is_bp_employee || false,
+        is_upfit_employee: a.is_upfit_employee || false,
+        is_third_party_vendor: a.is_third_party_vendor || false,
+        is_private: a.is_private || false,
+      });
+      const bUnassociated = hasNoAssociations({
+        is_up: b.is_up_employee || false,
+        is_bp: b.is_bp_employee || false,
+        is_upfit_employee: b.is_upfit_employee || false,
+        is_third_party_vendor: b.is_third_party_vendor || false,
+        is_private: b.is_private || false,
+      });
+
+      if (aUnassociated && !bUnassociated) return -1;
+      if (!aUnassociated && bUnassociated) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    setOwners(sorted);
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
   async function handleAdd() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      setError("Name is required");
+      return;
+    }
+
+    // Validate associations
+    const validation = validateContactAssociations({
+      is_up: newIsUp,
+      is_bp: newIsBp,
+      is_upfit_employee: newIsUpfit,
+      is_third_party_vendor: newIsVendor,
+      is_private: newIsPrivate,
+    });
+
+    if (!validation.valid) {
+      setError(validation.error || "Invalid contact associations");
+      return;
+    }
+
     setSaving(true);
+    setError("");
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -65,8 +112,15 @@ export default function ContactsPage() {
       return;
     }
 
-    const { error } = await supabase.from("owners").insert({
-      name: newName.trim(),
+    // Get user's profile for email
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", user.id)
+      .single();
+
+    const { error: insertError } = await supabase.from("owners").insert({
+      name: capitalizeFirst(newName.trim()),
       email: newEmail.trim() || null,
       phone: newPhone.trim() || null,
       is_internal: newIsUp || newIsBp || newIsUpfit,
@@ -76,13 +130,18 @@ export default function ContactsPage() {
       is_third_party_vendor: newIsVendor,
       is_private: newIsPrivate,
       private_owner_id: newIsPrivate ? user.id : null,
+      created_by: user.id,
+      created_by_email: profile?.email || user.email || null,
     });
-    if (!error) {
+
+    if (!insertError) {
       setNewName(""); setNewEmail(""); setNewPhone("");
       setNewIsUp(false); setNewIsBp(false); setNewIsUpfit(false); setNewIsVendor(false);
       setNewIsPrivate(false);
       setShowAdd(false);
       await load();
+    } else {
+      setError(insertError.message);
     }
     setSaving(false);
   }
@@ -109,6 +168,13 @@ export default function ContactsPage() {
       {showAdd && (
         <div className="mb-6 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
           <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">New Contact</h3>
+          
+          {error && (
+            <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-3 mb-3">
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name *" autoFocus
               className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
@@ -119,7 +185,7 @@ export default function ContactsPage() {
                 className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Company Association</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Company Association *</label>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => setNewIsUp(!newIsUp)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newIsUp ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
@@ -162,7 +228,7 @@ export default function ContactsPage() {
             <button onClick={handleAdd} disabled={saving || !newName.trim()} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-40 transition">
               {saving ? "Adding..." : "Add Contact"}
             </button>
-            <button onClick={() => { setShowAdd(false); setNewName(""); setNewEmail(""); setNewPhone(""); }} className="text-sm text-slate-500 hover:text-slate-700 px-3">Cancel</button>
+            <button onClick={() => { setShowAdd(false); setNewName(""); setNewEmail(""); setNewPhone(""); setError(""); }} className="text-sm text-slate-500 hover:text-slate-700 px-3">Cancel</button>
           </div>
         </div>
       )}
@@ -174,25 +240,66 @@ export default function ContactsPage() {
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Associations</th>
+              <th className="px-4 py-3">Created By</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {owners.map(o => (
-              <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
-                  {o.is_private && <span className="mr-1.5" title="Private contact">🔒</span>}
-                  {o.name}
-                </td>
-                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.email || "—"}</td>
-                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.phone || "—"}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${o.is_internal ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"}`}>
-                    {o.is_internal ? "Employee" : "External"}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {owners.map(o => {
+              const unassociated = hasNoAssociations({
+                is_up: o.is_up_employee || false,
+                is_bp: o.is_bp_employee || false,
+                is_upfit_employee: o.is_upfit_employee || false,
+                is_third_party_vendor: o.is_third_party_vendor || false,
+                is_private: o.is_private || false,
+              });
+
+              return (
+                <tr key={o.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition ${unassociated ? "flash-red" : ""}`}>
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
+                    {o.is_private && <span className="mr-1.5" title="Private contact">🔒</span>}
+                    {o.name}
+                    {unassociated && <span className="ml-2 text-xs text-red-600 dark:text-red-400">⚠️ No association</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.email || "—"}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.phone || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {o.is_up_employee && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">
+                          UP
+                        </span>
+                      )}
+                      {o.is_bp_employee && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                          BP
+                        </span>
+                      )}
+                      {o.is_upfit_employee && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                          UPFIT
+                        </span>
+                      )}
+                      {o.is_third_party_vendor && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          Vendor
+                        </span>
+                      )}
+                      {unassociated && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                          ⚠️ None
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                      {o.created_by_email ? o.created_by_email.split("@")[0] : "—"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
