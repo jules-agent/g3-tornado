@@ -213,7 +213,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   const [editingOwner, setEditingOwner] = useState<{ taskId: string; ownerIds: string[] } | null>(null);
   
   // Close task gate check
-  const [closingTaskWithGates, setClosingTaskWithGates] = useState<{ taskId: string; gates: Gate[] } | null>(null);
+  const [closingTaskWithGates, setClosingTaskWithGates] = useState<{ taskId: string; gates: Gate[]; currentCadenceDays: number } | null>(null);
   
   // Row actions menu state
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
@@ -716,7 +716,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
     const task = tasks.find(t => t.id === taskId);
     const openGates = (task?.gates || []).filter(g => !g.completed);
     if (openGates.length > 0) {
-      setClosingTaskWithGates({ taskId, gates: task!.gates! });
+      setClosingTaskWithGates({ taskId, gates: task!.gates!, currentCadenceDays: task!.fu_cadence_days });
       setRowMenuOpen(null);
       return;
     }
@@ -1440,6 +1440,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
         <CloseTaskGateCheck
           taskId={closingTaskWithGates.taskId}
           gates={closingTaskWithGates.gates}
+          currentCadenceDays={closingTaskWithGates.currentCadenceDays}
           onClose={() => setClosingTaskWithGates(null)}
           onComplete={() => { setClosingTaskWithGates(null); router.refresh(); }}
         />

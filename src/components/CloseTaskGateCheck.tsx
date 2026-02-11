@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
+import { RestartClockModal } from "./RestartClockModal";
 
 type Gate = {
   name: string;
@@ -14,17 +15,20 @@ type Gate = {
 export function CloseTaskGateCheck({
   taskId,
   gates,
+  currentCadenceDays,
   onClose,
   onComplete,
 }: {
   taskId: string;
   gates: Gate[];
+  currentCadenceDays: number;
   onClose: () => void;
   onComplete: () => void;
 }) {
   const openGates = gates.filter(g => !g.completed);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [showRestartClock, setShowRestartClock] = useState(false);
 
   const allChecked = openGates.every((_, i) => checked.has(i));
 
@@ -57,6 +61,28 @@ export function CloseTaskGateCheck({
       .eq("id", taskId);
 
     setSaving(false);
+    
+    // Show restart clock modal
+    setShowRestartClock(true);
+  };
+
+  const handleRestartClockConfirm = async (newCadenceDays: number) => {
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({
+        last_movement_at: new Date().toISOString(),
+        fu_cadence_days: newCadenceDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId);
+
+    setShowRestartClock(false);
+    onComplete();
+  };
+
+  const handleRestartClockCancel = () => {
+    setShowRestartClock(false);
     onComplete();
   };
 
@@ -133,6 +159,14 @@ export function CloseTaskGateCheck({
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
         </div>
       </div>
+
+      {/* Restart Clock Modal */}
+      <RestartClockModal
+        isOpen={showRestartClock}
+        onConfirm={handleRestartClockConfirm}
+        onCancel={handleRestartClockCancel}
+        currentCadenceDays={currentCadenceDays}
+      />
     </div>
   );
 
