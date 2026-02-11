@@ -21,10 +21,18 @@ type Owner = {
   private_owner_id: string | null;
 };
 
+type Profile = {
+  id: string;
+  email: string;
+  role: string | null;
+};
+
 export default function ContactsPage() {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -44,15 +52,46 @@ export default function ContactsPage() {
     if (!user) return;
     setUserId(user.id);
 
+    // Fetch current user's profile to get role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, email, role")
+      .eq("id", user.id)
+      .single();
+    
+    const isAdmin = profile?.role === "admin";
+    setUserRole(profile?.role || null);
+
     const { data } = await supabase
       .from("owners")
       .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, created_by, created_by_email, is_private, private_owner_id")
       .order("name");
     
-    // Filter out private contacts that don't belong to the current user
+    // For admins, fetch all owner profiles to map private_owner_id -> username
+    if (isAdmin) {
+      const privateOwnerIds = (data || [])
+        .filter(o => o.is_private && o.private_owner_id)
+        .map(o => o.private_owner_id as string);
+      
+      if (privateOwnerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .in("id", privateOwnerIds);
+        
+        const nameMap: Record<string, string> = {};
+        (profiles || []).forEach(p => {
+          nameMap[p.id] = p.email.split("@")[0];
+        });
+        setOwnerNames(nameMap);
+      }
+    }
+    
+    // Filter private contacts: admins see all, regular users see only their own
     const filtered = (data || []).filter(owner => {
       if (!owner.is_private) return true; // Public contacts visible to all
-      return owner.private_owner_id === user.id; // Private contacts only visible to owner
+      if (isAdmin) return true; // Admins see all contacts including private ones
+      return owner.private_owner_id === user.id; // Regular users see only their private contacts
     });
     
     // Sort: unassociated contacts first, then alphabetically
@@ -283,6 +322,13 @@ export default function ContactsPage() {
                       {o.is_third_party_vendor && (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                           Vendor
+                        </span>
+                      )}
+                      {o.is_private && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                          {userRole === "admin" && o.private_owner_id
+                            ? `🔒 Private (${ownerNames[o.private_owner_id] || "unknown"})`
+                            : "🔒 Private"}
                         </span>
                       )}
                       {unassociated && (

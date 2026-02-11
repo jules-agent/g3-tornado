@@ -140,7 +140,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
 
   if (!isOpen) return null;
 
-  const hasCompanyAssociation = isUp || isBp || isUpfit || isVendor;
+  const hasAnyAssociation = isUp || isBp || isUpfit || isVendor || isPrivate;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -286,7 +286,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
         <div className="px-6 py-5 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleSubmit}
-            disabled={saving || !name.trim() || !hasCompanyAssociation}
+            disabled={saving || !name.trim() || !hasAnyAssociation}
             className="flex-1 rounded-xl bg-teal-500 px-6 py-4 text-base font-semibold text-white hover:bg-teal-600 active:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition min-h-[56px]"
           >
             {saving ? "Creating..." : "Create Contact"}
