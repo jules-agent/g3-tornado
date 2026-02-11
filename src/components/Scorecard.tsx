@@ -74,7 +74,7 @@ export function Scorecard({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
         .from("tasks")
         .select(`
           id, status, fu_cadence_days, last_movement_at, created_at,
-          task_owners (owner_id, owners (id, name)),
+          task_owners (owner_id, owners (id, name, is_third_party_vendor, is_up_employee, is_bp_employee, is_upfit_employee)),
           task_notes (created_at)
         `)
         .order("created_at");
@@ -110,6 +110,13 @@ export function Scorecard({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           const ownerId = to.owner_id;
           const ownerName = to.owners?.name || "Unknown";
           if (!ownerId) continue;
+
+          // FILTER: Exclude 3rd party vendors from team leaderboard (internal staff only)
+          const owner = to.owners;
+          const isVendor = owner?.is_third_party_vendor === true;
+          const hasEmployeeFlag = owner?.is_up_employee || owner?.is_bp_employee || owner?.is_upfit_employee;
+          // Skip vendors unless they also have an employee flag
+          if (isVendor && !hasEmployeeFlag) continue;
 
           if (!ownerStats.has(ownerId)) {
             ownerStats.set(ownerId, {
