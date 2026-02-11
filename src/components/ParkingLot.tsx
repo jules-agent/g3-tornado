@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import SpeechInput from "@/components/SpeechInput";
 
 type ParkingLotItem = {
   id: string;
@@ -117,6 +118,10 @@ export function ParkingLot({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             placeholder="Type a future task..."
             className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
+          <SpeechInput
+            onResult={(spoken) => setNewItem(prev => prev ? prev + ' ' + spoken : spoken)}
+            disabled={loading}
+          />
           <button
             onClick={addItem}
             disabled={loading || !newItem.trim()}
@@ -145,18 +150,24 @@ export function ParkingLot({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                   >
                     <div className="flex-1 min-w-0">
                       {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") updateItem(item.id, editingValue);
-                            if (e.key === "Escape") { setEditingId(null); setEditingValue(""); }
-                          }}
-                          onBlur={() => updateItem(item.id, editingValue)}
-                          className="w-full rounded border border-teal-300 dark:border-teal-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-                          autoFocus
-                        />
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") updateItem(item.id, editingValue);
+                              if (e.key === "Escape") { setEditingId(null); setEditingValue(""); }
+                            }}
+                            onBlur={() => updateItem(item.id, editingValue)}
+                            className="flex-1 rounded border border-teal-300 dark:border-teal-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            autoFocus
+                          />
+                          <SpeechInput
+                            onResult={(spoken) => setEditingValue(prev => prev ? prev + ' ' + spoken : spoken)}
+                            className="w-8 h-8 min-w-[32px]"
+                          />
+                        </div>
                       ) : (
                         <p
                           className="text-sm text-slate-800 dark:text-slate-200 truncate cursor-text hover:text-teal-700 dark:hover:text-teal-300 transition"
