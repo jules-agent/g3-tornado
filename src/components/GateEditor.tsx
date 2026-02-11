@@ -269,8 +269,15 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
                               className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
                               autoFocus
                               onKeyDown={e => {
-                                if (e.key === "Enter") handleAddOwner(idx);
-                                if (e.key === "Escape") { setShowAddOwner(false); setAddingForIdx(null); }
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddOwner(idx);
+                                }
+                                if (e.key === "Escape") { 
+                                  setShowAddOwner(false); 
+                                  setAddingForIdx(null);
+                                  setNewOwnerName("");
+                                }
                               }}
                             />
                             <button onClick={() => handleAddOwner(idx)} className="px-2 py-1 bg-teal-500 text-white rounded text-xs font-semibold">Add</button>
