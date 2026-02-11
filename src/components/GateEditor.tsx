@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { RestartClockModal } from "./RestartClockModal";
 import { ContactCreationDialog } from "./ContactCreationDialog";
 import { hasNoAssociations } from "@/lib/utils";
+import SpeechInput from "@/components/SpeechInput";
 
 type Owner = {
   id: string;
@@ -341,12 +342,18 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
                           ))}
                           <option value="__add__">+ Add new person...</option>
                         </select>
-                        <input
-                          value={gate.task_name || ""}
-                          onChange={e => updateGate(idx, "task_name", e.target.value)}
-                          placeholder="What they do..."
-                          className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        />
+                        <div className="flex gap-1 flex-1">
+                          <input
+                            value={gate.task_name || ""}
+                            onChange={e => updateGate(idx, "task_name", e.target.value)}
+                            placeholder="What they do..."
+                            className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                          />
+                          <SpeechInput
+                            onResult={(spoken) => updateGate(idx, "task_name", (gate.task_name || "") + (gate.task_name ? " " : "") + spoken)}
+                            className="w-8 h-8 min-w-[32px]"
+                          />
+                        </div>
                       </div>
                       {/* Complete button for incomplete gates */}
                       {!gate.completed && (
