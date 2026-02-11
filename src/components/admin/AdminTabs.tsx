@@ -1347,8 +1347,22 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
                       <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
                       {vendorWarning && (
-                        <div className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">
-                          ⚠️ Vendor needs company
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-red-600 dark:text-red-400">⚠️ Vendor needs company:</span>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                toggleFlag(owner.id, e.target.value as any, true);
+                              }
+                            }}
+                            className="text-[10px] rounded border-red-300 bg-white dark:bg-slate-800 text-slate-900 dark:text-white cursor-pointer focus:ring-red-500"
+                            defaultValue=""
+                          >
+                            <option value="">Select company...</option>
+                            <option value="is_up_employee">UP</option>
+                            <option value="is_bp_employee">BP</option>
+                            <option value="is_upfit_employee">UPFIT</option>
+                          </select>
                         </div>
                       )}
                     </td>
