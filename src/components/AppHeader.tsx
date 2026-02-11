@@ -38,6 +38,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [inboxTotal, setInboxTotal] = useState(0);
   const [inboxUnread, setInboxUnread] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(user.role === "admin" || user.email === "ben@unpluggedperformance.com");
 
   // Check for overdue tasks on mount — auto-open Daily Actions if any exist
   useEffect(() => {
@@ -168,109 +169,21 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </div>
         </Link>
 
-        {/* Desktop: Right side actions */}
-        <div className="hidden md:flex items-center gap-4">
-          <button
-            onClick={() => setShowProjectHealth(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition"
-            title="Project Health"
-          >
-            📊
-          </button>
-          <button
-            onClick={() => setShowScorecard(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:text-yellow-700 dark:hover:text-yellow-300 transition"
-            title="Scorecard"
-          >
-            🏆
-          </button>
-          {overdueCount !== null && overdueCount > 0 && (
-            <button
-              onClick={() => setShowDailyActions(true)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition animate-pulse-urgent"
-              title={`Today's Actions (${overdueCount} overdue)`}
-            >
-              📋 {overdueCount}
-            </button>
-          )}
-          <button
-            onClick={() => setShowParkingLot(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition"
-            title="Parking Lot"
-          >
-            🅿️
-          </button>
-          {overdueCount !== null && overdueCount > 0 && (
-            <button
-              onClick={() => setShowFocusMode(true)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 transition"
-              title="Focus Mode"
-            >
-              🎯
-            </button>
-          )}
-          <button
-            onClick={() => setShowBugReport(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-700 dark:hover:text-rose-300 transition"
-            title="Feedback"
-          >
-            💬
-          </button>
-          <button
-            onClick={() => setShowProposeTemplate(true)}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition"
-            title="Propose Template"
-          >
-            📋
-          </button>
-          {inboxTotal > 0 && (
-            <Link
-              href="/inbox"
-              className={`relative px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-                inboxUnread > 0
-                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
-              title={inboxUnread > 0 ? `Inbox (${inboxUnread} new)` : "Inbox"}
-            >
-              {inboxUnread > 0 ? "📬" : "📭"}
-              {inboxUnread > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {inboxUnread}
-                </span>
-              )}
-            </Link>
-          )}
-          <a
-            href="/tutorial"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition"
-            title="User Tutorial"
-          >
-            📖
-          </a>
+        {/* Desktop: Right side - compact user pill + action buttons */}
+        <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
-          
           <button
             onClick={() => setShowParkingLot(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Parking
+            + Parking
           </button>
           <Link
             href="/tasks/new"
-            className="hidden sm:inline-flex items-center gap-2 btn-primary text-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold btn-primary"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Task
+            + Task
           </Link>
-
           <div className="flex items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 shadow-sm">
             <Link href="/profile" className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-xs font-bold text-white hover:opacity-80 transition" title="My Profile">
               {initials}
@@ -278,7 +191,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <div className="hidden text-sm sm:block">
               <div className="font-semibold text-slate-800 dark:text-slate-100">{displayName}</div>
               <div className="text-[10px] font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
-                {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
+                {isAdmin ? "Admin" : "User"}
               </div>
             </div>
             <button
@@ -312,70 +225,72 @@ export default function AppHeader({ user }: AppHeaderProps) {
         </div>
       </div>
 
-      {/* Desktop Text Menu Bar - Below icon buttons */}
-      <div className="hidden md:flex items-center justify-center gap-6 px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-        <Link
-          href="/contacts"
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition"
-        >
-          Edit Contacts
-        </Link>
-        <Link
-          href="/projects"
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition"
-        >
-          Edit Projects
-        </Link>
-        <button
-          onClick={() => setShowProjectHealth(true)}
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
-        >
-          Project Health
-        </button>
+      {/* Desktop Text Menu Bar */}
+      <div className="hidden md:flex items-center justify-center gap-5 px-4 py-1.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
+        {overdueCount !== null && overdueCount > 0 && (
+          <button
+            onClick={() => setShowDailyActions(true)}
+            className="font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
+          >
+            Daily Actions ({overdueCount})
+          </button>
+        )}
+        {overdueCount !== null && overdueCount > 0 && (
+          <button
+            onClick={() => setShowFocusMode(true)}
+            className="font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
+          >
+            Focus Mode
+          </button>
+        )}
         <button
           onClick={() => setShowScorecard(true)}
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition"
         >
           Scorecard
         </button>
-        {overdueCount !== null && overdueCount > 0 && (
-          <>
-            <button
-              onClick={() => setShowDailyActions(true)}
-              className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
-            >
-              Daily Actions {overdueCount > 0 && `(${overdueCount})`}
-            </button>
-            <button
-              onClick={() => setShowFocusMode(true)}
-              className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
-            >
-              Focus Mode
-            </button>
-          </>
+        {isAdmin && (
+          <button
+            onClick={() => setShowProjectHealth(true)}
+            className="font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+          >
+            Project Health
+          </button>
         )}
         <button
           onClick={() => setShowParkingLot(true)}
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
         >
           Parking Lot
         </button>
+        <Link
+          href="/contacts"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition"
+        >
+          Contacts
+        </Link>
+        <Link
+          href="/projects"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition"
+        >
+          Projects
+        </Link>
         <button
           onClick={() => setShowBugReport(true)}
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition"
         >
           Feedback
         </button>
         <button
           onClick={() => setShowProposeTemplate(true)}
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
         >
-          Propose Template
+          Templates
         </button>
         {inboxTotal > 0 && (
           <Link
             href="/inbox"
-            className={`text-sm font-medium transition ${
+            className={`font-medium transition ${
               inboxUnread > 0
                 ? "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
@@ -388,16 +303,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
           href="/tutorial"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+          className="font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
         >
           Tutorial
         </a>
-        <Link
-          href="/profile"
-          className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition"
-        >
-          My Profile
-        </Link>
       </div>
 
       {/* Mobile Menu Slide-out */}
@@ -420,7 +329,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 <div>
                   <div className="font-semibold text-lg text-slate-900 dark:text-white">{displayName}</div>
                   <div className="text-sm font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
-                    {user.role === "admin" || user.email === "ben@unpluggedperformance.com" ? "Admin" : "User"}
+                    {isAdmin ? "Admin" : "User"}
                   </div>
                 </div>
               </div>
@@ -490,13 +399,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
                     <span className="text-base">Focus Mode</span>
                   </button>
                 )}
-                <button
-                  onClick={() => { setShowProjectHealth(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
-                >
-                  <span className="text-2xl">📊</span>
-                  <span className="text-base">Project Health</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => { setShowProjectHealth(true); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
+                  >
+                    <span className="text-2xl">📊</span>
+                    <span className="text-base">Project Health</span>
+                  </button>
+                )}
                 <button
                   onClick={() => { setShowScorecard(true); setMobileMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-5 py-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition min-h-[56px]"
