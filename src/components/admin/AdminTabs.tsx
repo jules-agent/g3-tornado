@@ -1136,18 +1136,22 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setError("");
   };
 
+  // Vendors CAN have company associations (and must have at least one)
   const handleVendorChange = (checked: boolean) => {
-    if (checked) { setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); }
     setIsThirdPartyVendor(checked);
   };
 
   const handleEmployeeChange = (setter: (v: boolean) => void, checked: boolean) => {
-    if (checked) setIsThirdPartyVendor(false);
     setter(checked);
   };
 
   const saveOwner = async () => {
     if (!name.trim()) return;
+    // Vendor must have at least one company
+    if (isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee) {
+      setError("Vendors must be associated with at least one company (UP, BP, or UPFIT)");
+      return;
+    }
     setLoading(true); setError("");
     try {
       const res = await fetch("/api/admin/owners", {
@@ -1219,8 +1223,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setOwnerMenuOpen(null);
   };
 
-  const isEmployeeChecked = isUpEmployee || isBpEmployee || isUpfitEmployee;
-
   return (
     <div>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
@@ -1241,26 +1243,29 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="Full name or company name" />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-2">Employee of:</label>
+              <label className="block text-xs text-slate-500 mb-2">Company Association{isThirdPartyVendor ? " (required for vendors)" : ""}:</label>
               <div className="flex flex-wrap gap-4">
-                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input type="checkbox" checked={isUpEmployee} onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-blue-600" />
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUpEmployee} onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)} className="rounded border-slate-300 text-blue-600" />
                   <span className="text-slate-700 dark:text-slate-300">UP</span>
                 </label>
-                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input type="checkbox" checked={isBpEmployee} onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-emerald-600" />
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBpEmployee} onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)} className="rounded border-slate-300 text-emerald-600" />
                   <span className="text-slate-700 dark:text-slate-300">BP</span>
                 </label>
-                <label className={`flex items-center gap-1.5 text-sm ${isThirdPartyVendor ? "opacity-50" : ""}`}>
-                  <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} disabled={isThirdPartyVendor} className="rounded border-slate-300 text-purple-600" />
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} className="rounded border-slate-300 text-purple-600" />
                   <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
               </div>
             </div>
-            <label className={`flex items-center gap-1.5 text-sm ${isEmployeeChecked ? "opacity-50" : ""}`}>
-              <input type="checkbox" checked={isThirdPartyVendor} onChange={(e) => handleVendorChange(e.target.checked)} disabled={isEmployeeChecked} className="rounded border-slate-300 text-orange-600" />
+            <label className="flex items-center gap-1.5 text-sm">
+              <input type="checkbox" checked={isThirdPartyVendor} onChange={(e) => handleVendorChange(e.target.checked)} className="rounded border-slate-300 text-orange-600" />
               <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
             </label>
+            {isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee && (
+              <p className="text-xs text-red-600 dark:text-red-400">⚠️ Vendors must have at least one company association</p>
+            )}
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-xs text-slate-500 mb-1">Email</label>
