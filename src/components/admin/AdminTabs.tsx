@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AdminTemplates } from "@/components/AdminTemplates";
+import { HealthDashboard } from "./HealthDashboard";
 
 type Profile = {
   id: string;
@@ -92,6 +93,7 @@ export function AdminTabs({
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
     { key: "bugs", label: "Feedback", count: undefined, href: "/admin?tab=bugs" },
     { key: "templates", label: "Templates", count: undefined, href: "/admin?tab=templates" },
+    { key: "health", label: "Health", count: undefined, href: "/admin?tab=health" },
   ];
 
   return (
@@ -125,6 +127,7 @@ export function AdminTabs({
         {activeTab === "activity" && <ActivityLogTab logs={activityLogs} />}
         {activeTab === "bugs" && <BugsTab />}
         {activeTab === "templates" && <AdminTemplates />}
+        {activeTab === "health" && <HealthDashboard />}
       </div>
     </div>
   );
