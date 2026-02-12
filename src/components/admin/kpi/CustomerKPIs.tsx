@@ -18,7 +18,8 @@ function num(n: number): string {
 export function CustomerKPIs() {
   const { data: customers, isLoading, error, mutate } = useCustomers({ limit: 500 });
 
-  const isDemo = !!error && !isLoading;
+  const isDemo = !!error;
+  const loading = isLoading && !isDemo;
   const effectiveCustomers = customers || (isDemo ? demoCustomers : null);
 
   const allCustomers = effectiveCustomers?.data ?? [];
@@ -56,7 +57,7 @@ export function CustomerKPIs() {
       {isDemo && <ConnectionError onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {isLoading ? (
+        {loading ? (
           <>
             <KPICardSkeleton />
             <KPICardSkeleton />
@@ -93,7 +94,7 @@ export function CustomerKPIs() {
         )}
       </div>
 
-      <ChartCard title="Top 10 Customers by Revenue" subtitle="Lifetime spend" loading={isLoading}>
+      <ChartCard title="Top 10 Customers by Revenue" subtitle="Lifetime spend" loading={loading}>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={topCustomers} layout="vertical" margin={{ left: 10, right: 20, top: 0, bottom: 0 }}>
             <XAxis type="number" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke="#475569" fontSize={10} />

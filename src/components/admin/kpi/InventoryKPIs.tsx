@@ -22,9 +22,9 @@ export function InventoryKPIs() {
   const { data: lowStock, isLoading: lowLoading, error: lowErr, mutate: mutateLow } = useLowStock(5);
   const { data: inventory, isLoading: invLoading, error: invErr, mutate: mutateInv } = useInventory({ limit: 500 });
 
-  const loading = statsLoading || lowLoading || invLoading;
   const hasError = !!(statsErr || lowErr || invErr);
-  const isDemo = hasError && !loading;
+  const loading = !hasError && (statsLoading || lowLoading || invLoading);
+  const isDemo = hasError;
 
   // Use real data or demo fallback
   const effectiveStats = stats || (isDemo ? demoInventoryStats : null);

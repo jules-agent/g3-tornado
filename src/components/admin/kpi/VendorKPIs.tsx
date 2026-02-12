@@ -13,7 +13,8 @@ function num(n: number): string {
 export function VendorKPIs() {
   const { data: vendors, isLoading, error, mutate } = useVendors({ limit: 500 });
 
-  const isDemo = !!error && !isLoading;
+  const isDemo = !!error;
+  const loading = isLoading && !isDemo;
   const effectiveVendors = vendors || (isDemo ? demoVendors : null);
 
   const activeVendors = (effectiveVendors?.data ?? []).filter((v) => v.active);
@@ -32,7 +33,7 @@ export function VendorKPIs() {
       {isDemo && <ConnectionError onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {isLoading ? (
+        {loading ? (
           <>
             <KPICardSkeleton />
             <KPICardSkeleton />
@@ -69,7 +70,7 @@ export function VendorKPIs() {
         )}
       </div>
 
-      <ChartCard title="Vendor Directory" subtitle={`${num(activeCount)} active vendors`} loading={isLoading}>
+      <ChartCard title="Vendor Directory" subtitle={`${num(activeCount)} active vendors`} loading={loading}>
         <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin">
           {activeVendors.slice(0, 20).map((vendor) => (
             <div key={vendor.id} className="flex items-center justify-between rounded-lg bg-slate-900/50 px-3 py-2.5">

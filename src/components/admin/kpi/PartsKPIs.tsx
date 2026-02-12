@@ -23,9 +23,9 @@ export function PartsKPIs() {
   const { data: cars, isLoading: carsLoading, error: carsErr, mutate: mutateCars } = useCars();
   const { data: customParts, isLoading: customLoading, error: customErr, mutate: mutateCustom } = useCustomParts({ limit: 1 });
 
-  const loading = partsLoading || brandsLoading || carsLoading || customLoading;
   const hasError = !!(partsErr || brandsErr || carsErr || customErr);
-  const isDemo = hasError && !loading;
+  const loading = !hasError && (partsLoading || brandsLoading || carsLoading || customLoading);
+  const isDemo = hasError;
 
   const effectiveParts = parts || (isDemo ? demoParts : null);
   const effectiveBrands = brands || (isDemo ? demoBrands : null);
