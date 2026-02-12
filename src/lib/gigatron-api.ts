@@ -33,7 +33,7 @@ import type {
 // Config
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env.GIGATRON_API_URL || "http://35.215.122.92:3000/api/tornado";
+const BASE_URL = process.env.GIGATRON_API_URL || "http://35.215.122.92/api/tornado";
 const API_KEY = process.env.GIGATRON_API_KEY || "";
 
 if (!API_KEY && typeof window === "undefined") {
