@@ -33,10 +33,16 @@ export async function GET() {
     return NextResponse.json(data);
   }
 
-  // Non-admins: RLS handles filtering (approved + own proposals)
-  const { data, error } = await supabase
+  // Non-admins: Use service role to explicitly filter (approved + own proposals)
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data, error } = await serviceClient
     .from("task_templates")
     .select("*")
+    .or(`status.eq.approved,created_by.eq.${user.id}`)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
