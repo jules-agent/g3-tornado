@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
@@ -258,8 +259,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
         </div>
       </div>
 
-      {/* Mobile Menu Slide-out */}
-      {mobileMenuOpen && (
+      {/* Mobile Menu Slide-out — rendered via Portal to escape header stacking context */}
+      {mobileMenuOpen && typeof document !== "undefined" && createPortal(
         <>
           {/* Backdrop */}
           <div
@@ -267,7 +268,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             onClick={() => setMobileMenuOpen(false)}
           />
           
-          {/* Menu Panel - Improved safe area padding + forced visible */}
+          {/* Menu Panel */}
           <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-[9999] md:hidden overflow-y-auto shadow-2xl" style={{ paddingTop: 'max(3rem, env(safe-area-inset-top, 1.5rem))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
             <div className="px-6 space-y-6">
               {/* User Info */}
@@ -449,7 +450,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
       <ParkingLot isOpen={showParkingLot} onClose={() => setShowParkingLot(false)} />
       <FocusModeStandalone isOpen={showFocusMode} onClose={() => setShowFocusMode(false)} />

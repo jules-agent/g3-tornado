@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getEffectiveUser } from "@/lib/impersonation";
 import AppHeader from "@/components/AppHeader";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import { VoiceCaptureFAB } from "@/components/VoiceCaptureFAB";
 
 export default async function ProtectedLayout({
   children,
@@ -33,6 +34,7 @@ export default async function ProtectedLayout({
       <main className="w-full px-4 py-2 sm:px-6 lg:px-8">
         {children}
       </main>
+      <VoiceCaptureFAB />
     </div>
   );
 }
