@@ -263,12 +263,12 @@ export default function AppHeader({ user }: AppHeaderProps) {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 z-[60] md:hidden"
+            className="fixed inset-0 bg-black/50 z-[9998] md:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
           
-          {/* Menu Panel - Improved safe area padding */}
-          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-[70] md:hidden overflow-y-auto shadow-2xl" style={{ paddingTop: 'max(1.5rem, var(--safe-area-top))', paddingBottom: 'max(1.5rem, var(--safe-area-bottom))' }}>
+          {/* Menu Panel - Improved safe area padding + forced visible */}
+          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-[9999] md:hidden overflow-y-auto shadow-2xl" style={{ paddingTop: 'max(3rem, env(safe-area-inset-top, 1.5rem))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
             <div className="px-6 space-y-6">
               {/* User Info */}
               <div className="flex items-center gap-4 pb-6 border-b border-slate-200 dark:border-slate-700">
