@@ -80,10 +80,10 @@ export function BugReport({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const accentColor = isBug ? "teal" : "indigo";
 
   const modal = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onMouseDown={onClose}>
       <div
         className="w-full max-w-lg mx-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header with tabs */}
         <div className="border-b border-slate-200 dark:border-slate-700">
