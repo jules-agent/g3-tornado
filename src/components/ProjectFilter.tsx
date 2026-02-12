@@ -23,7 +23,7 @@ export function ProjectFilter({
 
   return (
     <select
-      className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-600 dark:text-slate-300"
+      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-slate-700 dark:text-slate-200 font-medium min-h-[44px] max-w-[140px] sm:max-w-none"
       value={currentProject}
       onChange={(e) => {
         const val = e.target.value;

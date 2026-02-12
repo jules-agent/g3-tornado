@@ -289,21 +289,24 @@ export default async function Home({
     <div className="space-y-1">
       {/* Search and Filters - sticky */}
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 pb-1 space-y-1.5">
-        <SearchBox />
+        {/* Desktop: Search on its own row */}
+        <div className="hidden sm:block">
+          <SearchBox />
+        </div>
         <div className="flex items-center gap-1.5">
           <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-x-auto shadow-sm text-sm scrollbar-hide flex-shrink min-w-0">
             {filters.map((f) => (
               <Link
                 key={f.key}
                 href={`/?filter=${f.key}${projectFilter !== "all" ? `&project=${projectFilter}` : ""}`}
-                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border-r border-slate-200 dark:border-slate-700 last:border-r-0 transition whitespace-nowrap ${
+                className={`px-2.5 sm:px-4 py-2 sm:py-2 text-xs sm:text-sm font-semibold border-r border-slate-200 dark:border-slate-700 last:border-r-0 transition whitespace-nowrap min-h-[44px] flex items-center ${
                   filter === f.key
                     ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                 }`}
               >
                 <span className={f.color && filter !== f.key ? f.color : undefined}>{f.label}</span>
-                <span className={`ml-1 ${filter === f.key ? "text-white/60" : "text-slate-400 dark:text-slate-500"}`}>{f.count}</span>
+                <span className={`ml-1 ${filter === f.key ? "text-white/70" : "text-slate-400 dark:text-slate-500"}`}>{f.count}</span>
               </Link>
             ))}
           </div>
@@ -313,10 +316,14 @@ export default async function Home({
             currentProject={projectFilter}
             creatorNames={creatorNames}
           />
+          {/* Mobile: Search icon inline with filters */}
+          <div className="sm:hidden">
+            <SearchBox />
+          </div>
           {viewAsAdmin && (
             <Link
               href="/admin"
-              className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition whitespace-nowrap flex-shrink-0"
+              className="hidden sm:inline-flex px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition whitespace-nowrap flex-shrink-0"
             >
               ⚙️ Admin
             </Link>

@@ -234,12 +234,12 @@ export default function AppHeader({ user }: AppHeaderProps) {
           </div>
         </div>
 
-        {/* Mobile: Quick actions */}
+        {/* Mobile: Quick actions — no redundant avatar */}
         <div className="flex md:hidden items-center gap-2">
           {overdueCount !== null && overdueCount > 0 && (
             <button
               onClick={() => setShowDailyActions(true)}
-              className="relative p-2 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition animate-pulse-urgent"
+              className="relative flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition animate-pulse-urgent"
               title={`${overdueCount} overdue tasks`}
             >
               <span className="text-lg">📋</span>
@@ -248,9 +248,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
               </span>
             </button>
           )}
-          <Link href="/profile" className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-sm font-bold text-white hover:opacity-80 transition">
-            {initials}
-          </Link>
+          <button
+            onClick={() => setShowParkingLot(true)}
+            className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition text-sm font-bold"
+            title="Quick Parking"
+          >
+            +P
+          </button>
         </div>
       </div>
 
