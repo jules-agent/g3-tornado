@@ -33,11 +33,11 @@ export function InventoryKPIs() {
   // Compute top 10 highest value items
   const topItems = inventory?.data
     ? [...inventory.data]
-        .sort((a, b) => b.value_on_hand - a.value_on_hand)
+        .sort((a, b) => (Number(b.value_on_hand) || 0) - (Number(a.value_on_hand) || 0))
         .slice(0, 10)
         .map((item) => ({
           name: item.part_name.length > 25 ? item.part_name.slice(0, 25) + "…" : item.part_name,
-          value: item.value_on_hand,
+          value: Number(item.value_on_hand) || 0,
         }))
     : isDemo
     ? demoTopInventoryItems

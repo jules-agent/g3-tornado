@@ -52,7 +52,7 @@ export function PartsKPIs() {
     .map(([name, value]) => ({ name, value }));
 
   // Average price
-  const allPrices = (effectiveParts?.data ?? []).map((p: { price_retail: number }) => p.price_retail).filter((p: number) => p > 0);
+  const allPrices = (effectiveParts?.data ?? []).map((p: { price_retail: number | string }) => Number(p.price_retail) || 0).filter((p: number) => p > 0);
   const avgPrice = allPrices.length > 0 ? allPrices.reduce((s: number, p: number) => s + p, 0) / allPrices.length : 0;
 
   const totalParts = effectiveParts?.total ?? 0;
