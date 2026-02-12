@@ -535,9 +535,9 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <span className="text-xl flex-shrink-0">📋</span>
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Today&apos;s Actions</h1>
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Today&apos;s Actions <span className="text-xs font-normal text-teal-500 ml-1">Standup Mode</span></h1>
             <p className="text-xs text-slate-500 truncate">
-              {items.length} overdue task{items.length !== 1 ? "s" : ""} need attention
+              {items.length} overdue task{items.length !== 1 ? "s" : ""} — add quick updates below
             </p>
           </div>
         </div>

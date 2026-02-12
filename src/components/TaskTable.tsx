@@ -1534,18 +1534,40 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
             <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700">
               <h3 className="font-bold text-slate-900 dark:text-white">Complete Gate?</h3>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 py-4 space-y-3">
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                Are you sure you want to complete this gate?
+                Mark this gate as complete?
               </p>
               {completingGate.gates[completingGate.gateIndex] && (
-                <p className="text-xs text-slate-400 mt-2">
-                  {completingGate.gates[completingGate.gateIndex].owner_name}
-                  {completingGate.gates[completingGate.gateIndex].task_name && 
-                    ` — ${completingGate.gates[completingGate.gateIndex].task_name}`
-                  }
-                </p>
+                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2">
+                  <div className="text-[10px] font-semibold text-emerald-600 uppercase">Completing</div>
+                  <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                    {completingGate.gates[completingGate.gateIndex].owner_name}
+                    {completingGate.gates[completingGate.gateIndex].task_name && 
+                      ` — ${completingGate.gates[completingGate.gateIndex].task_name}`
+                    }
+                  </div>
+                </div>
               )}
+              {/* Show next gate preview */}
+              {(() => {
+                const nextIdx = completingGate.gates.findIndex((g, i) => i > completingGate.gateIndex && !g.completed);
+                const nextGate = nextIdx >= 0 ? completingGate.gates[nextIdx] : null;
+                if (!nextGate) return (
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 px-3 py-2">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase">Next</div>
+                    <div className="text-sm text-slate-500">No more gates — task will be unblocked</div>
+                  </div>
+                );
+                return (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                    <div className="text-[10px] font-semibold text-amber-600 uppercase">Auto-advances to</div>
+                    <div className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      {nextGate.owner_name}{nextGate.task_name && ` — ${nextGate.task_name}`}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
               <button
@@ -1664,10 +1686,14 @@ function renderCell(columnId: string, task: Task, projectCreators: Record<string
         </span>
       );
     }
-    case "status":
-      if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200">DONE</span>;
-      if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700">PENDING</span>;
-      return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">OPEN</span>;
+    case "status": {
+      if (task.status === "closed") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200">✓ DONE</span>;
+      if (task.status === "close_requested") return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">PENDING</span>;
+      if (task.is_blocked) return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300">GATED</span>;
+      if (task.isStale && task.isMyTask) return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-200 text-red-700 dark:bg-red-900/50 dark:text-red-300 animate-pulse">🔥 URGENT</span>;
+      if (task.isStale) return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">OVERDUE</span>;
+      return <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">OPEN</span>;
+    }
     case "owner":
       return <span className="text-slate-800 dark:text-slate-300 text-xs truncate">{capitalizeFirst(task.ownerNames) || "—"}</span>;
     case "gated": {
