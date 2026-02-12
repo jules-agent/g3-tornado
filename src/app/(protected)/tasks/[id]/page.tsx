@@ -5,6 +5,7 @@ import TaskForm from "@/components/TaskForm";
 import AddNoteForm from "@/components/AddNoteForm";
 import TaskActions from "@/components/TaskActions";
 import { DeleteNoteButton } from "@/components/DeleteNoteButton";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 
 export default async function TaskDetailPage({
   params,
@@ -160,14 +161,8 @@ export default async function TaskDetailPage({
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
-              <span className="text-xs uppercase tracking-wide text-slate-400">
-                {notes?.length ?? 0} updates
-              </span>
-            </div>
-            <div className="mt-4">
+          <CollapsibleSection title="Notes" badge={`${notes?.length ?? 0} updates`} defaultOpen={true}>
+            <div>
               <AddNoteForm taskId={task.id} />
             </div>
             <div className="mt-6 space-y-4">
@@ -201,7 +196,7 @@ export default async function TaskDetailPage({
                 </div>
               )}
             </div>
-          </div>
+          </CollapsibleSection>
         </div>
 
         <div className="space-y-6">
@@ -222,12 +217,10 @@ export default async function TaskDetailPage({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Edit task</h2>
-            <p className="mt-1 text-sm text-slate-500">
+          <CollapsibleSection title="Edit task" defaultOpen={false}>
+            <p className="text-sm text-slate-500 mb-4">
               Update owners, cadence, or blockers.
             </p>
-            <div className="mt-4">
               <TaskForm
                 mode="edit"
                 taskId={task.id}
@@ -244,8 +237,7 @@ export default async function TaskDetailPage({
                   blocker_description: task.blocker_description,
                 }}
               />
-            </div>
-          </div>
+          </CollapsibleSection>
         </div>
       </section>
     </div>

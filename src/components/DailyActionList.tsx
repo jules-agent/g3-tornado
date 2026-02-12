@@ -71,9 +71,11 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
     if (!noteText.trim() || saving) return;
     setSaving(true);
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     const { error: noteError } = await supabase.from("task_notes").insert({
       task_id: item.taskId,
       content: noteText.trim(),
+      created_by: currentUser?.id ?? null,
     });
 
     setSaving(false);
@@ -524,9 +526,10 @@ export function DailyActionList({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const content = (
     <div
-      className="fixed left-0 right-0 bottom-0 z-[100] bg-white dark:bg-slate-950 overflow-y-auto"
-      style={{ isolation: "isolate", top: "var(--header-height, 57px)" }}
+      className="fixed inset-0 z-[9999] bg-white dark:bg-slate-950 overflow-y-auto"
+      style={{ isolation: "isolate" }}
     >
+      <style>{`body { overflow: hidden !important; }`}</style>
       {/* Sub-header for Daily Actions */}
       <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

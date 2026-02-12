@@ -10,6 +10,7 @@ import { capitalizeFirst } from "@/lib/utils";
 import { CloseTaskGateCheck } from "./CloseTaskGateCheck";
 import { TaskCard } from "./TaskCard";
 import { RestartClockModal } from "./RestartClockModal";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const STORAGE_KEY = "g3-view-preferences";
 
@@ -689,9 +690,11 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
     
     setSavingNote(true);
     const supabase = createClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     const { error } = await supabase.from("task_notes").insert({
       task_id: taskId,
       content: editingNoteValue.trim(),
+      created_by: currentUser?.id ?? null,
     });
     
     if (error) {
@@ -764,15 +767,15 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (confirmDeleteId !== taskId) {
-      setConfirmDeleteId(taskId);
-      setTimeout(() => setConfirmDeleteId(null), 5000);
-      return;
-    }
-    setDeletingId(taskId);
-    const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    setConfirmDeleteId(taskId);
+    setRowMenuOpen(null);
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
+    const res = await fetch(`/api/tasks/${confirmDeleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setRowMenuOpen(null);
       setConfirmDeleteId(null);
       router.refresh();
     } else {
@@ -1092,8 +1095,11 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
               />
             ))
           ) : (
-            <div className="card py-12 text-center text-slate-400">
-              No tasks match your filters
+            <div className="card py-16 text-center">
+              <div className="text-4xl mb-3">📭</div>
+              <div className="text-slate-500 dark:text-slate-400 font-medium mb-1">No tasks match your filters</div>
+              <div className="text-xs text-slate-400 dark:text-slate-500 mb-4">Try adjusting your filters or create a new task</div>
+              <Link href="/tasks/new" className="inline-flex items-center px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-semibold hover:bg-teal-600 transition">+ New Task</Link>
             </div>
           )}
         </div>
@@ -1261,14 +1267,9 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                                   <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
                                   <button
                                     onClick={() => handleDeleteTask(task.id)}
-                                    disabled={deletingId === task.id}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left ${
-                                      confirmDeleteId === task.id
-                                        ? "bg-red-600 text-white"
-                                        : "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
-                                    } disabled:opacity-50`}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
                                   >
-                                    <span>🗑️</span> {deletingId === task.id ? "Deleting..." : confirmDeleteId === task.id ? "Click again to confirm" : "Delete Task"}
+                                    <span>🗑️</span> Delete Task
                                   </button>
                                 </>
                               )}
@@ -1474,7 +1475,11 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
                   );
                 })
               ) : (
-                <tr><td colSpan={columns.length + 1} className="px-4 py-12 text-center text-slate-400">No tasks match your filters</td></tr>
+                <tr><td colSpan={columns.length + 1} className="px-4 py-16 text-center">
+                  <div className="text-4xl mb-3">📭</div>
+                  <div className="text-slate-500 dark:text-slate-400 font-medium mb-1">No tasks match your filters</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">Try adjusting your filters or <Link href="/tasks/new" className="text-teal-500 hover:text-teal-600 font-semibold">create a new task</Link></div>
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -1569,6 +1574,18 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           currentCadenceDays={completingGate.currentCadenceDays}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteId}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmLabel={deletingId ? "Deleting..." : "Delete"}
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDeleteId(null)}
+        loading={!!deletingId}
+      />
     </div>
   );
 }

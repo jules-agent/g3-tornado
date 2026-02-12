@@ -347,6 +347,46 @@ export function Scorecard({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
         ) : (
           /* ===== TEAM LEADERBOARD ===== */
           <div className="space-y-3">
+            {/* Aggregate Team Metrics */}
+            {scores.length > 0 && (() => {
+              const totalOpen = scores.reduce((s, u) => s + u.totalOpen, 0);
+              const totalOverdue = scores.reduce((s, u) => s + u.tasksOverdue, 0);
+              const totalOnTrack = scores.reduce((s, u) => s + u.tasksOnTrack, 0);
+              const totalCompleted = scores.reduce((s, u) => s + u.tasksCompleted, 0);
+              const avgReliability = Math.round(scores.reduce((s, u) => s + u.reliabilityScore, 0) / scores.length);
+              const overduePercent = totalOpen > 0 ? Math.round((totalOverdue / totalOpen) * 100) : 0;
+              return (
+                <div className="mb-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 p-5">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">📊 Team Overview</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-slate-900 dark:text-white">{totalOpen}</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Open Tasks</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-green-600 dark:text-green-400">{totalCompleted}</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Done This Week</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-red-600 dark:text-red-400">{totalOverdue}</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Overdue ({overduePercent}%)</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-teal-600 dark:text-teal-400">{totalOnTrack}</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">On Track</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{avgReliability}%</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">Avg Reliability</div>
+                    </div>
+                  </div>
+                  {/* Team reliability bar */}
+                  <div className="mt-3 w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                    <div className={`h-full rounded-full ${avgReliability >= 75 ? "bg-green-500" : avgReliability >= 50 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${avgReliability}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-4">🏆 Team Leaderboard</h2>
             {scores.map((score) => (
               <div

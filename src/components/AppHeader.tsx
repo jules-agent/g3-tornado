@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst } from "@/lib/utils";
@@ -39,7 +39,20 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [inboxTotal, setInboxTotal] = useState(0);
   const [inboxUnread, setInboxUnread] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(user.role === "admin" || user.email === "ben@unpluggedperformance.com");
+
+  // Close more menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Check for overdue tasks on mount — auto-open Daily Actions if any exist
   useEffect(() => {
@@ -172,49 +185,49 @@ export default function AppHeader({ user }: AppHeaderProps) {
 
         {/* Desktop: Text nav + action buttons — all in one row */}
         <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
-          {/* Text menu links */}
+          {/* Primary nav links */}
           <nav className="flex items-center gap-3 text-[11px] mr-auto ml-6">
             {overdueCount !== null && overdueCount > 0 && (
               <button onClick={() => setShowDailyActions(true)} className="font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition whitespace-nowrap">
-                Daily Actions ({overdueCount})
+                📋 Actions ({overdueCount})
               </button>
             )}
             {overdueCount !== null && overdueCount > 0 && (
               <button onClick={() => setShowFocusMode(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition whitespace-nowrap">
-                Focus
+                🎯 Focus
               </button>
             )}
-            <button onClick={() => setShowScorecard(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition whitespace-nowrap">
-              Scorecard
-            </button>
-            {isAdmin && (
-              <button onClick={() => setShowProjectHealth(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
-                Health
-              </button>
-            )}
-            <button onClick={() => setShowParkingLot(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition whitespace-nowrap">
-              Parking
-            </button>
-            <Link href="/contacts" className="font-medium text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition whitespace-nowrap">
-              Contacts
-            </Link>
             <Link href="/projects" className="font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition whitespace-nowrap">
-              Projects
+              📁 Projects
             </Link>
-            <button onClick={() => setShowBugReport(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition whitespace-nowrap">
-              Feedback
-            </button>
-            <button onClick={() => setShowProposeTemplate(true)} className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition whitespace-nowrap">
-              Templates
-            </button>
             {inboxTotal > 0 && (
               <Link href="/inbox" className={`font-medium transition whitespace-nowrap ${inboxUnread > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400 hover:text-slate-700"}`}>
-                Inbox {inboxUnread > 0 && `(${inboxUnread})`}
+                📬 Inbox {inboxUnread > 0 && `(${inboxUnread})`}
               </Link>
             )}
-            <a href="/tutorial" target="_blank" rel="noopener noreferrer" className="font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
-              Tutorial
-            </a>
+            {/* More menu */}
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition whitespace-nowrap"
+              >
+                More ▾
+              </button>
+              {showMoreMenu && (
+                <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1">
+                  <button onClick={() => { setShowScorecard(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">🏆 Scorecard</button>
+                  {isAdmin && (
+                    <button onClick={() => { setShowProjectHealth(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📊 Health</button>
+                  )}
+                  <button onClick={() => { setShowParkingLot(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">🅿️ Parking Lot</button>
+                  <Link href="/contacts" onClick={() => setShowMoreMenu(false)} className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📇 Contacts</Link>
+                  <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                  <button onClick={() => { setShowBugReport(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">💬 Feedback</button>
+                  <button onClick={() => { setShowProposeTemplate(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📋 Templates</button>
+                  <a href="/tutorial" target="_blank" rel="noopener noreferrer" onClick={() => setShowMoreMenu(false)} className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📖 Tutorial</a>
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Right actions */}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { capitalizeFirst } from "@/lib/utils";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type Gate = {
   name: string;
@@ -119,15 +120,15 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 5000);
-      return;
-    }
+  const handleDelete = () => {
+    setConfirmDelete(true);
+  };
+
+  const confirmDeleteAction = async () => {
     setDeleting(true);
     const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
     if (res.ok) {
+      setConfirmDelete(false);
       onRefresh();
     } else {
       const data = await res.json().catch(() => null);
@@ -230,14 +231,9 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
                     <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
                     <button
                       onClick={handleDelete}
-                      disabled={deleting}
-                      className={`w-full flex items-center gap-3 px-5 py-3 text-base text-left min-h-[44px] ${
-                        confirmDelete
-                          ? "bg-red-600 text-white"
-                          : "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50"
-                      } disabled:opacity-50`}
+                      className="w-full flex items-center gap-3 px-5 py-3 text-base text-left min-h-[44px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50"
                     >
-                      <span className="text-lg">🗑️</span> <span>{deleting ? "Deleting..." : confirmDelete ? "Click to confirm" : "Delete Task"}</span>
+                      <span className="text-lg">🗑️</span> <span>Delete Task</span>
                     </button>
                   </>
                 )}
@@ -355,6 +351,18 @@ export function TaskCard({ task, canDelete, isAdmin, onRefresh }: TaskCardProps)
           </span>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete(false)}
+        loading={deleting}
+      />
     </div>
   );
 }

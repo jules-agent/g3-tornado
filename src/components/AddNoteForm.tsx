@@ -23,9 +23,11 @@ export default function AddNoteForm({ taskId }: AddNoteFormProps) {
     setError(null);
 
     const supabase = createClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     const { error: insertError } = await supabase.from("task_notes").insert({
       task_id: taskId,
       content: content.trim(),
+      created_by: currentUser?.id ?? null,
     });
 
     if (insertError) {

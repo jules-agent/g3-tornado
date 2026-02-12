@@ -26,6 +26,10 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
+  // Name editing
+  const [editingName, setEditingName] = useState(false);
+  const [fullName, setFullName] = useState(profile?.full_name ?? "");
+
   // Team flags
   const [isUp, setIsUp] = useState(owner?.is_up_employee ?? false);
   const [isBp, setIsBp] = useState(owner?.is_bp_employee ?? false);
@@ -106,8 +110,64 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
       {/* Profile info */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Account</h2>
-        <div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
-          <p><span className="text-slate-400">Name:</span> {profile?.full_name || "Not set"}</p>
+        <div className="text-sm text-slate-600 dark:text-slate-300 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 w-12">Name:</span>
+            {editingName ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  autoFocus
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter") {
+                      setSaving(true);
+                      const supabase = (await import("@/lib/supabase/client")).createClient();
+                      const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() || null }).eq("id", profile!.id);
+                      setSaving(false);
+                      if (!error) {
+                        setEditingName(false);
+                        setStatus({ type: "success", msg: "Name updated!" });
+                        router.refresh();
+                      } else {
+                        setStatus({ type: "error", msg: "Failed to update name" });
+                      }
+                    } else if (e.key === "Escape") {
+                      setEditingName(false);
+                      setFullName(profile?.full_name ?? "");
+                    }
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    setSaving(true);
+                    const supabase = (await import("@/lib/supabase/client")).createClient();
+                    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() || null }).eq("id", profile!.id);
+                    setSaving(false);
+                    if (!error) {
+                      setEditingName(false);
+                      setStatus({ type: "success", msg: "Name updated!" });
+                      router.refresh();
+                    } else {
+                      setStatus({ type: "error", msg: "Failed to update name" });
+                    }
+                  }}
+                  disabled={saving}
+                  className="px-3 py-1.5 rounded-lg bg-teal-500 text-white text-xs font-semibold hover:bg-teal-600 disabled:opacity-50"
+                >
+                  {saving ? "..." : "Save"}
+                </button>
+                <button onClick={() => { setEditingName(false); setFullName(profile?.full_name ?? ""); }} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>{profile?.full_name || "Not set"}</span>
+                <button onClick={() => setEditingName(true)} className="text-xs text-teal-500 hover:text-teal-600 font-semibold">Edit</button>
+              </div>
+            )}
+          </div>
           <p><span className="text-slate-400">Email:</span> {profile?.email}</p>
           <p><span className="text-slate-400">Role:</span> {profile?.role || "user"}</p>
         </div>

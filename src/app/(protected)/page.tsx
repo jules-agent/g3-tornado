@@ -262,6 +262,16 @@ export default async function Home({
     filteredTasks.sort((a, b) => b.daysSinceMovement - a.daysSinceMovement);
   } else if (sort === "project") {
     filteredTasks.sort((a, b) => (a.projects?.name ?? "").localeCompare(b.projects?.name ?? ""));
+  } else if (sort === "blocker") {
+    // Group by current gate owner (blocker person)
+    filteredTasks.sort((a, b) => {
+      const aGate = (a.gates || []).find((g: Gate) => !g.completed);
+      const bGate = (b.gates || []).find((g: Gate) => !g.completed);
+      const aBlocker = aGate?.owner_name || "zzz_none";
+      const bBlocker = bGate?.owner_name || "zzz_none";
+      if (aBlocker !== bBlocker) return aBlocker.localeCompare(bBlocker);
+      return b.daysSinceMovement - a.daysSinceMovement;
+    });
   }
 
   // Stats (based on visible tasks for the user)

@@ -100,9 +100,11 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     if (!noteValue.trim()) return;
     setSaving(true);
     const supabase = createClient();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     await supabase.from("task_notes").insert({
       task_id: taskId,
       content: noteValue.trim(),
+      created_by: currentUser?.id ?? null,
     });
     setSaving(false);
     setEditingNote(null);
