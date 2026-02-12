@@ -3,6 +3,8 @@
 import { useParts, useBrands, useCars, useCustomParts } from "@/hooks/useGigatron";
 import { KPICard, KPICardSkeleton } from "./KPICard";
 import { ChartCard } from "./ChartCard";
+import { ConnectionError, DemoBadge } from "./ConnectionError";
+import { demoParts, demoBrands, demoCars, demoCustomParts } from "./demoData";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 function fmt(n: number): string {
@@ -16,16 +18,23 @@ function num(n: number): string {
 const BRAND_COLORS = ["#10b981", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16"];
 
 export function PartsKPIs() {
-  const { data: parts, isLoading: partsLoading } = useParts({ limit: 1000 });
-  const { data: brands, isLoading: brandsLoading } = useBrands();
-  const { data: cars, isLoading: carsLoading } = useCars();
-  const { data: customParts, isLoading: customLoading } = useCustomParts({ limit: 1 });
+  const { data: parts, isLoading: partsLoading, error: partsErr, mutate: mutateParts } = useParts({ limit: 1000 });
+  const { data: brands, isLoading: brandsLoading, error: brandsErr, mutate: mutateBrands } = useBrands();
+  const { data: cars, isLoading: carsLoading, error: carsErr, mutate: mutateCars } = useCars();
+  const { data: customParts, isLoading: customLoading, error: customErr, mutate: mutateCustom } = useCustomParts({ limit: 1 });
 
   const loading = partsLoading || brandsLoading || carsLoading || customLoading;
+  const hasError = !!(partsErr || brandsErr || carsErr || customErr);
+  const isDemo = hasError && !loading;
+
+  const effectiveParts = parts || (isDemo ? demoParts : null);
+  const effectiveBrands = brands || (isDemo ? demoBrands : null);
+  const effectiveCars = cars || (isDemo ? demoCars : null);
+  const effectiveCustomParts = customParts || (isDemo ? demoCustomParts : null);
 
   // Compute brand distribution
   const brandCounts: Record<string, number> = {};
-  (parts?.data ?? []).forEach((p) => {
+  (effectiveParts?.data ?? []).forEach((p: { brand: string }) => {
     brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
   });
   const brandData = Object.entries(brandCounts)
@@ -35,7 +44,7 @@ export function PartsKPIs() {
 
   // Compute car distribution
   const carCounts: Record<string, number> = {};
-  (parts?.data ?? []).forEach((p) => {
+  (effectiveParts?.data ?? []).forEach((p: { car: string }) => {
     carCounts[p.car] = (carCounts[p.car] || 0) + 1;
   });
   const carData = Object.entries(carCounts)
@@ -43,14 +52,26 @@ export function PartsKPIs() {
     .map(([name, value]) => ({ name, value }));
 
   // Average price
-  const allPrices = (parts?.data ?? []).map((p) => p.price_retail).filter((p) => p > 0);
-  const avgPrice = allPrices.length > 0 ? allPrices.reduce((s, p) => s + p, 0) / allPrices.length : 0;
+  const allPrices = (effectiveParts?.data ?? []).map((p: { price_retail: number }) => p.price_retail).filter((p: number) => p > 0);
+  const avgPrice = allPrices.length > 0 ? allPrices.reduce((s: number, p: number) => s + p, 0) / allPrices.length : 0;
+
+  const totalParts = effectiveParts?.total ?? 0;
+
+  const handleRetry = () => {
+    mutateParts();
+    mutateBrands();
+    mutateCars();
+    mutateCustom();
+  };
 
   return (
     <section>
       <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
         <span className="text-xl">🔧</span> Parts Catalog
+        {isDemo && <DemoBadge />}
       </h2>
+
+      {isDemo && <ConnectionError onRetry={handleRetry} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
@@ -64,19 +85,19 @@ export function PartsKPIs() {
           <>
             <KPICard
               label="Total Active Parts"
-              value={num(parts?.total ?? 0)}
-              subtitle={`Across ${brands?.total ?? 0} brands`}
+              value={num(totalParts)}
+              subtitle={`Across ${effectiveBrands?.total ?? 0} brands`}
               trend="neutral"
             />
             <KPICard
               label="Vehicle Models"
-              value={num(cars?.total ?? 0)}
+              value={num(effectiveCars?.total ?? 0)}
               subtitle="Supported vehicle types"
               trend="neutral"
             />
             <KPICard
               label="Custom Parts"
-              value={num(customParts?.total ?? 0)}
+              value={num(effectiveCustomParts?.total ?? 0)}
               subtitle="Made-to-order items"
               trend="neutral"
             />
@@ -125,7 +146,7 @@ export function PartsKPIs() {
         <ChartCard title="Parts by Vehicle" subtitle="Distribution across Tesla models" loading={loading}>
           <div className="space-y-3">
             {carData.map((car, i) => {
-              const pct = parts?.total ? Math.round((car.value / parts.total) * 100) : 0;
+              const pct = totalParts ? Math.round((car.value / totalParts) * 100) : 0;
               return (
                 <div key={car.name}>
                   <div className="flex items-center justify-between mb-1">

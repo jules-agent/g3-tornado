@@ -3,28 +3,33 @@
 import { useVendors } from "@/hooks/useGigatron";
 import { KPICard, KPICardSkeleton } from "./KPICard";
 import { ChartCard } from "./ChartCard";
+import { ConnectionError, DemoBadge } from "./ConnectionError";
+import { demoVendors } from "./demoData";
 
 function num(n: number): string {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
 export function VendorKPIs() {
-  const { data: vendors, isLoading } = useVendors({ limit: 500 });
+  const { data: vendors, isLoading, error, mutate } = useVendors({ limit: 500 });
 
-  const activeVendors = (vendors?.data ?? []).filter((v) => v.active);
-  const totalVendors = vendors?.total ?? 0;
+  const isDemo = !!error && !isLoading;
+  const effectiveVendors = vendors || (isDemo ? demoVendors : null);
+
+  const activeVendors = (effectiveVendors?.data ?? []).filter((v) => v.active);
+  const totalVendors = effectiveVendors?.total ?? 0;
   const activeCount = activeVendors.length;
   const inactiveCount = totalVendors - activeCount;
-
-  // Vendor concentration — if any vendor has >30% of parts, that's a risk
-  // We don't have per-vendor part counts from the list endpoint, so show basic stats
   const hasPaymentTerms = activeVendors.filter((v) => v.payment_terms).length;
 
   return (
     <section>
       <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
         <span className="text-xl">🏭</span> Vendors
+        {isDemo && <DemoBadge />}
       </h2>
+
+      {isDemo && <ConnectionError onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {isLoading ? (
@@ -46,7 +51,7 @@ export function VendorKPIs() {
               label="Active Rate"
               value={totalVendors > 0 ? `${Math.round((activeCount / totalVendors) * 100)}%` : "—"}
               subtitle={`${num(inactiveCount)} inactive`}
-              trend={activeCount / totalVendors > 0.8 ? "good" : "warning"}
+              trend={totalVendors > 0 && activeCount / totalVendors > 0.8 ? "good" : "warning"}
             />
             <KPICard
               label="With Payment Terms"

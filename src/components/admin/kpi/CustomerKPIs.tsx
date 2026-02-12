@@ -3,6 +3,8 @@
 import { useCustomers } from "@/hooks/useGigatron";
 import { KPICard, KPICardSkeleton } from "./KPICard";
 import { ChartCard } from "./ChartCard";
+import { ConnectionError, DemoBadge } from "./ConnectionError";
+import { demoCustomers } from "./demoData";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 function fmt(n: number): string {
@@ -14,10 +16,13 @@ function num(n: number): string {
 }
 
 export function CustomerKPIs() {
-  const { data: customers, isLoading } = useCustomers({ limit: 500 });
+  const { data: customers, isLoading, error, mutate } = useCustomers({ limit: 500 });
 
-  const allCustomers = customers?.data ?? [];
-  const totalCustomers = customers?.total ?? 0;
+  const isDemo = !!error && !isLoading;
+  const effectiveCustomers = customers || (isDemo ? demoCustomers : null);
+
+  const allCustomers = effectiveCustomers?.data ?? [];
+  const totalCustomers = effectiveCustomers?.total ?? 0;
   const activeCustomers = allCustomers.filter((c) => c.active);
 
   // Recent orders (within 90 days)
@@ -45,7 +50,10 @@ export function CustomerKPIs() {
     <section>
       <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
         <span className="text-xl">👥</span> Customers
+        {isDemo && <DemoBadge />}
       </h2>
+
+      {isDemo && <ConnectionError onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {isLoading ? (

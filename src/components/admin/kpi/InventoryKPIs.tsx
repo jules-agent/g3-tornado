@@ -3,6 +3,8 @@
 import { useInventoryStats, useLowStock, useInventory } from "@/hooks/useGigatron";
 import { KPICard, KPICardSkeleton } from "./KPICard";
 import { ChartCard } from "./ChartCard";
+import { ConnectionError, DemoBadge } from "./ConnectionError";
+import { demoInventoryStats, demoLowStock, demoTopInventoryItems } from "./demoData";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function fmt(n: number): string {
@@ -16,11 +18,17 @@ function num(n: number): string {
 const COLORS = ["#10b981", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16"];
 
 export function InventoryKPIs() {
-  const { data: stats, isLoading: statsLoading } = useInventoryStats();
-  const { data: lowStock, isLoading: lowLoading } = useLowStock(5);
-  const { data: inventory, isLoading: invLoading } = useInventory({ limit: 500 });
+  const { data: stats, isLoading: statsLoading, error: statsErr, mutate: mutateStats } = useInventoryStats();
+  const { data: lowStock, isLoading: lowLoading, error: lowErr, mutate: mutateLow } = useLowStock(5);
+  const { data: inventory, isLoading: invLoading, error: invErr, mutate: mutateInv } = useInventory({ limit: 500 });
 
   const loading = statsLoading || lowLoading || invLoading;
+  const hasError = !!(statsErr || lowErr || invErr);
+  const isDemo = hasError && !loading;
+
+  // Use real data or demo fallback
+  const effectiveStats = stats || (isDemo ? demoInventoryStats : null);
+  const effectiveLowStock = lowStock || (isDemo ? demoLowStock : null);
 
   // Compute top 10 highest value items
   const topItems = inventory?.data
@@ -31,19 +39,30 @@ export function InventoryKPIs() {
           name: item.part_name.length > 25 ? item.part_name.slice(0, 25) + "…" : item.part_name,
           value: item.value_on_hand,
         }))
+    : isDemo
+    ? demoTopInventoryItems
     : [];
 
-  const availabilityRate = stats
-    ? Math.round((stats.parts_in_stock / stats.total_parts_tracked) * 100)
+  const availabilityRate = effectiveStats
+    ? Math.round((effectiveStats.parts_in_stock / effectiveStats.total_parts_tracked) * 100)
     : 0;
 
   const availTrend = availabilityRate >= 90 ? "good" : availabilityRate >= 70 ? "warning" : "critical";
+
+  const handleRetry = () => {
+    mutateStats();
+    mutateLow();
+    mutateInv();
+  };
 
   return (
     <section>
       <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
         <span className="text-xl">📦</span> Inventory
+        {isDemo && <DemoBadge />}
       </h2>
+
+      {isDemo && <ConnectionError onRetry={handleRetry} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
@@ -57,25 +76,25 @@ export function InventoryKPIs() {
           <>
             <KPICard
               label="Inventory Value"
-              value={fmt(stats?.total_value_on_hand ?? 0)}
-              subtitle={`${num(stats?.total_qty_available ?? 0)} units on hand`}
+              value={fmt(effectiveStats?.total_value_on_hand ?? 0)}
+              subtitle={`${num(effectiveStats?.total_qty_available ?? 0)} units on hand`}
               trend="neutral"
             />
             <KPICard
               label="Low Stock Alerts"
-              value={num(lowStock?.total ?? 0)}
+              value={num(effectiveLowStock?.total ?? 0)}
               subtitle="Parts below threshold"
-              trend={(lowStock?.total ?? 0) > 10 ? "critical" : (lowStock?.total ?? 0) > 0 ? "warning" : "good"}
+              trend={(effectiveLowStock?.total ?? 0) > 10 ? "critical" : (effectiveLowStock?.total ?? 0) > 0 ? "warning" : "good"}
             />
             <KPICard
               label="Stock Availability"
               value={`${availabilityRate}%`}
-              subtitle={`${num(stats?.parts_in_stock ?? 0)} of ${num(stats?.total_parts_tracked ?? 0)} in stock`}
+              subtitle={`${num(effectiveStats?.parts_in_stock ?? 0)} of ${num(effectiveStats?.total_parts_tracked ?? 0)} in stock`}
               trend={availTrend}
             />
             <KPICard
               label="On Order"
-              value={num(stats?.parts_on_order ?? 0)}
+              value={num(effectiveStats?.parts_on_order ?? 0)}
               subtitle="Parts awaiting delivery"
               trend="neutral"
             />
@@ -103,9 +122,9 @@ export function InventoryKPIs() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Low Stock Items" subtitle={`${lowStock?.total ?? 0} parts below threshold`} loading={loading}>
+        <ChartCard title="Low Stock Items" subtitle={`${effectiveLowStock?.total ?? 0} parts below threshold`} loading={loading}>
           <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2 scrollbar-thin">
-            {(lowStock?.data ?? []).slice(0, 15).map((item) => (
+            {(effectiveLowStock?.data ?? []).slice(0, 15).map((item) => (
               <div key={item.part_id} className="flex items-center justify-between rounded-lg bg-slate-900/50 px-3 py-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-slate-200 truncate">{item.part_name}</p>
@@ -119,7 +138,7 @@ export function InventoryKPIs() {
                 </div>
               </div>
             ))}
-            {(lowStock?.data ?? []).length === 0 && (
+            {(effectiveLowStock?.data ?? []).length === 0 && (
               <p className="text-xs text-slate-500 text-center py-8">No low stock items 🎉</p>
             )}
           </div>

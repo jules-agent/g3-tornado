@@ -31,12 +31,18 @@ import type {
 // ---------------------------------------------------------------------------
 
 async function fetcher<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(body.error || `HTTP ${res.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-  return res.json();
 }
 
 function buildQuery(base: string, params?: Record<string, string | number | boolean | undefined>): string {
@@ -52,6 +58,8 @@ function buildQuery(base: string, params?: Record<string, string | number | bool
 const defaultOpts: SWRConfiguration = {
   revalidateOnFocus: false,
   dedupingInterval: 30_000,
+  errorRetryCount: 2,
+  errorRetryInterval: 5_000,
 };
 
 // ---------------------------------------------------------------------------

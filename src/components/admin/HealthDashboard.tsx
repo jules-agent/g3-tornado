@@ -33,7 +33,7 @@ export function HealthDashboard() {
       {/* Footer */}
       <div className="mt-10 pt-6 border-t border-slate-800 text-center">
         <p className="text-xs text-slate-600">
-          Data sourced from Gigatron ERP • Auto-refreshes every 30s
+          Data sourced from Gigatron ERP • Auto-refreshes every 30s • Retries on failure
         </p>
       </div>
     </div>
