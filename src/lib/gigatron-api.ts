@@ -32,6 +32,7 @@ import type {
   CeoFinancial,
   CeoOperations,
   CeoTeam,
+  CeoClose,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -203,4 +204,110 @@ export async function getCeoOperations(): Promise<CeoOperations> {
 
 export async function getCeoTeam(): Promise<CeoTeam> {
   return fetchGigatron<CeoTeam>("/ceo/team");
+}
+
+// ---------------------------------------------------------------------------
+// Close.io CRM API
+// ---------------------------------------------------------------------------
+
+const CLOSE_API_KEY = process.env.CLOSE_API_KEY || "";
+const CLOSE_BASE_URL = "https://api.close.com/api/v1";
+const CLOSE_ORG_ID = "orga_vahlY4qpnhBRNLfIaB5dlRLDvBkMNmI7CkFbBrowGka";
+
+async function fetchClose<T>(path: string): Promise<T> {
+  const url = `${CLOSE_BASE_URL}${path}`;
+  const auth = Buffer.from(`${CLOSE_API_KEY}:`).toString("base64");
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Basic ${auth}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Close.io API error ${res.status}: ${body}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+export async function getCeoClose(): Promise<CeoClose> {
+  const today = new Date();
+  const date30dAgo = new Date(today);
+  date30dAgo.setDate(today.getDate() - 30);
+
+  const dateStart = date30dAgo.toISOString().split("T")[0];
+  const dateEnd = today.toISOString().split("T")[0];
+
+  // Parallel API calls
+  const [activityReport, activeOpps, wonOpps, lostOpps, allLeads] = await Promise.all([
+    fetchClose<any>(`/report/activity/${CLOSE_ORG_ID}/?date_start=${dateStart}&date_end=${dateEnd}`),
+    fetchClose<any>(`/opportunity/?query=status_type:"active"`),
+    fetchClose<any>(`/opportunity/?query=status_type:"won" date_won>="${dateStart}"&_order_by=-date_won&_limit=100`),
+    fetchClose<any>(`/opportunity/?query=status_type:"lost" date_lost>="${dateStart}"&_limit=100`),
+    fetchClose<any>(`/lead/?query=date_created>="${dateStart}"&_limit=1000`),
+  ]);
+
+  // Calculate metrics
+  const pipelineValue = (activeOpps.data || []).reduce((sum: number, opp: any) => sum + (opp.value || 0), 0);
+  const activeOppsCount = activeOpps.data?.length || 0;
+
+  const wonRevenue30d = (wonOpps.data || []).reduce((sum: number, opp: any) => sum + (opp.value || 0), 0);
+  const wonCount30d = wonOpps.data?.length || 0;
+
+  const lostRevenue30d = (lostOpps.data || []).reduce((sum: number, opp: any) => sum + (opp.value || 0), 0);
+  const lostCount30d = lostOpps.data?.length || 0;
+
+  const totalDecided = wonCount30d + lostCount30d;
+  const winRate = totalDecided > 0 ? (wonCount30d / totalDecided) * 100 : 0;
+
+  const newLeads30d = allLeads.data?.length || 0;
+
+  // Activity metrics (from activity report)
+  const calls30d = activityReport.calls?.total || 0;
+  const emailsSent30d = activityReport.emails_sent?.total || 0;
+  const smsSent30d = activityReport.sms_sent?.total || 0;
+  const avgCallDuration = activityReport.calls?.average_duration || 0;
+
+  // Contacted leads (leads with at least one activity)
+  const leadsContacted30d = activityReport.leads_contacted?.total || 0;
+
+  // Recent wins (top 5)
+  const recentWins = (wonOpps.data || []).slice(0, 5).map((opp: any) => ({
+    name: opp.lead_name || "Unknown",
+    value: opp.value || 0,
+    status: opp.status_label || "Won",
+    date: opp.date_won || "",
+  }));
+
+  // Opportunities created in last 30 days
+  const createdOpps30d = (wonOpps.data || []).filter((opp: any) => {
+    const created = new Date(opp.date_created);
+    return created >= date30dAgo;
+  }).length + (lostOpps.data || []).filter((opp: any) => {
+    const created = new Date(opp.date_created);
+    return created >= date30dAgo;
+  }).length + activeOppsCount;
+
+  return {
+    pipelineValue: pipelineValue / 100, // Close.io values are in cents
+    activeOpps: activeOppsCount,
+    wonRevenue30d: wonRevenue30d / 100,
+    wonCount30d,
+    lostRevenue30d: lostRevenue30d / 100,
+    lostCount30d,
+    winRate,
+    newLeads30d,
+    leadsContacted30d,
+    calls30d,
+    emailsSent30d,
+    smsSent30d,
+    avgCallDuration,
+    recentWins: recentWins.map((w: any) => ({ ...w, value: w.value / 100 })),
+    createdOpps30d,
+  };
 }

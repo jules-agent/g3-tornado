@@ -1,6 +1,7 @@
 "use client";
 
 import { SalesKPIs } from "./kpi/SalesKPIs";
+import { CloseKPIs } from "./kpi/CloseKPIs";
 import { FinancialKPIs } from "./kpi/FinancialKPIs";
 import { OperationsKPIs } from "./kpi/OperationsKPIs";
 import { TeamKPIs } from "./kpi/TeamKPIs";
@@ -26,6 +27,8 @@ export function HealthDashboard() {
       {/* Dashboard Sections — CEO priority order */}
       <div className="space-y-10">
         <SalesKPIs />
+        <div className="border-t border-slate-800" />
+        <CloseKPIs />
         <div className="border-t border-slate-800" />
         <FinancialKPIs />
         <div className="border-t border-slate-800" />

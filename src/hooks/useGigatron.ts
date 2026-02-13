@@ -29,6 +29,7 @@ import type {
   CeoFinancial,
   CeoOperations,
   CeoTeam,
+  CeoClose,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -237,4 +238,8 @@ export function useCeoOperations(opts?: SWRConfiguration) {
 
 export function useCeoTeam(opts?: SWRConfiguration) {
   return useSWR<CeoTeam>("/api/gigatron/ceo/team", fetcher, { ...defaultOpts, ...opts });
+}
+
+export function useCeoClose(opts?: SWRConfiguration) {
+  return useSWR<CeoClose>("/api/gigatron/ceo/close", fetcher, { refreshInterval: 300_000, ...defaultOpts, ...opts });
 }

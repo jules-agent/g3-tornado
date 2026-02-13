@@ -307,3 +307,21 @@ export interface CeoTeam {
   new_customers: { this_month: number; last_month: number };
   total_customers: number;
 }
+
+export interface CeoClose {
+  pipelineValue: number;
+  activeOpps: number;
+  wonRevenue30d: number;
+  wonCount30d: number;
+  lostRevenue30d: number;
+  lostCount30d: number;
+  winRate: number;
+  newLeads30d: number;
+  leadsContacted30d: number;
+  calls30d: number;
+  emailsSent30d: number;
+  smsSent30d: number;
+  avgCallDuration: number;
+  recentWins: Array<{ name: string; value: number; status: string; date: string }>;
+  createdOpps30d: number;
+}
