@@ -94,7 +94,7 @@ export function AdminTabs({
     { key: "activity", label: "Activity Log", count: activityLogs.length, href: "/admin?tab=activity" },
     { key: "bugs", label: "Feedback", count: undefined, href: "/admin?tab=bugs" },
     { key: "templates", label: "Templates", count: undefined, href: "/admin?tab=templates" },
-    { key: "health", label: "Health", count: undefined, href: "/admin?tab=health" },
+    { key: "health", label: "CEO Dashboard", count: undefined, href: "/admin?tab=health" },
   ];
 
   return (

@@ -27,6 +27,8 @@ import type {
   CustomerOrdersResponse,
   CustomersFilters,
   PaginationParams,
+  SalesSummary,
+  SalesMonthly,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -170,4 +172,16 @@ export async function getCustomerById(id: number): Promise<CustomerDetail> {
 
 export async function getCustomerOrders(customerId: number, params?: PaginationParams): Promise<CustomerOrdersResponse> {
   return fetchGigatron<CustomerOrdersResponse>(`/customers/${customerId}/orders`, params as Record<string, number | undefined>);
+}
+
+// ---------------------------------------------------------------------------
+// Sales API (2 endpoints)
+// ---------------------------------------------------------------------------
+
+export async function getSalesSummary(): Promise<SalesSummary> {
+  return fetchGigatron<SalesSummary>("/sales/summary");
+}
+
+export async function getSalesMonthly(months?: number): Promise<SalesMonthly> {
+  return fetchGigatron<SalesMonthly>("/sales/monthly", months ? { months } : undefined);
 }

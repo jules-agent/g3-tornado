@@ -1,10 +1,10 @@
 "use client";
 
-import { useInventoryStats, useLowStock, useInventory } from "@/hooks/useGigatron";
+import { useInventoryStats, useInventory } from "@/hooks/useGigatron";
 import { KPICard, KPICardSkeleton } from "./KPICard";
 import { ChartCard } from "./ChartCard";
 import { ConnectionError, DemoBadge } from "./ConnectionError";
-import { demoInventoryStats, demoLowStock, demoTopInventoryItems } from "./demoData";
+import { demoInventoryStats, demoTopInventoryItems } from "./demoData";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function fmt(n: number): string {
@@ -19,16 +19,14 @@ const COLORS = ["#10b981", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"
 
 export function InventoryKPIs() {
   const { data: stats, isLoading: statsLoading, error: statsErr, mutate: mutateStats } = useInventoryStats();
-  const { data: lowStock, isLoading: lowLoading, error: lowErr, mutate: mutateLow } = useLowStock(5);
   const { data: inventory, isLoading: invLoading, error: invErr, mutate: mutateInv } = useInventory({ limit: 500 });
 
-  const hasError = !!(statsErr || lowErr || invErr);
-  const loading = !hasError && (statsLoading || lowLoading || invLoading);
+  const hasError = !!(statsErr || invErr);
+  const loading = !hasError && (statsLoading || invLoading);
   const isDemo = hasError;
 
   // Use real data or demo fallback
   const effectiveStats = stats || (isDemo ? demoInventoryStats : null);
-  const effectiveLowStock = lowStock || (isDemo ? demoLowStock : null);
 
   // Compute top 10 highest value items
   const topItems = inventory?.data
@@ -51,7 +49,6 @@ export function InventoryKPIs() {
 
   const handleRetry = () => {
     mutateStats();
-    mutateLow();
     mutateInv();
   };
 
@@ -64,10 +61,9 @@ export function InventoryKPIs() {
 
       {isDemo && <ConnectionError onRetry={handleRetry} />}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {loading ? (
           <>
-            <KPICardSkeleton />
             <KPICardSkeleton />
             <KPICardSkeleton />
             <KPICardSkeleton />
@@ -79,12 +75,6 @@ export function InventoryKPIs() {
               value={fmt(effectiveStats?.total_value_on_hand ?? 0)}
               subtitle={`${num(effectiveStats?.total_qty_available ?? 0)} units on hand`}
               trend="neutral"
-            />
-            <KPICard
-              label="Low Stock Alerts"
-              value={num(effectiveLowStock?.total ?? 0)}
-              subtitle="Parts below threshold"
-              trend={(effectiveLowStock?.total ?? 0) > 10 ? "critical" : (effectiveLowStock?.total ?? 0) > 0 ? "warning" : "good"}
             />
             <KPICard
               label="Stock Availability"
@@ -102,7 +92,7 @@ export function InventoryKPIs() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <ChartCard title="Top 10 Highest Value Items" subtitle="By inventory value on hand" loading={loading}>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={topItems} layout="vertical" margin={{ left: 10, right: 20, top: 0, bottom: 0 }}>
@@ -120,28 +110,6 @@ export function InventoryKPIs() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Low Stock Items" subtitle={`${effectiveLowStock?.total ?? 0} parts below threshold`} loading={loading}>
-          <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2 scrollbar-thin">
-            {(effectiveLowStock?.data ?? []).slice(0, 15).map((item) => (
-              <div key={item.part_id} className="flex items-center justify-between rounded-lg bg-slate-900/50 px-3 py-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-slate-200 truncate">{item.part_name}</p>
-                  <p className="text-[10px] text-slate-500">{item.sku}</p>
-                </div>
-                <div className="text-right ml-3">
-                  <span className={`text-sm font-bold ${item.qty_available === 0 ? "text-red-400" : "text-amber-400"}`}>
-                    {item.qty_available}
-                  </span>
-                  <p className="text-[10px] text-slate-500">avail</p>
-                </div>
-              </div>
-            ))}
-            {(effectiveLowStock?.data ?? []).length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-8">No low stock items 🎉</p>
-            )}
-          </div>
         </ChartCard>
       </div>
     </section>

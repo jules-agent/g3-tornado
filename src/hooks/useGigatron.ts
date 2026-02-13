@@ -24,6 +24,8 @@ import type {
   CustomerDetail,
   CustomerOrdersResponse,
   CustomersFilters,
+  SalesSummary,
+  SalesMonthly,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -197,6 +199,22 @@ export function useCustomer(id: number | null, opts?: SWRConfiguration) {
 export function useCustomerOrders(customerId: number | null, params?: { limit?: number; offset?: number }, opts?: SWRConfiguration) {
   return useSWR<CustomerOrdersResponse>(
     customerId != null ? buildQuery(`/api/gigatron/customers/${customerId}/orders`, params) : null,
+    fetcher,
+    { ...defaultOpts, ...opts }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sales hooks (admin only)
+// ---------------------------------------------------------------------------
+
+export function useSalesSummary(opts?: SWRConfiguration) {
+  return useSWR<SalesSummary>("/api/gigatron/sales/summary", fetcher, { ...defaultOpts, ...opts });
+}
+
+export function useSalesMonthly(months?: number, opts?: SWRConfiguration) {
+  return useSWR<SalesMonthly>(
+    buildQuery("/api/gigatron/sales/monthly", months ? { months } : undefined),
     fetcher,
     { ...defaultOpts, ...opts }
   );

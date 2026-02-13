@@ -259,3 +259,26 @@ export interface PaginationParams {
   limit?: number;
   offset?: number;
 }
+
+// --- Sales ---
+
+export interface SalesSummary {
+  current_month: { orders: number; revenue: number; avg_order_value: number };
+  previous_month: { orders: number; revenue: number; avg_order_value: number };
+  ytd: { orders: number; revenue: number };
+  active_orders: number;
+  top_parts: Array<{ part_name: string; sku: string; order_count: number; total_revenue: number }>;
+}
+
+export interface SalesMonthlyRow {
+  month: string;
+  orders: number;
+  revenue: number;
+  completed: number;
+  in_progress: number;
+}
+
+export interface SalesMonthly {
+  data: SalesMonthlyRow[];
+  months: number;
+}

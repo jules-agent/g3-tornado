@@ -217,7 +217,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1">
                   <button onClick={() => { setShowScorecard(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">🏆 Scorecard</button>
                   {isAdmin && (
-                    <button onClick={() => { setShowProjectHealth(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📊 Health</button>
+                    <button onClick={() => { setShowProjectHealth(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📊 CEO Dashboard</button>
                   )}
                   <button onClick={() => { setShowParkingLot(true); setShowMoreMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">🅿️ Parking Lot</button>
                   <Link href="/contacts" onClick={() => setShowMoreMenu(false)} className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">📇 Contacts</Link>
