@@ -121,7 +121,7 @@ export function AdminTabs({
       </div>
 
       {/* Tab Content */}
-      <div className="rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 max-h-[calc(100vh-120px)] overflow-y-auto">
         {activeTab === "users" && <UsersTab profiles={profiles} owners={owners} pendingInvites={pendingInvites} />}
         {activeTab === "projects" && <ProjectsTab projects={projects} creatorNames={creatorNames} />}
         {activeTab === "owners" && <OwnersTab owners={owners} />}
@@ -1404,14 +1404,13 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-3 py-2 font-semibold text-center w-16">Private</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>
-              <th className="px-4 py-2 font-semibold w-28">Created By</th>
               <th className="px-4 py-2 font-semibold w-16">⋮</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {filteredOwners.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                   {searchQuery ? "No contacts match your search." : "No contacts yet."}
                 </td>
               </tr>
@@ -1426,6 +1425,12 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                   <tr key={owner.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${vendorWarning ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
                       <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
+                      <span 
+                        className="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5"
+                        title={owner.created_at ? `Created ${new Date(owner.created_at).toLocaleString()}` : ""}
+                      >
+                        {owner.created_by_email ? owner.created_by_email.split("@")[0] : ""}
+                      </span>
                       {vendorWarning && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-red-600 dark:text-red-400">⚠️ Vendor needs company:</span>
@@ -1521,16 +1526,6 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     </td>
                     <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                       <EditableCell value={owner.phone || ""} onSave={(v) => updateOwnerField(owner.id, "phone", v)} placeholder="Add phone" type="tel" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        owner.is_private
-                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-                      }`}>
-                        {owner.is_private && "🔒 "}
-                        {owner.created_by_email ? owner.created_by_email.split("@")[0] : "—"}
-                      </span>
                     </td>
                     <td className="px-4 py-2 relative">
                       <button
