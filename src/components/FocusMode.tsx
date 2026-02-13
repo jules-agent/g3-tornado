@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { RestartClockModal } from "./RestartClockModal";
+import { ContactCreationDialog } from "./ContactCreationDialog";
 import SpeechInput from "@/components/SpeechInput";
 
 type Gate = {
@@ -22,7 +23,7 @@ type Task = {
   fu_cadence_days: number;
   daysSinceMovement: number;
   task_number: string | null;
-  projects: { id: string; name: string } | null;
+  projects: { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; is_bpas?: boolean } | null;
   ownerNames: string;
   isOverdue: boolean;
   isMyTask: boolean;
@@ -56,6 +57,8 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const [newGateName, setNewGateName] = useState("");
   const [newGateOwner, setNewGateOwner] = useState("");
   const [savingGates, setSavingGates] = useState(false);
+  const [filteredOwners, setFilteredOwners] = useState<Array<{ id: string; name: string }>>([]);
+  const [showContactDialog, setShowContactDialog] = useState(false);
 
   // Get overdue tasks sorted by priority, grouped by gate person
   const focusedTasks = useMemo(() => {
@@ -142,7 +145,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   }, [router]);
 
   // Gate management
-  const startGateManagement = useCallback((taskId: string) => {
+  const startGateManagement = useCallback(async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId) || focusedTasks.find(t => t.id === taskId);
     if (task?.gates) {
       setEditGates([...task.gates]);
@@ -152,6 +155,31 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     setManagingGates(taskId);
     setNewGateName("");
     setNewGateOwner("");
+
+    // Load contacts filtered by project company association
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: allOwners } = await supabase.from("owners")
+      .select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_private, private_owner_id")
+      .order("name");
+
+    const proj = task?.projects;
+    const hasCompanyFilter = proj && (proj.is_up || proj.is_bp || proj.is_upfit || proj.is_bpas);
+
+    const filtered = (allOwners || []).filter(o => {
+      // Filter out private contacts not owned by user
+      if (o.is_private && o.private_owner_id !== user?.id) return false;
+      // If project has company associations, filter contacts to matching companies
+      if (hasCompanyFilter) {
+        return (proj.is_up && o.is_up_employee) ||
+               (proj.is_bp && o.is_bp_employee) ||
+               (proj.is_upfit && o.is_upfit_employee) ||
+               (proj.is_bpas && o.is_bpas_employee);
+      }
+      return true; // No company filter — show all
+    });
+
+    setFilteredOwners(filtered.map(o => ({ id: o.id, name: o.name })));
   }, [tasks, focusedTasks]);
 
   const addGateToTask = useCallback(() => {
@@ -304,14 +332,23 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                             placeholder="New gate..."
                             className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
                           />
-                          <input
-                            type="text"
+                          <select
                             value={newGateOwner}
-                            onChange={(e) => setNewGateOwner(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && addGateToTask()}
-                            placeholder="Who?"
-                            className="w-20 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
-                          />
+                            onChange={(e) => {
+                              if (e.target.value === "__add__") {
+                                setShowContactDialog(true);
+                              } else {
+                                setNewGateOwner(e.target.value);
+                              }
+                            }}
+                            className="w-28 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          >
+                            <option value="">Who?</option>
+                            {filteredOwners.map(o => (
+                              <option key={o.id} value={o.name}>{o.name}</option>
+                            ))}
+                            <option value="__add__">+ Add new contact...</option>
+                          </select>
                           <button onClick={addGateToTask} disabled={!newGateName.trim()} className="text-teal-500 hover:text-teal-600 text-xs font-bold disabled:opacity-30">+</button>
                         </div>
                         <div className="flex gap-2 pt-1">
@@ -391,6 +428,34 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
         onCancel={handleRestartClockCancel}
         currentCadenceDays={pendingNoteCadence}
       />
+
+      {/* Contact Creation Dialog */}
+      <ContactCreationDialog
+        isOpen={showContactDialog}
+        onClose={() => setShowContactDialog(false)}
+        onContactCreated={async (contactName) => {
+          setNewGateOwner(contactName);
+          setShowContactDialog(false);
+          // Reload filtered owners
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          const task = tasks.find(t => t.id === managingGates) || focusedTasks.find(t => t.id === managingGates);
+          const { data: allOwners } = await supabase.from("owners")
+            .select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_private, private_owner_id")
+            .order("name");
+          const proj = task?.projects;
+          const hasCompanyFilter = proj && (proj.is_up || proj.is_bp || proj.is_upfit || proj.is_bpas);
+          const filtered = (allOwners || []).filter(o => {
+            if (o.is_private && o.private_owner_id !== user?.id) return false;
+            if (hasCompanyFilter) {
+              return (proj.is_up && o.is_up_employee) || (proj.is_bp && o.is_bp_employee) ||
+                     (proj.is_upfit && o.is_upfit_employee) || (proj.is_bpas && o.is_bpas_employee);
+            }
+            return true;
+          });
+          setFilteredOwners(filtered.map(o => ({ id: o.id, name: o.name })));
+        }}
+      />
     </div>,
     document.body
   );
@@ -420,7 +485,7 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
 
     const { data: allTasks } = await supabase
       .from("tasks")
-      .select("id, description, status, is_blocked, fu_cadence_days, last_movement_at, created_at, task_number, project_id, gates, next_step, projects (id, name), task_owners (owner_id, owners (id, name))")
+      .select("id, description, status, is_blocked, fu_cadence_days, last_movement_at, created_at, task_number, project_id, gates, next_step, projects (id, name, is_up, is_bp, is_upfit, is_bpas), task_owners (owner_id, owners (id, name))")
       .eq("status", "open")
       .order("last_movement_at", { ascending: true });
 
