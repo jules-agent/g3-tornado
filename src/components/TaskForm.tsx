@@ -319,8 +319,13 @@ export default function TaskForm({
       setNewOwnerPhone("");
       setIsAddingOwner(false);
       router.refresh();
-    } catch {
-      setOwnerError("Unable to create owner.");
+    } catch (err) {
+      console.error("Failed to create owner:", err);
+      setOwnerError(
+        err instanceof Error 
+          ? err.message 
+          : "Unable to create owner. Please try again."
+      );
     }
     setIsCreatingOwner(false);
   };
