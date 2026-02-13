@@ -147,11 +147,11 @@ export function VoiceCaptureFAB() {
 
   return (
     <>
-      {/* FAB Button */}
+      {/* FAB Button — hidden on mobile where MobileToday has its own actions */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+          className="hidden md:flex fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all items-center justify-center"
           title="Voice Capture"
           aria-label="Voice capture"
         >
