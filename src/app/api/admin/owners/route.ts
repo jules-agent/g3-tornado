@@ -153,6 +153,7 @@ export async function PUT(request: Request) {
     is_upfit_employee,
     is_bpas_employee,
     is_third_party_vendor,
+    is_private,
   } = body;
 
   if (!id || !name) {
@@ -185,6 +186,7 @@ export async function PUT(request: Request) {
   if (typeof is_upfit_employee === "boolean") updateData.is_upfit_employee = is_upfit_employee;
   if (typeof is_bpas_employee === "boolean") updateData.is_bpas_employee = is_bpas_employee;
   if (typeof is_third_party_vendor === "boolean") updateData.is_third_party_vendor = is_third_party_vendor;
+  if (typeof is_private === "boolean") updateData.is_private = is_private;
 
   const { data, error } = await supabase
     .from("owners")

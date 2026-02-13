@@ -1158,6 +1158,12 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editContactType, setEditContactType] = useState<'employee'|'vendor'|'personal'>('employee');
+  const [editIsUp, setEditIsUp] = useState(false);
+  const [editIsBp, setEditIsBp] = useState(false);
+  const [editIsUpfit, setEditIsUpfit] = useState(false);
+  const [editIsBpas, setEditIsBpas] = useState(false);
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
   const router = useRouter();
 
   const resetForm = () => {
@@ -1221,7 +1227,18 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       const res = await fetch("/api/admin/owners", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingOwner.id, name: editName, email: editEmail || null, phone: editPhone || null }),
+        body: JSON.stringify({
+          id: editingOwner.id,
+          name: editName,
+          email: editEmail || null,
+          phone: editPhone || null,
+          is_up_employee: editContactType === 'personal' ? false : editIsUp,
+          is_bp_employee: editContactType === 'personal' ? false : editIsBp,
+          is_upfit_employee: editContactType === 'personal' ? false : editIsUpfit,
+          is_bpas_employee: editContactType === 'personal' ? false : editIsBpas,
+          is_third_party_vendor: editContactType === 'vendor',
+          is_private: editContactType === 'personal' ? true : editIsPrivate,
+        }),
       });
       if (res.ok) { setEditingOwner(null); router.refresh(); }
       else { const data = await res.json(); alert(data.error || "Failed to update"); }
@@ -1253,6 +1270,13 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setEditName(owner.name);
     setEditEmail(owner.email || "");
     setEditPhone(owner.phone || "");
+    const ownerType = getOwnerType(owner);
+    setEditContactType(ownerType);
+    setEditIsUp(owner.is_up_employee || false);
+    setEditIsBp(owner.is_bp_employee || false);
+    setEditIsUpfit(owner.is_upfit_employee || false);
+    setEditIsBpas(owner.is_bpas_employee || false);
+    setEditIsPrivate(owner.is_private || false);
     setOwnerMenuOpen(null);
   };
 
@@ -1391,6 +1415,44 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               Cancel
             </button>
           </div>
+          {/* Contact Type / Companies / Private */}
+          <div className="flex flex-wrap gap-4 items-center mt-2">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Type</label>
+              <div className="flex gap-1">
+                {(['employee', 'vendor', 'personal'] as const).map((t) => (
+                  <button key={t} onClick={() => setEditContactType(t)}
+                    className={`text-[10px] font-bold px-2 py-1 rounded transition ${
+                      editContactType === t
+                        ? t === 'employee' ? "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
+                          : t === 'vendor' ? "bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200"
+                          : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                        : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200 cursor-pointer"
+                    }`}>
+                    {t === 'employee' ? 'Employee' : t === 'vendor' ? 'Vendor' : 'Personal'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {editContactType !== 'personal' && (
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Companies</label>
+                <div className="flex gap-1">
+                  <button onClick={() => setEditIsUp(!editIsUp)} className={`text-[10px] font-bold px-2 py-1 rounded transition cursor-pointer ${editIsUp ? "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}>{editIsUp ? "✓ " : ""}UP</button>
+                  <button onClick={() => setEditIsBp(!editIsBp)} className={`text-[10px] font-bold px-2 py-1 rounded transition cursor-pointer ${editIsBp ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}>{editIsBp ? "✓ " : ""}BP</button>
+                  <button onClick={() => setEditIsUpfit(!editIsUpfit)} className={`text-[10px] font-bold px-2 py-1 rounded transition cursor-pointer ${editIsUpfit ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}>{editIsUpfit ? "✓ " : ""}UPFIT</button>
+                  <button onClick={() => setEditIsBpas(!editIsBpas)} className={`text-[10px] font-bold px-2 py-1 rounded transition cursor-pointer ${editIsBpas ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}>{editIsBpas ? "✓ " : ""}BPAS</button>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Private</label>
+              <button onClick={() => setEditIsPrivate(!editIsPrivate)}
+                className={`text-sm ${editIsPrivate ? "text-purple-600 dark:text-purple-400" : "text-slate-300 dark:text-slate-600"}`}>
+                {editIsPrivate ? "🔒" : "🔓"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1425,12 +1487,14 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                   <tr key={owner.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${vendorWarning ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
                       <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
-                      <span 
-                        className="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5"
-                        title={owner.created_at ? `Created ${new Date(owner.created_at).toLocaleString()}` : ""}
-                      >
-                        {owner.created_by_email ? owner.created_by_email.split("@")[0] : ""}
-                      </span>
+                      {owner.created_by_email && (
+                        <span 
+                          className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 inline-block mt-1"
+                          title={owner.created_at ? `Created ${new Date(owner.created_at).toLocaleString()}` : ""}
+                        >
+                          Created by: {owner.created_by_email.split("@")[0]}
+                        </span>
+                      )}
                       {vendorWarning && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-red-600 dark:text-red-400">⚠️ Vendor needs company:</span>
@@ -1451,65 +1515,82 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     {/* Type badge */}
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
-                        {(ownerType === 'employee' || (hasCompany && !isVendor)) && (
-                          <span
-                            onClick={() => {
-                              // Toggle: if employee with companies, remove all company flags
-                              if (hasCompany && !isVendor) {
-                                // Don't auto-toggle type for safety
-                              }
-                            }}
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300 cursor-default"
-                          >
-                            Employee
-                          </span>
-                        )}
-                        {isVendor && (
-                          <span
-                            onClick={() => toggleFlag(owner.id, "is_third_party_vendor", false)}
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200 cursor-pointer hover:opacity-75"
-                            title="Click to remove vendor flag"
-                          >
-                            Vendor
-                          </span>
-                        )}
-                        {ownerType === 'personal' && (
-                          <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 cursor-default">
-                            Personal
-                          </span>
-                        )}
+                        <button
+                          onClick={() => {
+                            // If currently personal or vendor, switching to employee needs at least one company
+                            // For now just toggle vendor off if setting to employee-like
+                            if (isVendor) toggleFlag(owner.id, "is_third_party_vendor", false);
+                          }}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition ${
+                            hasCompany && !isVendor
+                              ? "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
+                              : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200 cursor-pointer"
+                          }`}
+                          title="Employee"
+                        >
+                          Emp
+                        </button>
+                        <button
+                          onClick={() => toggleFlag(owner.id, "is_third_party_vendor", !owner.is_third_party_vendor)}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            isVendor
+                              ? "bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200"
+                              : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"
+                          }`}
+                          title="3rd Party Vendor"
+                        >
+                          Vendor
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (ownerType !== 'personal') {
+                              if (owner.is_up_employee) toggleFlag(owner.id, "is_up_employee", false);
+                              if (owner.is_bp_employee) toggleFlag(owner.id, "is_bp_employee", false);
+                              if (owner.is_upfit_employee) toggleFlag(owner.id, "is_upfit_employee", false);
+                              if (owner.is_bpas_employee) toggleFlag(owner.id, "is_bpas_employee", false);
+                              if (owner.is_third_party_vendor) toggleFlag(owner.id, "is_third_party_vendor", false);
+                              if (!owner.is_private) toggleFlag(owner.id, "is_private", true);
+                            }
+                          }}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            ownerType === 'personal'
+                              ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                              : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"
+                          }`}
+                          title="Personal contact"
+                        >
+                          Personal
+                        </button>
                       </div>
                     </td>
                     {/* Company badges */}
                     <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {owner.is_up_employee && (
-                          <span onClick={() => toggleFlag(owner.id, "is_up_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 cursor-pointer hover:opacity-75" title="Click to remove UP">
-                            UP
-                          </span>
-                        )}
-                        {owner.is_bp_employee && (
-                          <span onClick={() => toggleFlag(owner.id, "is_bp_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer hover:opacity-75" title="Click to remove BP">
-                            BP
-                          </span>
-                        )}
-                        {owner.is_upfit_employee && (
-                          <span onClick={() => toggleFlag(owner.id, "is_upfit_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 cursor-pointer hover:opacity-75" title="Click to remove UPFIT">
-                            UF
-                          </span>
-                        )}
-                        {owner.is_bpas_employee && (
-                          <span onClick={() => toggleFlag(owner.id, "is_bpas_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 cursor-pointer hover:opacity-75" title="Click to remove BPAS">
-                            BPAS
-                          </span>
-                        )}
-                        {!hasCompany && ownerType !== 'personal' && (
-                          <span className="text-[10px] text-slate-400 italic">None</span>
-                        )}
-                        {ownerType === 'personal' && (
-                          <span className="text-[10px] text-slate-400 italic">—</span>
-                        )}
-                      </div>
+                      {ownerType !== 'personal' ? (
+                        <div className="flex flex-wrap gap-1">
+                          <button onClick={() => toggleFlag(owner.id, "is_up_employee", !owner.is_up_employee)}
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${owner.is_up_employee ? "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}
+                            title="Unplugged Performance">
+                            {owner.is_up_employee ? "✓ " : ""}UP
+                          </button>
+                          <button onClick={() => toggleFlag(owner.id, "is_bp_employee", !owner.is_bp_employee)}
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${owner.is_bp_employee ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}
+                            title="Bulletproof Automotive">
+                            {owner.is_bp_employee ? "✓ " : ""}BP
+                          </button>
+                          <button onClick={() => toggleFlag(owner.id, "is_upfit_employee", !owner.is_upfit_employee)}
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${owner.is_upfit_employee ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}
+                            title="UP.FIT">
+                            {owner.is_upfit_employee ? "✓ " : ""}UPFIT
+                          </button>
+                          <button onClick={() => toggleFlag(owner.id, "is_bpas_employee", !owner.is_bpas_employee)}
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${owner.is_bpas_employee ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"}`}
+                            title="Bulletproof Auto Spa">
+                            {owner.is_bpas_employee ? "✓ " : ""}BPAS
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">—</span>
+                      )}
                     </td>
                     {/* Private toggle */}
                     <td className="px-3 py-2 text-center">
