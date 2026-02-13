@@ -232,8 +232,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
 
           {/* Right actions */}
           <ThemeToggle />
-          <button onClick={() => setShowParkingLot(true)} className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-500 text-white hover:bg-blue-600 transition shadow-sm whitespace-nowrap">
-            + Parking
+          <button onClick={() => setShowParkingLot(true)} className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold btn-primary whitespace-nowrap bg-blue-500 hover:bg-blue-600 text-white">
+            + Parking Lot
           </button>
           <Link href="/tasks/new" className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold btn-primary whitespace-nowrap">
             + Task
@@ -242,6 +242,12 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link href="/profile" className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-[10px] font-bold text-white hover:opacity-80 transition" title="My Profile">
               {initials}
             </Link>
+            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 hidden lg:inline">{displayName.split(" ")[0]}</span>
+            {isAdmin && (
+              <Link href="/admin" className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition" title="Admin Panel">
+                Admin
+              </Link>
+            )}
             <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 transition hover:text-red-500">
               {isSigningOut ? "..." : "Out"}
             </button>
