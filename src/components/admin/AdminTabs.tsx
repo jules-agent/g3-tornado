@@ -1282,9 +1282,10 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   const getOwnerType = (owner: Owner): 'employee' | 'vendor' | 'personal' => {
     const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee || owner.is_bpas_employee;
-    if (!hasCompany && !owner.is_third_party_vendor) return 'personal';
+    // Vendor flag takes precedence — vendors CAN have company associations
     if (owner.is_third_party_vendor) return 'vendor';
-    return 'employee';
+    if (hasCompany) return 'employee';
+    return 'personal';
   };
 
   // Filter owners by search query
@@ -1517,16 +1518,16 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                       <div className="flex flex-wrap gap-1">
                         <button
                           onClick={() => {
-                            // If currently personal or vendor, switching to employee needs at least one company
-                            // For now just toggle vendor off if setting to employee-like
+                            // Switch to employee: remove vendor flag, keep companies
                             if (isVendor) toggleFlag(owner.id, "is_third_party_vendor", false);
+                            // If personal (no companies), user will need to add companies after
                           }}
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition ${
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${
                             hasCompany && !isVendor
                               ? "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300"
-                              : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200 cursor-pointer"
+                              : "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 hover:bg-slate-200"
                           }`}
-                          title="Employee"
+                          title="Employee — removes vendor flag, keeps company associations"
                         >
                           Emp
                         </button>

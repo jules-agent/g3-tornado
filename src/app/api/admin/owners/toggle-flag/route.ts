@@ -24,17 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  // If setting vendor=true, clear employee flags; if setting employee=true, clear vendor
+  // Vendors and employees are NOT mutually exclusive — vendors CAN have company associations
   const updateData: Record<string, boolean | string | null> = { [field]: value };
-  
-  if (value && field === "is_third_party_vendor") {
-    updateData.is_up_employee = false;
-    updateData.is_bp_employee = false;
-    updateData.is_upfit_employee = false;
-    updateData.is_bpas_employee = false;
-  } else if (value && field !== "is_third_party_vendor" && field !== "is_private") {
-    updateData.is_third_party_vendor = false;
-  }
   
   // Handle is_private toggle
   if (field === "is_private") {
