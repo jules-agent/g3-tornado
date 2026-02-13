@@ -396,7 +396,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Users</h2>
         <div className="flex gap-2">
           <button
@@ -561,7 +561,7 @@ function UsersTab({ profiles, owners, pendingInvites = [] }: { profiles: Profile
       <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <tr className="sticky top-[49px] z-10 bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               <th className="px-4 py-2 font-semibold">User</th>
               <th className="px-4 py-2 font-semibold w-28">Role</th>
               <th className="px-4 py-2 font-semibold w-40">Linked Owner</th>
@@ -877,7 +877,7 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Projects</h2>
         <button
           onClick={() => { setShowAdd(!showAdd); setEditingId(null); resetForm(); }}
@@ -974,7 +974,7 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
       <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <tr className="sticky top-[49px] z-10 bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               <th className="px-4 py-2 font-semibold">Project</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Type</th>
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
@@ -1631,14 +1631,14 @@ function ActivityLogTab({ logs }: { logs: ActivityLog[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">Activity Log</h2>
         <span className="text-xs text-slate-500">{logs.length} entries</span>
       </div>
 
       <table className="w-full text-xs">
         <thead>
-          <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          <tr className="sticky top-[49px] z-10 bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             <th className="px-4 py-2 font-semibold w-24">Action</th>
             <th className="px-4 py-2 font-semibold w-20">Type</th>
             <th className="px-4 py-2 font-semibold">Name</th>
@@ -1824,7 +1824,7 @@ function BugsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
         <h2 className="font-semibold text-slate-900 dark:text-white">💬 Feedback ({items.length})</h2>
         <div className="flex gap-1">
           {(["all", "bug", "feature_request"] as const).map((f) => (
@@ -1857,7 +1857,7 @@ function BugsTab() {
       <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <tr className="sticky top-[49px] z-10 bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               <th className="px-4 py-2 font-semibold w-12">Type</th>
               <th className="px-4 py-2 font-semibold">Description</th>
               <th className="px-4 py-2 font-semibold w-16">Image</th>

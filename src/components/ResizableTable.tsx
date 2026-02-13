@@ -101,7 +101,7 @@ export function ResizableTable({
   return (
     <div className="overflow-x-auto">
       <table ref={tableRef} className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
-        <thead>
+        <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
           <tr className="table-header text-left text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {columns.filter(c => c.visible).map((column, index) => (
               <th
