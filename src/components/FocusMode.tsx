@@ -102,41 +102,56 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
   const addNote = useCallback(async (taskId: string, taskCadence: number) => {
     if (!noteValue.trim()) return;
     setSaving(true);
-    const supabase = createClient();
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    await supabase.from("task_notes").insert({
-      task_id: taskId,
-      content: noteValue.trim(),
-      created_by: currentUser?.id ?? null,
-    });
-    setSaving(false);
-    setEditingNote(null);
-    setNoteValue("");
-    
-    // Show cadence modal — card stays until cadence is set
-    setPendingNoteTaskId(taskId);
-    setPendingNoteCadence(taskCadence);
-    setShowRestartClock(true);
+    try {
+      const supabase = createClient();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("task_notes").insert({
+        task_id: taskId,
+        content: noteValue.trim(),
+        created_by: currentUser?.id ?? null,
+      });
+      if (error) throw error;
+      
+      setEditingNote(null);
+      setNoteValue("");
+      
+      // Show cadence modal — card stays until cadence is set
+      setPendingNoteTaskId(taskId);
+      setPendingNoteCadence(taskCadence);
+      setShowRestartClock(true);
+    } catch (err) {
+      console.error("Failed to add note:", err);
+      alert("Failed to save note. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }, [noteValue]);
 
   const handleRestartClockConfirm = useCallback(async (newCadenceDays: number) => {
     if (!pendingNoteTaskId) return;
     
-    const supabase = createClient();
-    await supabase
-      .from("tasks")
-      .update({
-        last_movement_at: new Date().toISOString(),
-        fu_cadence_days: newCadenceDays,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", pendingNoteTaskId);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          last_movement_at: new Date().toISOString(),
+          fu_cadence_days: newCadenceDays,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pendingNoteTaskId);
+      
+      if (error) throw error;
 
-    // NOW the card is complete — remove it and refresh
-    setCompletedIds((prev) => new Set([...prev, pendingNoteTaskId]));
-    setShowRestartClock(false);
-    setPendingNoteTaskId(null);
-    router.refresh();
+      // NOW the card is complete — remove it and refresh
+      setCompletedIds((prev) => new Set([...prev, pendingNoteTaskId]));
+      setShowRestartClock(false);
+      setPendingNoteTaskId(null);
+      router.refresh();
+    } catch (err) {
+      console.error("Failed to update cadence:", err);
+      alert("Failed to update cadence. Please try again.");
+    }
   }, [pendingNoteTaskId, router]);
 
   const handleRestartClockCancel = useCallback(() => {
@@ -213,21 +228,30 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     if (finalGates.length === 0) return;
     
     setSavingGates(true);
-    const supabase = createClient();
-    await supabase
-      .from("tasks")
-      .update({ gates: finalGates, updated_at: new Date().toISOString() })
-      .eq("id", managingGates);
-    setSavingGates(false);
-    setNewGateName("");
-    setNewGateOwner("");
-    setEditGates(finalGates);
-    
-    // Transition to note input on same card (don't close focus mode)
-    const taskId = managingGates;
-    setManagingGates(null);
-    setEditingNote(taskId);
-    setNoteValue("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ gates: finalGates, updated_at: new Date().toISOString() })
+        .eq("id", managingGates);
+      
+      if (error) throw error;
+      
+      setNewGateName("");
+      setNewGateOwner("");
+      setEditGates(finalGates);
+      
+      // Transition to note input on same card (don't close focus mode)
+      const taskId = managingGates;
+      setManagingGates(null);
+      setEditingNote(taskId);
+      setNoteValue("");
+    } catch (err) {
+      console.error("Failed to save gates:", err);
+      alert("Failed to save gates. Please try again.");
+    } finally {
+      setSavingGates(false);
+    }
   }, [managingGates, editGates, newGateName, newGateOwner]);
 
   const moveGate = useCallback((idx: number, dir: -1 | 1) => {
@@ -254,21 +278,30 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
       }];
     }
     setSavingGates(true);
-    const supabase = createClient();
-    await supabase
-      .from("tasks")
-      .update({ gates: finalGates, updated_at: new Date().toISOString() })
-      .eq("id", managingGates);
-    setSavingGates(false);
-    setNewGateName("");
-    setNewGateOwner("");
-    setEditGates(finalGates);
-    
-    // Transition to note input on same card (don't close focus mode)
-    const taskId = managingGates;
-    setManagingGates(null);
-    setEditingNote(taskId);
-    setNoteValue("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ gates: finalGates, updated_at: new Date().toISOString() })
+        .eq("id", managingGates);
+      
+      if (error) throw error;
+      
+      setNewGateName("");
+      setNewGateOwner("");
+      setEditGates(finalGates);
+      
+      // Transition to note input on same card (don't close focus mode)
+      const taskId = managingGates;
+      setManagingGates(null);
+      setEditingNote(taskId);
+      setNoteValue("");
+    } catch (err) {
+      console.error("Failed to save gates:", err);
+      alert("Failed to save gates. Please try again.");
+    } finally {
+      setSavingGates(false);
+    }
   }, [managingGates, editGates, newGateName, newGateOwner]);
 
   // Lock body scroll when open
@@ -279,18 +312,34 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     }
   }, [isOpen]);
 
+  // Escape key handler for accessibility
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const overdueCount = tasks.filter((t) => t.isOverdue).length;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950">
+    <div 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="focus-mode-title"
+      className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-slate-950"
+    >
       {/* Minimal top bar */}
       <div className="flex items-center justify-between px-6 py-4 shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-lg">🎯</span>
+          <span className="text-lg" aria-hidden="true">🎯</span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Focus Mode</h2>
+            <h2 id="focus-mode-title" className="text-sm font-semibold text-slate-700 dark:text-slate-200">Focus Mode</h2>
             <p className="text-xs text-slate-400">
               {overdueCount} overdue · {completedIds.size} updated
             </p>
@@ -298,6 +347,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
         </div>
         <button
           onClick={onClose}
+          aria-label="Close Focus Mode and return to task list"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition"
         >
           ← Back to Tasks
