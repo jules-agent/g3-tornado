@@ -140,15 +140,31 @@ export default async function Home({
   }
 
   // Filter projects by visibility and team membership
-  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; is_bpas?: boolean; visibility?: string; created_by?: string };
+  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; is_bpas?: boolean; visibility?: string; created_by?: string; one_on_one_owner_id?: string };
   const allProjects = (projects as ProjectWithFlags[] ?? []);
-  // Build set of project IDs created by this user (for personal/one-on-one visibility)
-  const myProjectIds = new Set(
-    allProjects.filter((p: ProjectWithFlags) => p.created_by === effectiveUser.effectiveUserId).map(p => p.id)
+  // Build sets for visibility:
+  // 1. Projects user created with personal visibility (only their tasks)
+  // 2. One-on-one projects where user is creator OR target
+  const myPersonalProjectIds = new Set(
+    allProjects.filter((p: ProjectWithFlags) => 
+      p.created_by === effectiveUser.effectiveUserId && (p as ProjectWithFlags & { visibility?: string }).visibility === "personal"
+    ).map(p => p.id)
+  );
+  const myOneOnOneProjectIds = new Set(
+    allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string; visibility?: string }) => 
+      p.visibility === "one_on_one" && (
+        p.created_by === effectiveUser.effectiveUserId || 
+        (userOwnerId && p.one_on_one_owner_id === userOwnerId)
+      )
+    ).map(p => p.id)
   );
 
-  // Everyone sees only their own tasks + tasks in projects they created
-  // Admin status gives management powers, not expanded visibility
+  // Visibility rules:
+  // - Show task if user is a direct owner on it
+  // - Show task if it's in user's personal project (they created it)
+  // - Show task if it's in a one-on-one project user participates in
+  // - Admin status gives management powers, NOT expanded task visibility
+  // - Do NOT show all tasks in shared projects just because user created the project
   const visibleTasks = tasksWithDays.filter((t) => {
         // Show if user is an owner on the task
         if (t.isMyTask) {
@@ -159,8 +175,10 @@ export default async function Home({
           }
           return true;
         }
-        // Also show tasks in projects the user created (personal, one-on-one)
-        if (t.project_id && myProjectIds.has(t.project_id)) return true;
+        // Show tasks in user's personal projects
+        if (t.project_id && myPersonalProjectIds.has(t.project_id)) return true;
+        // Show tasks in one-on-one projects user participates in
+        if (t.project_id && myOneOnOneProjectIds.has(t.project_id)) return true;
         return false;
       });
   const visibleProjects = allProjects.filter((p: ProjectWithFlags & { one_on_one_owner_id?: string }) => {

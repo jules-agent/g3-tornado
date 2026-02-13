@@ -565,8 +565,31 @@ export function FocusModeStandalone({ isOpen, onClose }: { isOpen: boolean; onCl
       return { ...task, daysSinceMovement, daysSinceCreated: 0, isOverdue, ownerNames, ownerIds, isMyTask } as Task;
     });
 
-    // Non-admin without owner_id sees nothing (not everything)
-    const myTasks = isAdmin ? processed : userOwnerId ? processed.filter((t: Task) => t.isMyTask) : [];
+    // Everyone only sees their own tasks + tasks in their one-on-one projects
+    // Admin status does NOT grant visibility to all tasks
+    let myTasks: Task[];
+    if (userOwnerId) {
+      // Also fetch one-on-one projects this user participates in
+      const { data: ooProjects } = await supabase.from("projects")
+        .select("id")
+        .eq("visibility", "one_on_one")
+        .or(`created_by.eq.${user!.id},one_on_one_owner_id.eq.${userOwnerId}`);
+      const ooProjectIds = new Set((ooProjects || []).map(p => p.id));
+      // Fetch personal projects user created
+      const { data: personalProjects } = await supabase.from("projects")
+        .select("id")
+        .eq("visibility", "personal")
+        .eq("created_by", user!.id);
+      const personalProjectIds = new Set((personalProjects || []).map(p => p.id));
+
+      myTasks = processed.filter((t: Task) => 
+        t.isMyTask || 
+        (t.projects?.id && ooProjectIds.has(t.projects.id)) ||
+        (t.projects?.id && personalProjectIds.has(t.projects.id))
+      );
+    } else {
+      myTasks = [];
+    }
     setTasks(myTasks);
     setLoaded(true);
   };
