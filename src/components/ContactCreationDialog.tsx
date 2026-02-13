@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst, validateContactAssociations } from "@/lib/utils";
 import SpeechInput from "@/components/SpeechInput";
 
+type ContactType = 'employee' | 'vendor' | 'personal' | null;
+
 type ContactCreationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -15,12 +17,11 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [contactType, setContactType] = useState<ContactType>(null);
   const [isUp, setIsUp] = useState(false);
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
   const [isBpas, setIsBpas] = useState(false);
-  const [isVendor, setIsVendor] = useState(false);
-  const [isPersonal, setIsPersonal] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -30,18 +31,10 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset form when dialog closes
-      setName("");
-      setEmail("");
-      setPhone("");
-      setIsUp(false);
-      setIsBp(false);
-      setIsUpfit(false);
-      setIsBpas(false);
-      setIsVendor(false);
-      setIsPersonal(false);
-      setIsPrivate(false);
-      setError("");
+      setName(""); setEmail(""); setPhone("");
+      setContactType(null);
+      setIsUp(false); setIsBp(false); setIsUpfit(false); setIsBpas(false);
+      setIsPrivate(false); setError("");
     }
   }, [isOpen]);
 
@@ -67,6 +60,39 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
     }
   }, [isOpen, onClose]);
 
+  function handleTypeSelect(type: ContactType) {
+    if (type === 'personal') {
+      // Personal is mutually exclusive with Employee/Vendor
+      setContactType('personal');
+      setIsUp(false); setIsBp(false); setIsUpfit(false); setIsBpas(false);
+      setIsPrivate(true); // Personal is always private
+    } else if (type === 'employee') {
+      if (contactType === 'vendor') {
+        // Can be both employee + vendor
+        setContactType('employee');
+      } else if (contactType === 'employee') {
+        setContactType(null); // Toggle off
+      } else {
+        setContactType('employee');
+      }
+    } else if (type === 'vendor') {
+      if (contactType === 'employee') {
+        // Can be both - keep as vendor (we'll track both via isVendor flag)
+        setContactType('vendor');
+      } else if (contactType === 'vendor') {
+        setContactType(null);
+      } else {
+        setContactType('vendor');
+      }
+    }
+  }
+
+  // Derive if we're in employee+vendor mode
+  const isVendorType = contactType === 'vendor';
+  const isEmployeeType = contactType === 'employee';
+  const isPersonalType = contactType === 'personal';
+  const showCompanyButtons = isEmployeeType || isVendorType;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -75,15 +101,19 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       return;
     }
 
-    // Validate associations using shared validation function
+    if (!contactType) {
+      setError("Please select a contact type (Employee, Vendor, or Personal)");
+      return;
+    }
+
     const validation = validateContactAssociations({
       is_up: isUp,
       is_bp: isBp,
       is_upfit_employee: isUpfit,
       is_bpas_employee: isBpas,
-      is_third_party_vendor: isVendor,
-      is_personal: isPersonal,
-      is_private: isPrivate,
+      is_third_party_vendor: isVendorType,
+      is_private: isPrivate || isPersonalType,
+      contactType: contactType,
     });
 
     if (!validation.valid) {
@@ -95,7 +125,6 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
     setError("");
 
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("Not authenticated");
@@ -103,12 +132,13 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
         return;
       }
 
-      // Get user's profile for email
       const { data: profile } = await supabase
         .from("profiles")
         .select("email")
         .eq("id", user.id)
         .single();
+
+      const finalIsPrivate = isPersonalType || isPrivate;
 
       const { data, error: insertError } = await supabase
         .from("owners")
@@ -116,17 +146,16 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
           name: capitalizeFirst(name.trim()),
           email: email.trim() || null,
           phone: phone.trim() || null,
-          is_up_employee: isUp,
-          is_bp_employee: isBp,
-          is_upfit_employee: isUpfit,
-          is_bpas_employee: isBpas,
-          is_third_party_vendor: isVendor,
-          is_personal: isPersonal,
-          is_internal: isUp || isBp || isUpfit || isBpas,
+          is_up_employee: isPersonalType ? false : isUp,
+          is_bp_employee: isPersonalType ? false : isBp,
+          is_upfit_employee: isPersonalType ? false : isUpfit,
+          is_bpas_employee: isPersonalType ? false : isBpas,
+          is_third_party_vendor: isVendorType,
+          is_internal: isPersonalType ? false : (isUp || isBp || isUpfit || isBpas),
           created_by: user.id,
           created_by_email: profile?.email || user.email || null,
-          is_private: isPrivate,
-          private_owner_id: isPrivate ? user.id : null,
+          is_private: finalIsPrivate,
+          private_owner_id: finalIsPrivate ? user.id : null,
         })
         .select("name")
         .single();
@@ -140,15 +169,13 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       if (data) {
         onContactCreated(data.name);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to create contact");
       setSaving(false);
     }
   };
 
   if (!isOpen) return null;
-
-  const hasAnyAssociation = isUp || isBp || isUpfit || isBpas || isVendor || isPersonal || isPrivate;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -191,9 +218,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Email</label>
               <input
                 type="email"
                 value={email}
@@ -203,9 +228,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Phone
-              </label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Phone</label>
               <input
                 type="tel"
                 value={phone}
@@ -216,108 +239,126 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
             </div>
           </div>
 
+          {/* Contact Type - FIRST tier choice */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Company Association <span className="text-red-500">*</span>
+              Contact Type <span className="text-red-500">*</span>
             </label>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              Select at least one
+              Choose the type of contact first
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setIsUp(!isUp)}
+                onClick={() => handleTypeSelect('employee')}
                 className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isUp
+                  isEmployeeType
                     ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 shadow-sm"
                     : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
                 }`}
               >
-                {isUp ? "✓ " : ""}UP
+                {isEmployeeType ? "✓ " : ""}👤 Employee
               </button>
               <button
                 type="button"
-                onClick={() => setIsBp(!isBp)}
+                onClick={() => handleTypeSelect('vendor')}
                 className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isBp
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                    : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
-                }`}
-              >
-                {isBp ? "✓ " : ""}BP
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsUpfit(!isUpfit)}
-                className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isUpfit
-                    ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 shadow-sm"
-                    : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
-                }`}
-              >
-                {isUpfit ? "✓ " : ""}UPFIT
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsBpas(!isBpas)}
-                className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isBpas
-                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
-                    : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
-                }`}
-                title="Bulletproof Auto Spa"
-              >
-                {isBpas ? "✓ " : ""}BPAS
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsVendor(!isVendor)}
-                className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isVendor
+                  isVendorType
                     ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-sm"
                     : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
                 }`}
               >
-                {isVendor ? "✓ " : ""}3rd Party
+                {isVendorType ? "✓ " : ""}🏢 Vendor
               </button>
               <button
                 type="button"
-                onClick={() => setIsPersonal(!isPersonal)}
+                onClick={() => handleTypeSelect('personal')}
                 className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
-                  isPersonal
-                    ? "border-rose-500 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 shadow-sm"
+                  isPersonalType
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
                     : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
                 }`}
               >
-                {isPersonal ? "✓ " : ""}Personal
+                {isPersonalType ? "✓ " : ""}🔒 Personal
               </button>
             </div>
+            {isPersonalType && (
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                Personal contacts are private and only visible to you and admins.
+              </p>
+            )}
           </div>
 
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={isPrivate}
-                onChange={e => setIsPrivate(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
-              />
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
-                  🔒 Make Private
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Private contacts are hidden from other members and only visible to your account
-                </p>
+          {/* Company Association - only for Employee/Vendor */}
+          {showCompanyButtons && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                Company Association <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                Select at least one company
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={() => setIsUp(!isUp)}
+                  className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                    isUp ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 shadow-sm"
+                      : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"
+                  }`}>
+                  {isUp ? "✓ " : ""}UP
+                </button>
+                <button type="button" onClick={() => setIsBp(!isBp)}
+                  className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                    isBp ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                      : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"
+                  }`}>
+                  {isBp ? "✓ " : ""}BP
+                </button>
+                <button type="button" onClick={() => setIsUpfit(!isUpfit)}
+                  className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                    isUpfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 shadow-sm"
+                      : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"
+                  }`}>
+                  {isUpfit ? "✓ " : ""}UPFIT
+                </button>
+                <button type="button" onClick={() => setIsBpas(!isBpas)}
+                  className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                    isBpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                      : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"
+                  }`}
+                  title="Bulletproof Auto Spa">
+                  {isBpas ? "✓ " : ""}BPAS
+                </button>
               </div>
-            </label>
-          </div>
+            </div>
+          )}
+
+          {/* Private toggle - separate from type, hidden for Personal (auto-private) */}
+          {!isPersonalType && (
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={e => setIsPrivate(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                    🔒 Make Private
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Private contacts are hidden from other members and only visible to your account
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
         </form>
 
         <div className="px-6 py-5 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleSubmit}
-            disabled={saving || !name.trim() || !hasAnyAssociation}
+            disabled={saving || !name.trim() || !contactType}
             className="flex-1 rounded-xl bg-teal-500 px-6 py-4 text-base font-semibold text-white hover:bg-teal-600 active:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition min-h-[56px]"
           >
             {saving ? "Creating..." : "Create Contact"}

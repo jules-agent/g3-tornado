@@ -108,8 +108,38 @@ export function filterProjectsByUser<T extends {
 }
 
 /**
+ * Derive the contact type from database flags.
+ * Personal = is_private + no company flags + not vendor
+ */
+export function deriveContactType(contact: {
+  is_up_employee?: boolean | null;
+  is_bp_employee?: boolean | null;
+  is_upfit_employee?: boolean | null;
+  is_bpas_employee?: boolean | null;
+  is_third_party_vendor?: boolean | null;
+  is_private?: boolean | null;
+}): { isEmployee: boolean; isVendor: boolean; isPersonal: boolean } {
+  const hasCompany = !!(contact.is_up_employee || contact.is_bp_employee || contact.is_upfit_employee || contact.is_bpas_employee);
+  const isVendor = !!contact.is_third_party_vendor;
+  const isPrivate = !!contact.is_private;
+  
+  // Personal = private + no company flags + not vendor
+  const isPersonal = isPrivate && !hasCompany && !isVendor;
+  // Employee = has any company flag and is not ONLY a vendor
+  const isEmployee = hasCompany && !isPersonal;
+  
+  return { isEmployee, isVendor, isPersonal };
+}
+
+/**
  * Validate contact associations according to business rules.
- * Returns validation result with error message if invalid.
+ * 
+ * Contact Type Model:
+ * - Employee: works at companies, MUST have at least one company (UP/BP/UPFIT/BPAS)
+ * - Vendor: external vendor, MUST have at least one company (UP/BP/UPFIT/BPAS)  
+ * - Personal: private to creator, NO company associations needed
+ * - Employee + Vendor can coexist. Personal is mutually exclusive with Employee/Vendor.
+ * - Any type can be marked Private. Personal is ALWAYS private.
  */
 export function validateContactAssociations(contact: {
   is_up?: boolean;
@@ -118,26 +148,52 @@ export function validateContactAssociations(contact: {
   is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
-  is_personal?: boolean;
+  contactType?: 'employee' | 'vendor' | 'personal' | null;
 }): { valid: boolean; error?: string } {
   const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee || contact.is_bpas_employee;
   const isVendor = contact.is_third_party_vendor;
+  const contactType = contact.contactType;
+
+  // If using the new type system
+  if (contactType) {
+    if (contactType === 'personal') {
+      // Personal contacts don't need company associations
+      return { valid: true };
+    }
+    
+    if (contactType === 'employee' || contactType === 'vendor') {
+      if (!hasCompany) {
+        return {
+          valid: false,
+          error: `${contactType === 'employee' ? 'Employee' : 'Vendor'} contacts must have at least one company association (UP, BP, UPFIT, or BPAS)`
+        };
+      }
+      return { valid: true };
+    }
+    
+    return { valid: false, error: "Please select a contact type (Employee, Vendor, or Personal)" };
+  }
+
+  // Legacy validation (no contactType passed) — derive type from flags
   const isPrivate = contact.is_private;
-  const isPersonal = contact.is_personal;
+  const isPersonal = isPrivate && !hasCompany && !isVendor;
   
-  // Rule: Vendor cannot be private without company
-  if (isVendor && isPrivate && !hasCompany) {
+  if (isPersonal) {
+    return { valid: true };
+  }
+  
+  // Employee or Vendor must have company
+  if (isVendor && !hasCompany) {
     return { 
       valid: false, 
       error: "Vendor contacts must have at least one company association (UP, BP, UPFIT, or BPAS)" 
     };
   }
   
-  // Rule: Must have at least one association (company, vendor, personal, or private)
-  if (!hasCompany && !isVendor && !isPrivate && !isPersonal) {
+  if (!hasCompany && !isVendor && !isPrivate) {
     return { 
       valid: false, 
-      error: "Contact must have at least one association (company, vendor, personal, or private)" 
+      error: "Contact must have at least one association. Select a type: Employee, Vendor, or Personal." 
     };
   }
   
@@ -154,11 +210,9 @@ export function hasNoAssociations(contact: {
   is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
-  is_personal?: boolean;
 }): boolean {
   const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee || contact.is_bpas_employee;
   const isVendor = contact.is_third_party_vendor;
   const isPrivate = contact.is_private;
-  const isPersonal = contact.is_personal;
-  return !hasCompany && !isVendor && !isPrivate && !isPersonal;
+  return !hasCompany && !isVendor && !isPrivate;
 }

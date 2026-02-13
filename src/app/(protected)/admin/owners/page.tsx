@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { capitalizeFirst, validateContactAssociations, hasNoAssociations } from "@/lib/utils";
+import { capitalizeFirst, validateContactAssociations, hasNoAssociations, deriveContactType } from "@/lib/utils";
 
 type Owner = {
   id: string;
@@ -23,6 +23,8 @@ type Owner = {
   task_count?: number;
 };
 
+type ContactType = 'employee' | 'vendor' | 'personal' | null;
+
 type EditingCell = {
   id: string;
   field: 'name' | 'email' | 'phone';
@@ -33,6 +35,8 @@ export default function ManageOwnersPage() {
   const [loading, setLoading] = useState(true);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newContactType, setNewContactType] = useState<ContactType>(null);
   const [newForm, setNewForm] = useState({ 
     name: "", 
     email: "", 
@@ -41,7 +45,6 @@ export default function ManageOwnersPage() {
     is_bp: false,
     is_upfit: false,
     is_bpas: false,
-    is_vendor: false,
     is_private: false
   });
   const [showAddForm, setShowAddForm] = useState(false);
@@ -64,6 +67,17 @@ export default function ManageOwnersPage() {
     }
   }, [editingCell]);
 
+  // Filtered owners based on search
+  const filteredOwners = useMemo(() => {
+    if (!searchQuery.trim()) return owners;
+    const q = searchQuery.toLowerCase();
+    return owners.filter(o =>
+      o.name.toLowerCase().includes(q) ||
+      (o.email && o.email.toLowerCase().includes(q)) ||
+      (o.phone && o.phone.toLowerCase().includes(q))
+    );
+  }, [owners, searchQuery]);
+
   async function loadOwners() {
     setLoading(true);
     
@@ -81,7 +95,6 @@ export default function ManageOwnersPage() {
       countMap[to.owner_id] = (countMap[to.owner_id] || 0) + 1;
     });
     
-    // Get unique private_owner_ids to fetch profile names
     const privateOwnerIds = [...new Set(ownersData?.filter(o => o.private_owner_id).map(o => o.private_owner_id))] as string[];
     const profileNames: Record<string, string> = {};
     
@@ -103,7 +116,6 @@ export default function ManageOwnersPage() {
       private_owner_name: o.private_owner_id ? profileNames[o.private_owner_id] : null
     }));
     
-    // Sort: unassociated contacts first, then alphabetically
     const sorted = withCounts.sort((a, b) => {
       const aUnassociated = hasNoAssociations({
         is_up: a.is_up_employee || false,
@@ -131,20 +143,42 @@ export default function ManageOwnersPage() {
     setLoading(false);
   }
 
+  function handleTypeSelect(type: ContactType) {
+    if (type === 'personal') {
+      setNewContactType('personal');
+      setNewForm(f => ({ ...f, is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_private: true }));
+    } else if (type === newContactType) {
+      setNewContactType(null);
+    } else {
+      setNewContactType(type);
+      if (type === 'employee' || type === 'vendor') {
+        // Don't force private off — user can still choose
+      }
+    }
+  }
+
   async function handleAdd() {
     if (!newForm.name.trim()) {
       setError("Name is required");
       return;
     }
 
-    // Validate associations
+    if (!newContactType) {
+      setError("Please select a contact type (Employee, Vendor, or Personal)");
+      return;
+    }
+
+    const isVendor = newContactType === 'vendor';
+    const isPersonal = newContactType === 'personal';
+
     const validation = validateContactAssociations({
       is_up: newForm.is_up,
       is_bp: newForm.is_bp,
       is_upfit_employee: newForm.is_upfit,
       is_bpas_employee: newForm.is_bpas,
-      is_third_party_vendor: newForm.is_vendor,
-      is_private: newForm.is_private,
+      is_third_party_vendor: isVendor,
+      is_private: newForm.is_private || isPersonal,
+      contactType: newContactType,
     });
 
     if (!validation.valid) {
@@ -161,12 +195,13 @@ export default function ManageOwnersPage() {
       return;
     }
 
-    // Get user's profile for email
     const { data: profile } = await supabase
       .from("profiles")
       .select("email")
       .eq("id", user.id)
       .single();
+
+    const finalIsPrivate = isPersonal || newForm.is_private;
     
     const { error: insertError } = await supabase
       .from("owners")
@@ -174,20 +209,21 @@ export default function ManageOwnersPage() {
         name: capitalizeFirst(newForm.name.trim()),
         email: newForm.email.trim() || null,
         phone: newForm.phone.trim() || null,
-        is_internal: newForm.is_up || newForm.is_bp || newForm.is_upfit || newForm.is_bpas,
-        is_up_employee: newForm.is_up,
-        is_bp_employee: newForm.is_bp,
-        is_upfit_employee: newForm.is_upfit,
-        is_bpas_employee: newForm.is_bpas,
-        is_third_party_vendor: newForm.is_vendor,
-        is_private: newForm.is_private,
-        private_owner_id: newForm.is_private ? user.id : null,
+        is_internal: isPersonal ? false : (newForm.is_up || newForm.is_bp || newForm.is_upfit || newForm.is_bpas),
+        is_up_employee: isPersonal ? false : newForm.is_up,
+        is_bp_employee: isPersonal ? false : newForm.is_bp,
+        is_upfit_employee: isPersonal ? false : newForm.is_upfit,
+        is_bpas_employee: isPersonal ? false : newForm.is_bpas,
+        is_third_party_vendor: isVendor,
+        is_private: finalIsPrivate,
+        private_owner_id: finalIsPrivate ? user.id : null,
         created_by: user.id,
         created_by_email: profile?.email || user.email || null,
       });
     
     if (!insertError) {
-      setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_vendor: false, is_private: false });
+      setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_private: false });
+      setNewContactType(null);
       setShowAddForm(false);
       await loadOwners();
     } else {
@@ -207,7 +243,6 @@ export default function ManageOwnersPage() {
     const owner = owners.find(o => o.id === editingCell.id);
     if (!owner) return;
 
-    // Name is required
     if (editingCell.field === 'name' && !editValue.trim()) {
       setEditingCell(null);
       return;
@@ -216,7 +251,6 @@ export default function ManageOwnersPage() {
     const oldValue = owner[editingCell.field];
     const newValue = editValue.trim() || null;
     
-    // No change
     if (oldValue === newValue || (oldValue === null && newValue === "")) {
       setEditingCell(null);
       return;
@@ -224,7 +258,6 @@ export default function ManageOwnersPage() {
 
     setSaving(true);
 
-    // Update in Supabase
     const updateData: Record<string, string | null> = {};
     updateData[editingCell.field] = editingCell.field === 'name' ? capitalizeFirst(editValue.trim()) : (editValue.trim() || null);
     
@@ -233,7 +266,6 @@ export default function ManageOwnersPage() {
       .update(updateData)
       .eq("id", editingCell.id);
 
-    // If name changed, update gates
     if (!error && editingCell.field === 'name' && owner.name !== editValue.trim()) {
       const { data: tasks } = await supabase.from("tasks").select("id, gates");
       
@@ -264,7 +296,6 @@ export default function ManageOwnersPage() {
     setSaving(true);
     const newValue = !owner[flag];
     
-    // Calculate new is_internal value
     const newIsInternal = 
       (flag === 'is_up_employee' ? newValue : owner.is_up_employee) ||
       (flag === 'is_bp_employee' ? newValue : owner.is_bp_employee) ||
@@ -278,6 +309,64 @@ export default function ManageOwnersPage() {
         is_internal: newIsInternal
       })
       .eq("id", owner.id);
+    await loadOwners();
+    setSaving(false);
+  }
+
+  async function togglePrivate(owner: Owner) {
+    setSaving(true);
+    const newPrivate = !owner.is_private;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    await supabase
+      .from("owners")
+      .update({ 
+        is_private: newPrivate,
+        private_owner_id: newPrivate ? (owner.private_owner_id || user?.id || null) : null,
+      })
+      .eq("id", owner.id);
+    await loadOwners();
+    setSaving(false);
+  }
+
+  async function setContactTypeInline(owner: Owner, type: 'employee' | 'vendor' | 'personal') {
+    setSaving(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (type === 'personal') {
+      // Clear all company flags and vendor, set private
+      await supabase
+        .from("owners")
+        .update({
+          is_up_employee: false,
+          is_bp_employee: false,
+          is_upfit_employee: false,
+          is_bpas_employee: false,
+          is_third_party_vendor: false,
+          is_internal: false,
+          is_private: true,
+          private_owner_id: owner.private_owner_id || user?.id || null,
+        })
+        .eq("id", owner.id);
+    } else if (type === 'vendor') {
+      await supabase
+        .from("owners")
+        .update({ is_third_party_vendor: !owner.is_third_party_vendor })
+        .eq("id", owner.id);
+    } else if (type === 'employee') {
+      // If currently personal (no company, no vendor), just toggle off personal
+      const derived = deriveContactType(owner);
+      if (derived.isPersonal) {
+        // Switching from personal to employee — remove private (they'll need to add company)
+        await supabase
+          .from("owners")
+          .update({ is_private: false, private_owner_id: null })
+          .eq("id", owner.id);
+      }
+    }
+    
     await loadOwners();
     setSaving(false);
   }
@@ -307,10 +396,8 @@ export default function ManageOwnersPage() {
 
     setSaving(true);
 
-    // 1. Transfer task_owners
     await supabase.from("task_owners").update({ owner_id: mergeTargetId }).eq("owner_id", merging.sourceId);
 
-    // 2. Update gates in all tasks
     const { data: tasks } = await supabase.from("tasks").select("id, gates");
     for (const task of tasks || []) {
       if (task.gates && Array.isArray(task.gates)) {
@@ -328,7 +415,6 @@ export default function ManageOwnersPage() {
       }
     }
 
-    // 3. Delete source owner
     await supabase.from("owners").delete().eq("id", merging.sourceId);
 
     setMerging(null);
@@ -345,34 +431,53 @@ export default function ManageOwnersPage() {
     }
   }
 
+  const showCompanyButtons = newContactType === 'employee' || newContactType === 'vendor';
+
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-            ← Back to tasks
-          </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
-            Manage People (Admin)
-          </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Click any cell to edit. Admins see all contacts including private ones.
-          </p>
+      {/* Sticky toolbar */}
+      <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 pb-4 -mx-4 px-4 pt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+              ← Back to tasks
+            </Link>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+              Manage Contacts (Admin)
+            </h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Click any cell to edit. Admins see all contacts including private ones.
+            </p>
+          </div>
+          {!showAddForm && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition-colors"
+            >
+              + Add Contact
+            </button>
+          )}
         </div>
-        {!showAddForm && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition-colors"
-          >
-            + Add Person
-          </button>
-        )}
+        {/* Search box */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search contacts by name, email, or phone..."
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          </div>
+          <span className="text-xs text-slate-500">{filteredOwners.length} of {owners.length} contacts</span>
+        </div>
       </div>
 
       {/* Add new form */}
       {showAddForm && (
         <div className="mb-6 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Add New Person</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-3">New Contact</h3>
           
           {error && (
             <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
@@ -406,64 +511,91 @@ export default function ManageOwnersPage() {
               />
             </div>
             
+            {/* Contact Type - First tier choice */}
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Company Association *</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Contact Type *</label>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setNewForm({ ...newForm, is_up: !newForm.is_up })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_up ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
-                  {newForm.is_up ? "✓ " : ""}UP
+                <button type="button" onClick={() => handleTypeSelect('employee')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newContactType === 'employee' ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                  {newContactType === 'employee' ? "✓ " : ""}👤 Employee
                 </button>
-                <button type="button" onClick={() => setNewForm({ ...newForm, is_bp: !newForm.is_bp })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_bp ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
-                  {newForm.is_bp ? "✓ " : ""}BP
+                <button type="button" onClick={() => handleTypeSelect('vendor')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newContactType === 'vendor' ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                  {newContactType === 'vendor' ? "✓ " : ""}🏢 Vendor
                 </button>
-                <button type="button" onClick={() => setNewForm({ ...newForm, is_upfit: !newForm.is_upfit })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_upfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
-                  {newForm.is_upfit ? "✓ " : ""}UPFIT
-                </button>
-                <button type="button" onClick={() => setNewForm({ ...newForm, is_bpas: !newForm.is_bpas })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_bpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}
-                  title="Bulletproof Auto Spa">
-                  {newForm.is_bpas ? "✓ " : ""}BPAS
-                </button>
-                <button type="button" onClick={() => setNewForm({ ...newForm, is_vendor: !newForm.is_vendor })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_vendor ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
-                  {newForm.is_vendor ? "✓ " : ""}3rd Party Vendor
+                <button type="button" onClick={() => handleTypeSelect('personal')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newContactType === 'personal' ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                  {newContactType === 'personal' ? "✓ " : ""}🔒 Personal
                 </button>
               </div>
+              {newContactType === 'personal' && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5">
+                  Personal contacts are private and only visible to you and admins.
+                </p>
+              )}
             </div>
 
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={newForm.is_private}
-                  onChange={(e) => setNewForm({ ...newForm, is_private: e.target.checked })}
-                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
-                />
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
-                    🔒 Make Private
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Private contacts are hidden from other members
-                  </p>
+            {/* Company Association - only for Employee/Vendor */}
+            {showCompanyButtons && (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5 block">Company Association *</label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setNewForm({ ...newForm, is_up: !newForm.is_up })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_up ? "border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                    {newForm.is_up ? "✓ " : ""}UP
+                  </button>
+                  <button type="button" onClick={() => setNewForm({ ...newForm, is_bp: !newForm.is_bp })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_bp ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                    {newForm.is_bp ? "✓ " : ""}BP
+                  </button>
+                  <button type="button" onClick={() => setNewForm({ ...newForm, is_upfit: !newForm.is_upfit })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_upfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
+                    {newForm.is_upfit ? "✓ " : ""}UPFIT
+                  </button>
+                  <button type="button" onClick={() => setNewForm({ ...newForm, is_bpas: !newForm.is_bpas })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_bpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}
+                    title="Bulletproof Auto Spa">
+                    {newForm.is_bpas ? "✓ " : ""}BPAS
+                  </button>
                 </div>
-              </label>
-            </div>
+              </div>
+            )}
+
+            {/* Private toggle - separate, hidden for Personal (auto-private) */}
+            {newContactType !== 'personal' && (
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={newForm.is_private}
+                    onChange={(e) => setNewForm({ ...newForm, is_private: e.target.checked })}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-500 focus:ring-2 focus:ring-teal-500 focus:ring-offset-0"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                      🔒 Make Private
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Private contacts are hidden from other members
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleAdd}
-              disabled={saving || !newForm.name.trim()}
+              disabled={saving || !newForm.name.trim() || !newContactType}
               className="px-4 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 disabled:opacity-50 transition-colors"
             >
-              {saving ? "Adding..." : "Add Person"}
+              {saving ? "Adding..." : "Add Contact"}
             </button>
             <button
               onClick={() => {
                 setShowAddForm(false);
-                setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_vendor: false, is_private: false });
+                setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_private: false });
+                setNewContactType(null);
                 setError("");
               }}
               className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -477,24 +609,26 @@ export default function ManageOwnersPage() {
       {/* Table */}
       {loading ? (
         <div className="text-center py-12 text-slate-400">Loading...</div>
-      ) : owners.length === 0 ? (
-        <div className="text-center py-12 text-slate-400">No people added yet.</div>
+      ) : filteredOwners.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">
+          {searchQuery ? "No contacts match your search." : "No contacts added yet."}
+        </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-[140px] z-10">
               <tr className="bg-slate-50 dark:bg-slate-900/50 text-left text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
                 <th className="px-4 py-3 font-semibold">Phone</th>
-                <th className="px-4 py-3 font-semibold">Associations</th>
+                <th className="px-4 py-3 font-semibold">Type & Associations</th>
                 <th className="px-4 py-3 font-semibold">Created By</th>
                 <th className="px-4 py-3 font-semibold text-center">Tasks</th>
                 <th className="px-4 py-3 font-semibold w-24"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {owners.map((owner) => {
+              {filteredOwners.map((owner) => {
                 const unassociated = hasNoAssociations({
                   is_up: owner.is_up_employee || false,
                   is_bp: owner.is_bp_employee || false,
@@ -503,13 +637,14 @@ export default function ManageOwnersPage() {
                   is_third_party_vendor: owner.is_third_party_vendor || false,
                   is_private: owner.is_private || false,
                 });
+                const derived = deriveContactType(owner);
 
                 return (
                   <tr 
                     key={owner.id} 
                     className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${unassociated ? "flash-red" : ""}`}
                   >
-                    {/* Name - inline editable */}
+                    {/* Name */}
                     <td className="px-4 py-3">
                       {editingCell?.id === owner.id && editingCell.field === 'name' ? (
                         <input
@@ -534,19 +669,14 @@ export default function ManageOwnersPage() {
                           >
                             {owner.name}
                           </span>
-                          {owner.is_private && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
-                              Private to {owner.private_owner_name}
-                            </span>
-                          )}
                           {unassociated && (
-                            <span className="text-xs text-red-600 dark:text-red-400">⚠️ No association</span>
+                            <span className="text-xs text-red-600 dark:text-red-400">⚠️ No type</span>
                           )}
                         </div>
                       )}
                     </td>
                     
-                    {/* Email - inline editable */}
+                    {/* Email */}
                     <td className="px-4 py-3">
                       {editingCell?.id === owner.id && editingCell.field === 'email' ? (
                         <input
@@ -571,7 +701,7 @@ export default function ManageOwnersPage() {
                       )}
                     </td>
                     
-                    {/* Phone - inline editable */}
+                    {/* Phone */}
                     <td className="px-4 py-3">
                       {editingCell?.id === owner.id && editingCell.field === 'phone' ? (
                         <input
@@ -596,65 +726,117 @@ export default function ManageOwnersPage() {
                       )}
                     </td>
                     
-                    {/* Associations - clickable badges to toggle */}
+                    {/* Type & Associations - clickable badges */}
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
+                        {/* Type badges */}
                         <button
-                          onClick={() => toggleCompanyFlag(owner, 'is_up_employee')}
+                          onClick={() => setContactTypeInline(owner, 'employee')}
                           disabled={saving}
+                          title="Toggle Employee type"
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                            owner.is_up_employee
+                            derived.isEmployee
                               ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 cursor-pointer hover:bg-teal-200"
                               : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
                           }`}
                         >
-                          {owner.is_up_employee ? "✓ UP" : "UP"}
+                          {derived.isEmployee ? "✓ " : ""}Employee
                         </button>
                         <button
-                          onClick={() => toggleCompanyFlag(owner, 'is_bp_employee')}
+                          onClick={() => setContactTypeInline(owner, 'vendor')}
                           disabled={saving}
+                          title="Toggle Vendor type"
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                            owner.is_bp_employee
-                              ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 cursor-pointer hover:bg-indigo-200"
-                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
-                          }`}
-                        >
-                          {owner.is_bp_employee ? "✓ BP" : "BP"}
-                        </button>
-                        <button
-                          onClick={() => toggleCompanyFlag(owner, 'is_upfit_employee')}
-                          disabled={saving}
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                            owner.is_upfit_employee
-                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-pointer hover:bg-amber-200"
-                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
-                          }`}
-                        >
-                          {owner.is_upfit_employee ? "✓ UPFIT" : "UPFIT"}
-                        </button>
-                        <button
-                          onClick={() => toggleCompanyFlag(owner, 'is_bpas_employee')}
-                          disabled={saving}
-                          title="Bulletproof Auto Spa"
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                            owner.is_bpas_employee
-                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-200"
-                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
-                          }`}
-                        >
-                          {owner.is_bpas_employee ? "✓ BPAS" : "BPAS"}
-                        </button>
-                        <button
-                          onClick={() => toggleCompanyFlag(owner, 'is_third_party_vendor')}
-                          disabled={saving}
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                            owner.is_third_party_vendor
+                            derived.isVendor
                               ? "bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 cursor-pointer hover:bg-slate-300"
                               : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
                           }`}
                         >
-                          {owner.is_third_party_vendor ? "✓ Vendor" : "Vendor"}
+                          {derived.isVendor ? "✓ " : ""}Vendor
                         </button>
+                        <button
+                          onClick={() => setContactTypeInline(owner, 'personal')}
+                          disabled={saving}
+                          title="Set as Personal (clears company associations)"
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                            derived.isPersonal
+                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-200"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                          }`}
+                        >
+                          {derived.isPersonal ? "✓ " : ""}Personal
+                        </button>
+                        
+                        {/* Divider */}
+                        {(derived.isEmployee || derived.isVendor) && (
+                          <span className="text-slate-300 dark:text-slate-600 mx-0.5">|</span>
+                        )}
+                        
+                        {/* Company badges - only show for non-personal */}
+                        {!derived.isPersonal && (
+                          <>
+                            <button
+                              onClick={() => toggleCompanyFlag(owner, 'is_up_employee')}
+                              disabled={saving}
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                                owner.is_up_employee
+                                  ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 cursor-pointer hover:bg-teal-200"
+                                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                              }`}
+                            >
+                              {owner.is_up_employee ? "✓ UP" : "UP"}
+                            </button>
+                            <button
+                              onClick={() => toggleCompanyFlag(owner, 'is_bp_employee')}
+                              disabled={saving}
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                                owner.is_bp_employee
+                                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 cursor-pointer hover:bg-indigo-200"
+                                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                              }`}
+                            >
+                              {owner.is_bp_employee ? "✓ BP" : "BP"}
+                            </button>
+                            <button
+                              onClick={() => toggleCompanyFlag(owner, 'is_upfit_employee')}
+                              disabled={saving}
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                                owner.is_upfit_employee
+                                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-pointer hover:bg-amber-200"
+                                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                              }`}
+                            >
+                              {owner.is_upfit_employee ? "✓ UPFIT" : "UPFIT"}
+                            </button>
+                            <button
+                              onClick={() => toggleCompanyFlag(owner, 'is_bpas_employee')}
+                              disabled={saving}
+                              title="Bulletproof Auto Spa"
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                                owner.is_bpas_employee
+                                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-200"
+                                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                              }`}
+                            >
+                              {owner.is_bpas_employee ? "✓ BPAS" : "BPAS"}
+                            </button>
+                          </>
+                        )}
+
+                        {/* Private badge */}
+                        <button
+                          onClick={() => togglePrivate(owner)}
+                          disabled={saving || derived.isPersonal}
+                          title={derived.isPersonal ? "Personal contacts are always private" : "Toggle private visibility"}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                            owner.is_private
+                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-200"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                          } ${derived.isPersonal ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          {owner.is_private ? "🔒 Private" : "Private"}
+                        </button>
+
                         {unassociated && (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
                             ⚠️ None
@@ -732,10 +914,12 @@ export default function ManageOwnersPage() {
 
       {/* Legend */}
       <div className="mt-4 flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <div>Click company badges to toggle associations. All contacts must have at least one association.</div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded flash-red"></span>
-          <span>Unassociated contacts (needs attention)</span>
+        <div>Click type/company badges to toggle. Employee &amp; Vendor need at least one company. Personal contacts are auto-private.</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-teal-100 dark:bg-teal-900/30"></span> Employee</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-slate-200 dark:bg-slate-600"></span> Vendor</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30"></span> Personal</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded flash-red"></span> Unassociated (needs attention)</span>
         </div>
       </div>
     </div>
