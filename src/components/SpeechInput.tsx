@@ -1,60 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Mic, MicOff } from "lucide-react";
-
-// TypeScript declarations for Web Speech API
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-  isFinal: boolean;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-}
-
-interface SpeechRecognitionConstructor {
-  new (): SpeechRecognition;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
+import { useState, useRef, useCallback } from "react";
+import { Mic } from "lucide-react";
 
 interface SpeechInputProps {
   onResult: (text: string) => void;
@@ -67,106 +14,128 @@ export default function SpeechInput({
   disabled = false,
   className = "",
 }: SpeechInputProps) {
-  const [isListening, setIsListening] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    // Check for Web Speech API support
-    const SpeechRecognitionAPI =
-      window.webkitSpeechRecognition || window.SpeechRecognition;
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-    if (SpeechRecognitionAPI) {
-      setIsSupported(true);
-      const recognition = new SpeechRecognitionAPI();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+      // Use a format that works on iOS Safari
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "audio/webm";
 
-      recognition.onstart = () => {
-        setIsListening(true);
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+      recorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const results = event.results;
-        const lastResult = results[results.length - 1];
-        
-        if (lastResult.isFinal) {
-          const transcript = lastResult[0].transcript;
-          onResult(transcript);
+        if (chunksRef.current.length === 0) {
+          setIsRecording(false);
+          return;
+        }
+
+        const audioBlob = new Blob(chunksRef.current, { type: mimeType });
+        chunksRef.current = [];
+
+        // Send to Whisper API
+        setIsTranscribing(true);
+        try {
+          const formData = new FormData();
+          const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+          formData.append("audio", audioBlob, `recording.${ext}`);
+
+          const res = await fetch("/api/speech", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const { text } = await res.json();
+            if (text?.trim()) onResult(text.trim());
+          } else {
+            console.error("Speech API error:", res.status);
+          }
+        } catch (err) {
+          console.error("Transcription error:", err);
+        } finally {
+          setIsTranscribing(false);
+          setIsRecording(false);
         }
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-        
-        if (event.error === "not-allowed") {
-          alert("Microphone access denied. Please enable microphone permissions.");
-        } else if (event.error === "no-speech") {
-          // Silent failure for no-speech - just stop listening
-        } else {
-          console.warn("Speech recognition error:", event.error);
-        }
-      };
-
-      recognitionRef.current = recognition;
-    } else {
-      setIsSupported(false);
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
+      recorder.start(250); // Collect in 250ms chunks
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Microphone error:", err);
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        alert("Microphone access denied. Please enable microphone permissions in Settings.");
       }
-    };
+      setIsRecording(false);
+    }
   }, [onResult]);
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) return;
-
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      try {
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        setIsListening(false);
-      }
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
     }
-  };
+  }, []);
 
-  // Hide button if not supported
-  if (!isSupported) {
-    return null;
-  }
+  const toggle = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  const active = isRecording || isTranscribing;
 
   return (
     <button
       type="button"
-      onClick={toggleListening}
-      disabled={disabled}
+      onClick={toggle}
+      disabled={disabled || isTranscribing}
       className={`
         flex items-center justify-center
         w-10 h-10 rounded-lg
         transition-all duration-200
         ${
-          isListening
-            ? "bg-red-500 text-white animate-pulse-microphone"
+          isRecording
+            ? "bg-red-500 text-white animate-pulse"
+            : isTranscribing
+            ? "bg-amber-500 text-white animate-pulse"
             : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
         }
         ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${className}
       `}
-      title={isListening ? "Stop recording" : "Start voice input"}
-      aria-label={isListening ? "Stop recording" : "Start voice input"}
+      title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Start voice input"}
+      aria-label={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Start voice input"}
     >
-      {isListening ? <Mic className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+      {isTranscribing ? (
+        <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <Mic className="w-5 h-5" />
+      )}
     </button>
   );
 }
