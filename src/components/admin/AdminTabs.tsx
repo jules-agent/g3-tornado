@@ -1449,8 +1449,8 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
             <div>
               <label className="block text-xs text-slate-500 mb-1">Private</label>
               <button onClick={() => setEditIsPrivate(!editIsPrivate)}
-                className={`text-sm ${editIsPrivate ? "text-purple-600 dark:text-purple-400" : "text-slate-300 dark:text-slate-600"}`}>
-                {editIsPrivate ? "🔒" : "🔓"}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded ${editIsPrivate ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"}`}>
+                {editIsPrivate ? "PRIVATE" : "PUBLIC"}
               </button>
             </div>
           </div>
@@ -1488,14 +1488,12 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                   <tr key={owner.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${vendorWarning ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
                       <EditableCell value={owner.name} onSave={(v) => updateOwnerField(owner.id, "name", v)} placeholder="Name" />
-                      {owner.created_by_email && (
-                        <span 
+                      <span 
                           className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 inline-block mt-1"
                           title={owner.created_at ? `Created ${new Date(owner.created_at).toLocaleString()}` : ""}
                         >
-                          Created by: {owner.created_by_email.split("@")[0]}
+                          Created by: {owner.created_by_email ? (() => { const name = owner.created_by_email!.split("@")[0]; return name.charAt(0).toUpperCase() + name.slice(1); })() : "Ben"}
                         </span>
-                      )}
                       {vendorWarning && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-red-600 dark:text-red-400">⚠️ Vendor needs company:</span>
@@ -1597,10 +1595,10 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => toggleFlag(owner.id, "is_private", !owner.is_private)}
-                        className={`text-sm ${owner.is_private ? "text-purple-600 dark:text-purple-400" : "text-slate-300 dark:text-slate-600 hover:text-slate-400"}`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${owner.is_private ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 hover:bg-green-200"}`}
                         title={owner.is_private ? "Private (click to make public)" : "Public (click to make private)"}
                       >
-                        {owner.is_private ? "🔒" : "🔓"}
+                        {owner.is_private ? "PRIVATE" : "PUBLIC"}
                       </button>
                     </td>
                     <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
