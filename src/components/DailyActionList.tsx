@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { capitalizeFirst } from "@/lib/utils";
 import { RestartClockModal } from "./RestartClockModal";
+import { ContactCreationDialog } from "./ContactCreationDialog";
 import SpeechInput from "@/components/SpeechInput";
 
 type Owner = {
@@ -52,12 +53,17 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
   const [closingTask, setClosingTask] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const [showRestartClock, setShowRestartClock] = useState(false);
+  const [editGates, setEditGates] = useState<Gate[]>([]);
+  const [newGateName, setNewGateName] = useState("");
+  const [newGateOwner, setNewGateOwner] = useState("");
+  const [savingGates, setSavingGates] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
   const noteInputRef = useRef<HTMLInputElement>(null);
   const cadenceInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
 
-  // Load owners when manage panel opens
+  // Load owners and init gates when manage panel opens
   useEffect(() => {
     if (expanded !== "manage") return;
     async function loadOwners() {
@@ -65,7 +71,8 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
       setOwners(data || []);
     }
     loadOwners();
-  }, [expanded, supabase]);
+    setEditGates([...item.gates]);
+  }, [expanded, supabase, item.gates]);
 
   async function handleNoteSubmit() {
     if (!noteText.trim() || saving) return;
@@ -136,41 +143,14 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
         .eq("id", item.taskId);
     }
 
-    // Save blocker if filled
-    if (blockerOwner) {
-      const newGate: Gate = {
-        name: `Gate ${item.gates.length + 1}`,
-        owner_name: blockerOwner,
-        task_name: blockerDesc || undefined,
-        completed: false,
-      };
-
-      const updatedGates = [...item.gates];
-      updatedGates.splice(blockerPosition, 0, newGate);
-      updatedGates.forEach((g, i) => {
-        g.name = `Gate ${i + 1}`;
-      });
-
-      await supabase
-        .from("tasks")
-        .update({
-          gates: updatedGates,
-          is_blocked: updatedGates.some((g) => !g.completed && g.owner_name),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.taskId);
-    }
-
     setSavingChanges(false);
     setExpanded("none");
     setCadenceChanged(false);
-    setBlockerOwner("");
-    setBlockerDesc("");
     setNoteSaved(false);
     onUpdate();
   }
 
-  const hasChanges = cadenceChanged || !!blockerOwner;
+  const hasChanges = cadenceChanged;
 
   return (
     <div
@@ -299,53 +279,88 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
                 </div>
               </div>
 
-              {/* Blocker section */}
+              {/* Gate Management */}
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  🚧 Add Blocker (optional)
+                  🚦 Gates
                 </label>
-                <div className="mt-1 space-y-1.5">
-                  <select
-                    value={blockerOwner}
-                    onChange={(e) => setBlockerOwner(e.target.value)}
-                    className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="">Select gate person...</option>
-                    {owners.map((o) => (
-                      <option key={o.id} value={o.name}>
-                        {capitalizeFirst(o.name)}
-                      </option>
-                    ))}
-                  </select>
-                  {blockerOwner && (
-                    <>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={blockerDesc}
-                          onChange={(e) => setBlockerDesc(e.target.value)}
-                          placeholder="What do they need to do?"
-                          className="flex-1 px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        />
-                        <SpeechInput
-                          onResult={(spoken) => setBlockerDesc(prev => prev ? prev + ' ' + spoken : spoken)}
-                        />
+                <div className="mt-1 space-y-1">
+                  {editGates.map((gate, idx) => (
+                    <div key={idx} className={`flex items-center gap-1.5 text-xs ${gate.completed ? "opacity-40 line-through" : ""}`}>
+                      <span className="text-slate-400 w-4">{idx + 1}.</span>
+                      <span className="flex-1 text-slate-700 dark:text-slate-300 truncate">{gate.name || "Gate"}</span>
+                      {gate.owner_name && <span className="text-slate-400 text-[10px]">→ {gate.owner_name}</span>}
+                      {gate.task_name && <span className="text-slate-300 dark:text-slate-600 text-[10px] truncate max-w-[80px]">({gate.task_name})</span>}
+                      <div className="flex gap-0.5">
+                        <button onClick={() => { if (idx > 0) { const u = [...editGates]; [u[idx], u[idx-1]] = [u[idx-1], u[idx]]; setEditGates(u); }}} disabled={idx === 0} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-30">▲</button>
+                        <button onClick={() => { if (idx < editGates.length - 1) { const u = [...editGates]; [u[idx], u[idx+1]] = [u[idx+1], u[idx]]; setEditGates(u); }}} disabled={idx === editGates.length - 1} className="text-[10px] text-slate-400 hover:text-slate-600 disabled:opacity-30">▼</button>
+                        {!gate.completed && <button onClick={() => setEditGates(editGates.filter((_, i) => i !== idx))} className="text-[10px] text-red-400 hover:text-red-600 ml-1">✕</button>}
                       </div>
-                      {item.gates.length > 0 && (
-                        <select
-                          value={blockerPosition}
-                          onChange={(e) => setBlockerPosition(parseInt(e.target.value))}
-                          className="w-full px-2 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        >
-                          <option value={0}>Before all existing gates</option>
-                          {item.gates.map((g, i) => (
-                            <option key={i} value={i + 1}>
-                              After {capitalizeFirst(g.owner_name)} — {capitalizeFirst(g.task_name || "gate")}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </>
+                    </div>
+                  ))}
+                  {/* Add new gate */}
+                  <div className="flex gap-1.5 pt-1">
+                    <input
+                      type="text"
+                      value={newGateName}
+                      onChange={(e) => setNewGateName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newGateName.trim()) {
+                          setEditGates([...editGates, { name: newGateName.trim(), owner_name: newGateOwner, completed: false, task_name: undefined }]);
+                          setNewGateName("");
+                          setNewGateOwner("");
+                        }
+                      }}
+                      placeholder="New gate..."
+                      className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
+                    />
+                    <select
+                      value={newGateOwner}
+                      onChange={(e) => {
+                        if (e.target.value === "__add__") {
+                          setShowContactDialog(true);
+                        } else {
+                          setNewGateOwner(e.target.value);
+                        }
+                      }}
+                      className="w-28 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
+                    >
+                      <option value="">Who?</option>
+                      {owners.map(o => (
+                        <option key={o.id} value={o.name}>{o.name}</option>
+                      ))}
+                      <option value="__add__">+ Add new contact...</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (newGateName.trim()) {
+                          setEditGates([...editGates, { name: newGateName.trim(), owner_name: newGateOwner, completed: false, task_name: undefined }]);
+                          setNewGateName("");
+                          setNewGateOwner("");
+                        }
+                      }}
+                      disabled={!newGateName.trim()}
+                      className="text-teal-500 hover:text-teal-600 text-xs font-bold disabled:opacity-30"
+                    >+</button>
+                  </div>
+                  {/* Save gates button */}
+                  {JSON.stringify(editGates) !== JSON.stringify(item.gates) && (
+                    <button
+                      onClick={async () => {
+                        setSavingGates(true);
+                        await supabase.from("tasks").update({
+                          gates: editGates,
+                          is_blocked: editGates.some(g => !g.completed && g.owner_name),
+                          updated_at: new Date().toISOString(),
+                        }).eq("id", item.taskId);
+                        setSavingGates(false);
+                        onUpdate();
+                      }}
+                      disabled={savingGates}
+                      className="w-full rounded-lg bg-teal-500 text-white text-[11px] font-semibold py-1.5 hover:bg-teal-600 disabled:opacity-50 transition mt-1"
+                    >
+                      {savingGates ? "Saving..." : "Save Gates"}
+                    </button>
                   )}
                 </div>
               </div>
@@ -408,6 +423,19 @@ function ActionCard({ item, onUpdate }: { item: ActionItem; onUpdate: () => void
         onConfirm={handleRestartClockConfirm}
         onCancel={handleRestartClockCancel}
         currentCadenceDays={item.fuCadenceDays}
+      />
+
+      {/* Contact Creation Dialog */}
+      <ContactCreationDialog
+        isOpen={showContactDialog}
+        onClose={() => setShowContactDialog(false)}
+        onContactCreated={async (contactName) => {
+          setNewGateOwner(contactName);
+          setShowContactDialog(false);
+          // Reload owners
+          const { data } = await supabase.from("owners").select("id, name").order("name");
+          setOwners(data || []);
+        }}
       />
     </div>
   );
