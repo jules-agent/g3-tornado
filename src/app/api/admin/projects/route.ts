@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, description, is_up, is_bp, is_upfit, visibility, one_on_one_owner_id } = await request.json();
+  const { name, description, is_up, is_bp, is_upfit, is_bpas, visibility, one_on_one_owner_id } = await request.json();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
   // Ensure profile exists (foreign key constraint)
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       is_up: is_up || false,
       is_bp: is_bp || false,
       is_upfit: is_upfit || false,
+      is_bpas: is_bpas || false,
       visibility: visibility || "shared",
       created_by: user.id,
       one_on_one_owner_id: one_on_one_owner_id || null,
@@ -47,7 +48,7 @@ export async function PUT(request: Request) {
   const supabase = await createClient();
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id, name, description, is_up, is_bp, is_upfit } = await request.json();
+  const { id, name, description, is_up, is_bp, is_upfit, is_bpas } = await request.json();
   if (!id || !name) return NextResponse.json({ error: "ID and name are required" }, { status: 400 });
 
   const { data, error } = await supabase
@@ -81,7 +82,7 @@ export async function PATCH(request: Request) {
   }
 
   // Only allow specific fields — non-admins can only edit name and description
-  const adminOnly = ["is_up", "is_bp", "is_upfit", "visibility", "deadline", "buffer_days", "customer_name"];
+  const adminOnly = ["is_up", "is_bp", "is_upfit", "is_bpas", "visibility", "deadline", "buffer_days", "customer_name"];
   const allowed = isAdmin
     ? ["name", "description", ...adminOnly]
     : ["name", "description"];

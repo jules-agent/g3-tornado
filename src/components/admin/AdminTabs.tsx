@@ -23,6 +23,7 @@ type Project = {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  is_bpas?: boolean;
   visibility?: string;
   created_by?: string;
   deadline?: string | null;
@@ -39,6 +40,7 @@ type Owner = {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_personal?: boolean;
   is_private?: boolean;
@@ -825,11 +827,12 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
   const [isUp, setIsUp] = useState(false);
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
+  const [isBpas, setIsBpas] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const resetForm = () => {
-    setName(""); setDescription(""); setIsUp(false); setIsBp(false); setIsUpfit(false);
+    setName(""); setDescription(""); setIsUp(false); setIsBp(false); setIsUpfit(false); setIsBpas(false);
   };
 
   const saveProject = async (projectId?: string) => {
@@ -839,7 +842,7 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
       const res = await fetch("/api/admin/projects", {
         method: projectId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: projectId, name, description, is_up: isUp, is_bp: isBp, is_upfit: isUpfit }),
+        body: JSON.stringify({ id: projectId, name, description, is_up: isUp, is_bp: isBp, is_upfit: isUpfit, is_bpas: isBpas }),
       });
       if (res.ok) { resetForm(); setShowAdd(false); setEditingId(null); router.refresh(); }
     } catch { console.error("Failed to save project"); }
@@ -870,6 +873,7 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
     setIsUp(project.is_up || false);
     setIsBp(project.is_bp || false);
     setIsUpfit(project.is_upfit || false);
+    setIsBpas(project.is_bpas || false);
   };
 
   return (
@@ -912,6 +916,10 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
                   <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
                   <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBpas} onChange={(e) => setIsBpas(e.target.checked)} className="rounded border-slate-300 text-violet-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BPAS</span>
+                </label>
               </div>
             </div>
             <button onClick={() => saveProject()} disabled={loading || !name.trim()} className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
@@ -950,6 +958,10 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
                   <input type="checkbox" checked={isUpfit} onChange={(e) => setIsUpfit(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
                   <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBpas} onChange={(e) => setIsBpas(e.target.checked)} className="rounded border-slate-300 text-violet-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BPAS</span>
+                </label>
               </div>
             </div>
             <div className="flex gap-2">
@@ -969,6 +981,7 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">BPAS</th>
               <th className="px-4 py-2 font-semibold">Description</th>
               <th className="px-3 py-2 font-semibold w-28">Deadline</th>
               <th className="px-3 py-2 font-semibold w-16">Buffer</th>
@@ -978,11 +991,11 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {projects.length === 0 ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-slate-400">No projects yet.</td></tr>
             ) : (
               projects.map((project) => (
                 <tr key={project.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2" >
                     <div className="font-medium text-slate-900 dark:text-white">{project.name}</div>
                     {(project as Project & { created_by?: string }).created_by && creatorNames[(project as Project & { created_by?: string }).created_by!] && (
                       <div className="text-[10px] text-slate-400 dark:text-slate-500">by {creatorNames[(project as Project & { created_by?: string }).created_by!]}</div>
@@ -1004,6 +1017,9 @@ function ProjectsTab({ projects, creatorNames = {} }: { projects: Project[]; cre
                   </td>
                   <td className="px-3 py-2 text-center">
                     <input type="checkbox" checked={project.is_upfit || false} onChange={(e) => toggleProjectFlag(project.id, "is_upfit", e.target.checked)} className="rounded border-slate-300 text-purple-600 cursor-pointer" />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <input type="checkbox" checked={project.is_bpas || false} onChange={(e) => toggleProjectFlag(project.id, "is_bpas", e.target.checked)} className="rounded border-slate-300 text-violet-600 cursor-pointer" title="Bulletproof Auto Spa" />
                   </td>
                   <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{project.description || "—"}</td>
                   <td className="px-3 py-2">
@@ -1063,6 +1079,11 @@ function OwnerBadges({ owner }: { owner: Owner }) {
       {owner.is_upfit_employee && (
         <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
           UF
+        </span>
+      )}
+      {owner.is_bpas_employee && (
+        <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300" title="Bulletproof Auto Spa">
+          BPAS
         </span>
       )}
       {owner.is_third_party_vendor && (
@@ -1128,6 +1149,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const [isUpEmployee, setIsUpEmployee] = useState(false);
   const [isBpEmployee, setIsBpEmployee] = useState(false);
   const [isUpfitEmployee, setIsUpfitEmployee] = useState(false);
+  const [isBpasEmployee, setIsBpasEmployee] = useState(false);
   const [isThirdPartyVendor, setIsThirdPartyVendor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1140,7 +1162,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   const resetForm = () => {
     setName(""); setEmail(""); setPhone("");
-    setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); setIsThirdPartyVendor(false);
+    setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); setIsBpasEmployee(false); setIsThirdPartyVendor(false);
     setError("");
   };
 
@@ -1156,7 +1178,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const saveOwner = async () => {
     if (!name.trim()) return;
     // Vendor must have at least one company
-    if (isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee) {
+    if (isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee && !isBpasEmployee) {
       setError("Vendors must be associated with at least one company (UP, BP, or UPFIT)");
       return;
     }
@@ -1165,7 +1187,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       const res = await fetch("/api/admin/owners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: email || null, phone: phone || null, is_up_employee: isUpEmployee, is_bp_employee: isBpEmployee, is_upfit_employee: isUpfitEmployee, is_third_party_vendor: isThirdPartyVendor }),
+        body: JSON.stringify({ name, email: email || null, phone: phone || null, is_up_employee: isUpEmployee, is_bp_employee: isBpEmployee, is_upfit_employee: isUpfitEmployee, is_bpas_employee: isBpasEmployee, is_third_party_vendor: isThirdPartyVendor }),
       });
       const data = await res.json();
       if (res.ok) { resetForm(); setShowAdd(false); router.refresh(); }
@@ -1265,6 +1287,10 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                   <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} className="rounded border-slate-300 text-purple-600" />
                   <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
                 </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={isBpasEmployee} onChange={(e) => handleEmployeeChange(setIsBpasEmployee, e.target.checked)} className="rounded border-slate-300 text-violet-600" />
+                  <span className="text-slate-700 dark:text-slate-300">BPAS</span>
+                </label>
               </div>
             </div>
             <label className="flex items-center gap-1.5 text-sm">
@@ -1327,6 +1353,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
               <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
               <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
               <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
+              <th className="px-3 py-2 font-semibold text-center w-16">BPAS</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Personal</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Private</th>
@@ -1339,12 +1366,12 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {owners.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
+                <td colSpan={12} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
               </tr>
             ) : (
               owners.map((owner) => {
                 const isVendor = owner.is_third_party_vendor;
-                const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee;
+                const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee || owner.is_bpas_employee;
                 const vendorWarning = isVendor && !hasCompany;
                 
                 return (
@@ -1367,6 +1394,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                             <option value="is_up_employee">UP</option>
                             <option value="is_bp_employee">BP</option>
                             <option value="is_upfit_employee">UPFIT</option>
+                            <option value="is_bpas_employee">BPAS</option>
                           </select>
                         </div>
                       )}
@@ -1379,6 +1407,9 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={owner.is_upfit_employee || false} onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={owner.is_bpas_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bpas_employee", e.target.checked)} className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 cursor-pointer" title="Bulletproof Auto Spa" />
                     </td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />

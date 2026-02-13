@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name: name.trim(),
       description: description?.trim() || null,
-      company_scope: company_scope || { is_up: false, is_bp: false, is_upfit: false },
+      company_scope: company_scope || { is_up: false, is_bp: false, is_upfit: false, is_bpas: false },
       gates,
       created_by: user.id,
       created_by_email: profile?.email || user.email,

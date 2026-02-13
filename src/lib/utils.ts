@@ -15,13 +15,15 @@ export function getCompanyFlags(owner: {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
-} | null | undefined): { up: boolean; bp: boolean; upfit: boolean } {
-  if (!owner) return { up: false, bp: false, upfit: false };
+} | null | undefined): { up: boolean; bp: boolean; upfit: boolean; bpas: boolean } {
+  if (!owner) return { up: false, bp: false, upfit: false, bpas: false };
   return {
     up: !!owner.is_up_employee,
     bp: !!owner.is_bp_employee,
     upfit: !!owner.is_upfit_employee,
+    bpas: !!owner.is_bpas_employee,
   };
 }
 
@@ -35,16 +37,17 @@ export function filterContactsByProject<T extends {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
 }>(
   contacts: T[],
-  project: { is_up?: boolean; is_bp?: boolean; is_upfit?: boolean } | null | undefined,
+  project: { is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; is_bpas?: boolean } | null | undefined,
   isAdmin = false
 ): T[] {
   if (isAdmin) return contacts;
   if (!project) return contacts;
   
-  const hasAnyFlag = project.is_up || project.is_bp || project.is_upfit;
+  const hasAnyFlag = project.is_up || project.is_bp || project.is_upfit || project.is_bpas;
   if (!hasAnyFlag) return contacts;
 
   return contacts.filter((contact) => {
@@ -52,12 +55,13 @@ export function filterContactsByProject<T extends {
     const contactFlags = getCompanyFlags(contact);
     
     // Contacts with no flags set are hidden (they need company association)
-    if (!contactFlags.up && !contactFlags.bp && !contactFlags.upfit) return false;
+    if (!contactFlags.up && !contactFlags.bp && !contactFlags.upfit && !contactFlags.bpas) return false;
     
     // Match at least one company flag
     if (project.is_up && contactFlags.up) return true;
     if (project.is_bp && contactFlags.bp) return true;
     if (project.is_upfit && contactFlags.upfit) return true;
+    if (project.is_bpas && contactFlags.bpas) return true;
     
     return false;
   });
@@ -72,12 +76,14 @@ export function filterProjectsByUser<T extends {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  is_bpas?: boolean;
 }>(
   projects: T[],
   userOwner: {
     is_up_employee?: boolean;
     is_bp_employee?: boolean;
     is_upfit_employee?: boolean;
+    is_bpas_employee?: boolean;
     is_third_party_vendor?: boolean;
   } | null | undefined,
   isAdmin = false
@@ -89,12 +95,13 @@ export function filterProjectsByUser<T extends {
   
   return projects.filter((project) => {
     // Projects with no flags are visible to everyone
-    if (!project.is_up && !project.is_bp && !project.is_upfit) return true;
+    if (!project.is_up && !project.is_bp && !project.is_upfit && !project.is_bpas) return true;
     
     // Match at least one company flag
     if (project.is_up && userFlags.up) return true;
     if (project.is_bp && userFlags.bp) return true;
     if (project.is_upfit && userFlags.upfit) return true;
+    if (project.is_bpas && userFlags.bpas) return true;
     
     return false;
   });
@@ -108,11 +115,12 @@ export function validateContactAssociations(contact: {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
   is_personal?: boolean;
 }): { valid: boolean; error?: string } {
-  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
+  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee || contact.is_bpas_employee;
   const isVendor = contact.is_third_party_vendor;
   const isPrivate = contact.is_private;
   const isPersonal = contact.is_personal;
@@ -121,7 +129,7 @@ export function validateContactAssociations(contact: {
   if (isVendor && isPrivate && !hasCompany) {
     return { 
       valid: false, 
-      error: "Vendor contacts must have at least one company association (UP, BP, or UPFIT)" 
+      error: "Vendor contacts must have at least one company association (UP, BP, UPFIT, or BPAS)" 
     };
   }
   
@@ -143,11 +151,12 @@ export function hasNoAssociations(contact: {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
   is_personal?: boolean;
 }): boolean {
-  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee;
+  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee || contact.is_bpas_employee;
   const isVendor = contact.is_third_party_vendor;
   const isPrivate = contact.is_private;
   const isPersonal = contact.is_personal;

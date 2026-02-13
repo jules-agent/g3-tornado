@@ -14,6 +14,7 @@ export function ProposeTemplate({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [isUp, setIsUp] = useState(false);
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
+  const [isBpas, setIsBpas] = useState(false);
   const [gates, setGates] = useState<GateStep[]>([{ name: "", owner_name: "" }]);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -38,7 +39,7 @@ export function ProposeTemplate({ isOpen, onClose }: { isOpen: boolean; onClose:
     if (!name.trim()) { setError("Template name is required"); return; }
     const validGates = gates.filter(g => g.name.trim());
     if (validGates.length === 0) { setError("At least one gate step is required"); return; }
-    if (!isUp && !isBp && !isUpfit) { setError("Select at least one company"); return; }
+    if (!isUp && !isBp && !isUpfit && !isBpas) { setError("Select at least one company"); return; }
 
     setLoading(true);
     setError(null);
@@ -49,7 +50,7 @@ export function ProposeTemplate({ isOpen, onClose }: { isOpen: boolean; onClose:
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || null,
-          company_scope: { is_up: isUp, is_bp: isBp, is_upfit: isUpfit },
+          company_scope: { is_up: isUp, is_bp: isBp, is_upfit: isUpfit, is_bpas: isBpas },
           gates: validGates.map((g, i) => ({ ...g, order: i + 1, completed: false })),
         }),
       });
@@ -66,7 +67,7 @@ export function ProposeTemplate({ isOpen, onClose }: { isOpen: boolean; onClose:
   };
 
   const reset = () => {
-    setName(""); setDescription(""); setIsUp(false); setIsBp(false); setIsUpfit(false);
+    setName(""); setDescription(""); setIsUp(false); setIsBp(false); setIsUpfit(false); setIsBpas(false);
     setGates([{ name: "", owner_name: "" }]); setSubmitted(false); setError(null);
   };
 
@@ -127,6 +128,7 @@ export function ProposeTemplate({ isOpen, onClose }: { isOpen: boolean; onClose:
                   { label: "UP", val: isUp, set: setIsUp },
                   { label: "BP", val: isBp, set: setIsBp },
                   { label: "UPFIT", val: isUpfit, set: setIsUpfit },
+                  { label: "BPAS", val: isBpas, set: setIsBpas },
                 ].map(({ label, val, set }) => (
                   <button
                     key={label}

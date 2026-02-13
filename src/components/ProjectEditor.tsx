@@ -10,6 +10,7 @@ type Project = {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  is_bpas?: boolean;
   visibility?: string;
   created_by?: string;
   created_at: string;
@@ -33,6 +34,7 @@ export function ProjectEditor({
   const [editIsUp, setEditIsUp] = useState(false);
   const [editIsBp, setEditIsBp] = useState(false);
   const [editIsUpfit, setEditIsUpfit] = useState(false);
+  const [editIsBpas, setEditIsBpas] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -45,6 +47,7 @@ export function ProjectEditor({
     setEditIsUp(p.is_up || false);
     setEditIsBp(p.is_bp || false);
     setEditIsUpfit(p.is_upfit || false);
+    setEditIsBpas(p.is_bpas || false);
     setMessage("");
   };
 
@@ -68,6 +71,7 @@ export function ProjectEditor({
           is_up: editIsUp,
           is_bp: editIsBp,
           is_upfit: editIsUpfit,
+          is_bpas: editIsBpas,
         }),
       });
       if (res.ok) {
@@ -138,6 +142,7 @@ export function ProjectEditor({
                         { label: "UP", val: editIsUp, set: setEditIsUp },
                         { label: "BP", val: editIsBp, set: setEditIsBp },
                         { label: "UPFIT", val: editIsUpfit, set: setEditIsUpfit },
+                        { label: "BPAS", val: editIsBpas, set: setEditIsBpas },
                       ].map(({ label, val, set }) => (
                         <button
                           key={label}
@@ -172,6 +177,7 @@ export function ProjectEditor({
                       {project.is_up && <span className="rounded bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">UP</span>}
                       {project.is_bp && <span className="rounded bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">BP</span>}
                       {project.is_upfit && <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">UPFIT</span>}
+                      {project.is_bpas && <span className="rounded bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300" title="Bulletproof Auto Spa">BPAS</span>}
                       {project.visibility === "personal" && <span className="rounded bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">🔒 Personal</span>}
                     </div>
                   </div>

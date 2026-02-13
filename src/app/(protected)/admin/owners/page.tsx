@@ -14,6 +14,7 @@ type Owner = {
   is_up_employee: boolean | null;
   is_bp_employee: boolean | null;
   is_upfit_employee: boolean | null;
+  is_bpas_employee: boolean | null;
   is_third_party_vendor: boolean | null;
   created_by_email: string | null;
   is_private: boolean | null;
@@ -39,6 +40,7 @@ export default function ManageOwnersPage() {
     is_up: false,
     is_bp: false,
     is_upfit: false,
+    is_bpas: false,
     is_vendor: false,
     is_private: false
   });
@@ -67,7 +69,7 @@ export default function ManageOwnersPage() {
     
     const { data: ownersData } = await supabase
       .from("owners")
-      .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, created_by_email, is_private, private_owner_id")
+      .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor, created_by_email, is_private, private_owner_id")
       .order("name");
     
     const { data: taskOwners } = await supabase
@@ -107,6 +109,7 @@ export default function ManageOwnersPage() {
         is_up: a.is_up_employee || false,
         is_bp: a.is_bp_employee || false,
         is_upfit_employee: a.is_upfit_employee || false,
+        is_bpas_employee: a.is_bpas_employee || false,
         is_third_party_vendor: a.is_third_party_vendor || false,
         is_private: a.is_private || false,
       });
@@ -114,6 +117,7 @@ export default function ManageOwnersPage() {
         is_up: b.is_up_employee || false,
         is_bp: b.is_bp_employee || false,
         is_upfit_employee: b.is_upfit_employee || false,
+        is_bpas_employee: b.is_bpas_employee || false,
         is_third_party_vendor: b.is_third_party_vendor || false,
         is_private: b.is_private || false,
       });
@@ -138,6 +142,7 @@ export default function ManageOwnersPage() {
       is_up: newForm.is_up,
       is_bp: newForm.is_bp,
       is_upfit_employee: newForm.is_upfit,
+      is_bpas_employee: newForm.is_bpas,
       is_third_party_vendor: newForm.is_vendor,
       is_private: newForm.is_private,
     });
@@ -169,10 +174,11 @@ export default function ManageOwnersPage() {
         name: capitalizeFirst(newForm.name.trim()),
         email: newForm.email.trim() || null,
         phone: newForm.phone.trim() || null,
-        is_internal: newForm.is_up || newForm.is_bp || newForm.is_upfit,
+        is_internal: newForm.is_up || newForm.is_bp || newForm.is_upfit || newForm.is_bpas,
         is_up_employee: newForm.is_up,
         is_bp_employee: newForm.is_bp,
         is_upfit_employee: newForm.is_upfit,
+        is_bpas_employee: newForm.is_bpas,
         is_third_party_vendor: newForm.is_vendor,
         is_private: newForm.is_private,
         private_owner_id: newForm.is_private ? user.id : null,
@@ -181,7 +187,7 @@ export default function ManageOwnersPage() {
       });
     
     if (!insertError) {
-      setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_vendor: false, is_private: false });
+      setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_vendor: false, is_private: false });
       setShowAddForm(false);
       await loadOwners();
     } else {
@@ -254,7 +260,7 @@ export default function ManageOwnersPage() {
     setSaving(false);
   }
 
-  async function toggleCompanyFlag(owner: Owner, flag: 'is_up_employee' | 'is_bp_employee' | 'is_upfit_employee' | 'is_third_party_vendor') {
+  async function toggleCompanyFlag(owner: Owner, flag: 'is_up_employee' | 'is_bp_employee' | 'is_upfit_employee' | 'is_bpas_employee' | 'is_third_party_vendor') {
     setSaving(true);
     const newValue = !owner[flag];
     
@@ -262,7 +268,8 @@ export default function ManageOwnersPage() {
     const newIsInternal = 
       (flag === 'is_up_employee' ? newValue : owner.is_up_employee) ||
       (flag === 'is_bp_employee' ? newValue : owner.is_bp_employee) ||
-      (flag === 'is_upfit_employee' ? newValue : owner.is_upfit_employee);
+      (flag === 'is_upfit_employee' ? newValue : owner.is_upfit_employee) ||
+      (flag === 'is_bpas_employee' ? newValue : owner.is_bpas_employee);
 
     await supabase
       .from("owners")
@@ -414,6 +421,11 @@ export default function ManageOwnersPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_upfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
                   {newForm.is_upfit ? "✓ " : ""}UPFIT
                 </button>
+                <button type="button" onClick={() => setNewForm({ ...newForm, is_bpas: !newForm.is_bpas })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_bpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}
+                  title="Bulletproof Auto Spa">
+                  {newForm.is_bpas ? "✓ " : ""}BPAS
+                </button>
                 <button type="button" onClick={() => setNewForm({ ...newForm, is_vendor: !newForm.is_vendor })}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newForm.is_vendor ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
                   {newForm.is_vendor ? "✓ " : ""}3rd Party Vendor
@@ -451,7 +463,7 @@ export default function ManageOwnersPage() {
             <button
               onClick={() => {
                 setShowAddForm(false);
-                setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_vendor: false, is_private: false });
+                setNewForm({ name: "", email: "", phone: "", is_up: false, is_bp: false, is_upfit: false, is_bpas: false, is_vendor: false, is_private: false });
                 setError("");
               }}
               className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -487,6 +499,7 @@ export default function ManageOwnersPage() {
                   is_up: owner.is_up_employee || false,
                   is_bp: owner.is_bp_employee || false,
                   is_upfit_employee: owner.is_upfit_employee || false,
+                  is_bpas_employee: owner.is_bpas_employee || false,
                   is_third_party_vendor: owner.is_third_party_vendor || false,
                   is_private: owner.is_private || false,
                 });
@@ -618,6 +631,18 @@ export default function ManageOwnersPage() {
                           }`}
                         >
                           {owner.is_upfit_employee ? "✓ UPFIT" : "UPFIT"}
+                        </button>
+                        <button
+                          onClick={() => toggleCompanyFlag(owner, 'is_bpas_employee')}
+                          disabled={saving}
+                          title="Bulletproof Auto Spa"
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                            owner.is_bpas_employee
+                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-200"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-pointer hover:bg-slate-200"
+                          }`}
+                        >
+                          {owner.is_bpas_employee ? "✓ BPAS" : "BPAS"}
                         </button>
                         <button
                           onClick={() => toggleCompanyFlag(owner, 'is_third_party_vendor')}

@@ -13,6 +13,7 @@ type Owner = {
   is_up_employee: boolean | null;
   is_bp_employee: boolean | null;
   is_upfit_employee: boolean | null;
+  is_bpas_employee: boolean | null;
   is_third_party_vendor: boolean | null;
   is_private: boolean | null;
   unassociated?: boolean;
@@ -53,7 +54,7 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
   useEffect(() => {
     async function loadOwners() {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
+      const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
       
       // Filter out private contacts that don't belong to the current user
       const filtered = (data || []).filter(owner => {
@@ -68,6 +69,7 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
           is_up: owner.is_up_employee || false,
           is_bp: owner.is_bp_employee || false,
           is_upfit_employee: owner.is_upfit_employee || false,
+          is_bpas_employee: owner.is_bpas_employee || false,
           is_third_party_vendor: owner.is_third_party_vendor || false,
           is_private: owner.is_private || false,
         })
@@ -134,7 +136,7 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
   const handleContactCreated = async (contactName: string, gateIdx: number) => {
     // Reload owners list with full data
     const { data: { user } } = await supabase.auth.getUser();
-    const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
+    const { data } = await supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor, is_private, private_owner_id").order("name");
     
     // Filter private contacts
     const filtered = (data || []).filter(owner => {
@@ -149,6 +151,7 @@ export function GateEditor({ taskId, gates: initialGates, onClose, onSave, curre
         is_up: owner.is_up_employee || false,
         is_bp: owner.is_bp_employee || false,
         is_upfit_employee: owner.is_upfit_employee || false,
+          is_bpas_employee: owner.is_bpas_employee || false,
         is_third_party_vendor: owner.is_third_party_vendor || false,
         is_private: owner.is_private || false,
       })

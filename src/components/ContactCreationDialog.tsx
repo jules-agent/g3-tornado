@@ -18,6 +18,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
   const [isUp, setIsUp] = useState(false);
   const [isBp, setIsBp] = useState(false);
   const [isUpfit, setIsUpfit] = useState(false);
+  const [isBpas, setIsBpas] = useState(false);
   const [isVendor, setIsVendor] = useState(false);
   const [isPersonal, setIsPersonal] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -36,6 +37,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       setIsUp(false);
       setIsBp(false);
       setIsUpfit(false);
+      setIsBpas(false);
       setIsVendor(false);
       setIsPersonal(false);
       setIsPrivate(false);
@@ -78,6 +80,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
       is_up: isUp,
       is_bp: isBp,
       is_upfit_employee: isUpfit,
+      is_bpas_employee: isBpas,
       is_third_party_vendor: isVendor,
       is_personal: isPersonal,
       is_private: isPrivate,
@@ -116,9 +119,10 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
           is_up_employee: isUp,
           is_bp_employee: isBp,
           is_upfit_employee: isUpfit,
+          is_bpas_employee: isBpas,
           is_third_party_vendor: isVendor,
           is_personal: isPersonal,
-          is_internal: isUp || isBp || isUpfit,
+          is_internal: isUp || isBp || isUpfit || isBpas,
           created_by: user.id,
           created_by_email: profile?.email || user.email || null,
           is_private: isPrivate,
@@ -144,7 +148,7 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
 
   if (!isOpen) return null;
 
-  const hasAnyAssociation = isUp || isBp || isUpfit || isVendor || isPersonal || isPrivate;
+  const hasAnyAssociation = isUp || isBp || isUpfit || isBpas || isVendor || isPersonal || isPrivate;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -252,6 +256,18 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
                 }`}
               >
                 {isUpfit ? "✓ " : ""}UPFIT
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBpas(!isBpas)}
+                className={`px-5 py-3 rounded-xl text-sm font-bold border-2 transition min-h-[48px] ${
+                  isBpas
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                    : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300 active:bg-slate-50 dark:active:bg-slate-800"
+                }`}
+                title="Bulletproof Auto Spa"
+              >
+                {isBpas ? "✓ " : ""}BPAS
               </button>
               <button
                 type="button"

@@ -42,7 +42,7 @@ const sections: Section[] = [
     icon: "🚀",
     content: (
       <div className="space-y-4">
-        <p>Welcome to G3 Tornado — your task management and accountability system for Unplugged Performance, Bulletproof Automotive, and UP.FIT.</p>
+        <p>Welcome to G3 Tornado — your task management and accountability system for Unplugged Performance, Bulletproof Automotive, UP.FIT, and Bulletproof Auto Spa.</p>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">First Login</h3>
         <ol className="list-decimal ml-5 space-y-2 text-sm">
           <li>Navigate to <strong>g3tornado.com</strong> and sign in with the email provided by your admin.</li>
@@ -56,6 +56,7 @@ const sections: Section[] = [
           <li><strong>UP</strong> — Unplugged Performance</li>
           <li><strong>BP</strong> — Bulletproof Automotive</li>
           <li><strong>UPFIT</strong> — UP.FIT</li>
+          <li><strong>BPAS</strong> — Bulletproof Auto Spa</li>
         </ul>
         <p className="text-sm">You can only see projects and contacts for the companies you belong to. Admins can see everything.</p>
         <Tip>If you can&apos;t see a project or contact you expect, ask your admin to check your company associations.</Tip>
@@ -139,7 +140,7 @@ const sections: Section[] = [
           <li>Gates are completed in order — the first incomplete gate is the &quot;active&quot; blocker.</li>
           <li>Tasks with incomplete gates show as <strong>🚧 Gated</strong>.</li>
         </ul>
-        <Warning>When creating a <strong>shared/team project</strong>, select the relevant companies (UP, BP, UPFIT). This determines who can see the project and which contacts are available. Personal and One-on-One projects don&apos;t require company selection.</Warning>
+        <Warning>When creating a <strong>shared/team project</strong>, select the relevant companies (UP, BP, UPFIT, BPAS). This determines who can see the project and which contacts are available. Personal and One-on-One projects don&apos;t require company selection.</Warning>
       </div>
     ),
   },
@@ -279,7 +280,7 @@ const sections: Section[] = [
           <li><strong>One on One</strong> — shared between you and one other person</li>
         </ul>
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Company Associations</h3>
-        <p className="text-sm">When creating a project, you must select one or more companies (UP, BP, UPFIT). This determines:</p>
+        <p className="text-sm">When creating a project, you must select one or more companies (UP, BP, UPFIT, BPAS). This determines:</p>
         <ul className="list-disc ml-5 space-y-1 text-sm">
           <li>Which <strong>users</strong> can see the project</li>
           <li>Which <strong>contacts</strong> can be assigned to tasks in the project</li>
@@ -368,7 +369,7 @@ const sections: Section[] = [
         <ul className="list-disc ml-5 space-y-1 text-sm">
           <li><strong>Users</strong> — Manage user accounts, roles, and permissions</li>
           <li><strong>Projects</strong> — Create/edit all projects across companies</li>
-          <li><strong>Contacts</strong> — Manage all contacts, set company associations (UP/BP/UPFIT), mark as employee or vendor</li>
+          <li><strong>Contacts</strong> — Manage all contacts, set company associations (UP/BP/UPFIT/BPAS), mark as employee or vendor</li>
           <li><strong>Activity Log</strong> — View all system activity</li>
           <li><strong>Feedback</strong> — Review bug reports and feature requests</li>
         </ul>

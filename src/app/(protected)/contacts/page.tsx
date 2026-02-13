@@ -14,6 +14,7 @@ type Owner = {
   is_up_employee: boolean | null;
   is_bp_employee: boolean | null;
   is_upfit_employee: boolean | null;
+  is_bpas_employee: boolean | null;
   is_third_party_vendor: boolean | null;
   created_by: string | null;
   created_by_email: string | null;
@@ -40,6 +41,7 @@ export default function ContactsPage() {
   const [newIsUp, setNewIsUp] = useState(false);
   const [newIsBp, setNewIsBp] = useState(false);
   const [newIsUpfit, setNewIsUpfit] = useState(false);
+  const [newIsBpas, setNewIsBpas] = useState(false);
   const [newIsVendor, setNewIsVendor] = useState(false);
   const [newIsPrivate, setNewIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,6 +53,7 @@ export default function ContactsPage() {
   const [editIsUp, setEditIsUp] = useState(false);
   const [editIsBp, setEditIsBp] = useState(false);
   const [editIsUpfit, setEditIsUpfit] = useState(false);
+  const [editIsBpas, setEditIsBpas] = useState(false);
   const [editIsVendor, setEditIsVendor] = useState(false);
   const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [editError, setEditError] = useState("");
@@ -74,7 +77,7 @@ export default function ContactsPage() {
 
     const { data } = await supabase
       .from("owners")
-      .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor, created_by, created_by_email, is_private, private_owner_id")
+      .select("id, name, email, phone, is_internal, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor, created_by, created_by_email, is_private, private_owner_id")
       .order("name");
     
     // For admins, fetch all owner profiles to map private_owner_id -> username
@@ -110,6 +113,7 @@ export default function ContactsPage() {
         is_up: a.is_up_employee || false,
         is_bp: a.is_bp_employee || false,
         is_upfit_employee: a.is_upfit_employee || false,
+        is_bpas_employee: a.is_bpas_employee || false,
         is_third_party_vendor: a.is_third_party_vendor || false,
         is_private: a.is_private || false,
       });
@@ -117,6 +121,7 @@ export default function ContactsPage() {
         is_up: b.is_up_employee || false,
         is_bp: b.is_bp_employee || false,
         is_upfit_employee: b.is_upfit_employee || false,
+        is_bpas_employee: b.is_bpas_employee || false,
         is_third_party_vendor: b.is_third_party_vendor || false,
         is_private: b.is_private || false,
       });
@@ -143,6 +148,7 @@ export default function ContactsPage() {
       is_up: newIsUp,
       is_bp: newIsBp,
       is_upfit_employee: newIsUpfit,
+      is_bpas_employee: newIsBpas,
       is_third_party_vendor: newIsVendor,
       is_private: newIsPrivate,
     });
@@ -172,10 +178,11 @@ export default function ContactsPage() {
       name: capitalizeFirst(newName.trim()),
       email: newEmail.trim() || null,
       phone: newPhone.trim() || null,
-      is_internal: newIsUp || newIsBp || newIsUpfit,
+      is_internal: newIsUp || newIsBp || newIsUpfit || newIsBpas,
       is_up_employee: newIsUp,
       is_bp_employee: newIsBp,
       is_upfit_employee: newIsUpfit,
+      is_bpas_employee: newIsBpas,
       is_third_party_vendor: newIsVendor,
       is_private: newIsPrivate,
       private_owner_id: newIsPrivate ? user.id : null,
@@ -185,7 +192,7 @@ export default function ContactsPage() {
 
     if (!insertError) {
       setNewName(""); setNewEmail(""); setNewPhone("");
-      setNewIsUp(false); setNewIsBp(false); setNewIsUpfit(false); setNewIsVendor(false);
+      setNewIsUp(false); setNewIsBp(false); setNewIsUpfit(false); setNewIsBpas(false); setNewIsVendor(false);
       setNewIsPrivate(false);
       setShowAdd(false);
       await load();
@@ -203,6 +210,7 @@ export default function ContactsPage() {
     setEditIsUp(owner.is_up_employee || false);
     setEditIsBp(owner.is_bp_employee || false);
     setEditIsUpfit(owner.is_upfit_employee || false);
+    setEditIsBpas(owner.is_bpas_employee || false);
     setEditIsVendor(owner.is_third_party_vendor || false);
     setEditIsPrivate(owner.is_private || false);
     setEditError("");
@@ -224,6 +232,7 @@ export default function ContactsPage() {
       is_up: editIsUp,
       is_bp: editIsBp,
       is_upfit_employee: editIsUpfit,
+      is_bpas_employee: editIsBpas,
       is_third_party_vendor: editIsVendor,
       is_private: editIsPrivate,
     });
@@ -254,10 +263,11 @@ export default function ContactsPage() {
         name: capitalizeFirst(editName.trim()),
         email: editEmail.trim() || null,
         phone: editPhone.trim() || null,
-        is_internal: editIsUp || editIsBp || editIsUpfit,
+        is_internal: editIsUp || editIsBp || editIsUpfit || editIsBpas,
         is_up_employee: editIsUp,
         is_bp_employee: editIsBp,
         is_upfit_employee: editIsUpfit,
+        is_bpas_employee: editIsBpas,
         is_third_party_vendor: editIsVendor,
         is_private: editIsPrivate,
         private_owner_id: editIsPrivate ? owner.private_owner_id || userId : null,
@@ -326,6 +336,11 @@ export default function ContactsPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newIsUpfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
                   {newIsUpfit ? "✓ " : ""}UPFIT
                 </button>
+                <button type="button" onClick={() => setNewIsBpas(!newIsBpas)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newIsBpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}
+                  title="Bulletproof Auto Spa">
+                  {newIsBpas ? "✓ " : ""}BPAS
+                </button>
                 <button type="button" onClick={() => setNewIsVendor(!newIsVendor)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${newIsVendor ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
                   {newIsVendor ? "✓ " : ""}3rd Party Vendor
@@ -378,6 +393,7 @@ export default function ContactsPage() {
                 is_up: o.is_up_employee || false,
                 is_bp: o.is_bp_employee || false,
                 is_upfit_employee: o.is_upfit_employee || false,
+                is_bpas_employee: o.is_bpas_employee || false,
                 is_third_party_vendor: o.is_third_party_vendor || false,
                 is_private: o.is_private || false,
               });
@@ -409,6 +425,11 @@ export default function ContactsPage() {
                         {o.is_upfit_employee && (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                             UPFIT
+                          </span>
+                        )}
+                        {o.is_bpas_employee && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" title="Bulletproof Auto Spa">
+                            BPAS
                           </span>
                         )}
                         {o.is_third_party_vendor && (
@@ -495,6 +516,11 @@ export default function ContactsPage() {
                                 <button type="button" onClick={() => setEditIsUpfit(!editIsUpfit)}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsUpfit ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>
                                   {editIsUpfit ? "✓ " : ""}UPFIT
+                                </button>
+                                <button type="button" onClick={() => setEditIsBpas(!editIsBpas)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsBpas ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}
+                                  title="Bulletproof Auto Spa">
+                                  {editIsBpas ? "✓ " : ""}BPAS
                                 </button>
                                 <button type="button" onClick={() => setEditIsVendor(!editIsVendor)}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${editIsVendor ? "border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300" : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-slate-300"}`}>

@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { owner_id, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor } = await request.json();
+  const { owner_id, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor } = await request.json();
 
   // Check if user is admin
   const { data: profile } = await supabase.from("profiles").select("role, owner_id").eq("id", user.id).single();
@@ -19,12 +19,13 @@ export async function POST(request: Request) {
 
   // Non-admins can only ADD flags, not remove them
   if (!isAdmin) {
-    const { data: currentOwner } = await supabase.from("owners").select("is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").eq("id", owner_id).single();
+    const { data: currentOwner } = await supabase.from("owners").select("is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor").eq("id", owner_id).single();
     if (currentOwner) {
       // Prevent removing existing flags
       if (currentOwner.is_up_employee && !is_up_employee) return NextResponse.json({ error: "Only admins can remove team assignments" }, { status: 403 });
       if (currentOwner.is_bp_employee && !is_bp_employee) return NextResponse.json({ error: "Only admins can remove team assignments" }, { status: 403 });
       if (currentOwner.is_upfit_employee && !is_upfit_employee) return NextResponse.json({ error: "Only admins can remove team assignments" }, { status: 403 });
+      if (currentOwner.is_bpas_employee && !is_bpas_employee) return NextResponse.json({ error: "Only admins can remove team assignments" }, { status: 403 });
       if (currentOwner.is_third_party_vendor && !is_third_party_vendor) return NextResponse.json({ error: "Only admins can remove team assignments" }, { status: 403 });
     }
   }
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
     is_up_employee: is_up_employee || false,
     is_bp_employee: is_bp_employee || false,
     is_upfit_employee: is_upfit_employee || false,
+    is_bpas_employee: is_bpas_employee || false,
     is_third_party_vendor: is_third_party_vendor || false,
   }).eq("id", owner_id);
 

@@ -53,8 +53,8 @@ export default async function TaskDetailPage({
         .select("id, content, created_at, created_by, profiles (full_name, email)")
         .eq("task_id", id)
         .order("created_at", { ascending: false }),
-      supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor").order("name"),
-      supabase.from("projects").select("id, name, is_up, is_bp, is_upfit").order("name"),
+      supabase.from("owners").select("id, name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor").order("name"),
+      supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, is_bpas").order("name"),
     ]);
 
   if (!task) {

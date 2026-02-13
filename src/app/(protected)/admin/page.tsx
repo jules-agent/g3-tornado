@@ -57,6 +57,7 @@ export default async function AdminPage({
       is_up_employee,
       is_bp_employee,
       is_upfit_employee,
+      is_bpas_employee,
       is_third_party_vendor,
       is_personal,
       is_private,

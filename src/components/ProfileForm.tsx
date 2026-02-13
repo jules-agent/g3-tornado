@@ -11,6 +11,7 @@ type Owner = {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
 };
 
@@ -34,6 +35,7 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
   const [isUp, setIsUp] = useState(owner?.is_up_employee ?? false);
   const [isBp, setIsBp] = useState(owner?.is_bp_employee ?? false);
   const [isUpfit, setIsUpfit] = useState(owner?.is_upfit_employee ?? false);
+  const [isBpas, setIsBpas] = useState(owner?.is_bpas_employee ?? false);
   const [isVendor, setIsVendor] = useState(owner?.is_third_party_vendor ?? false);
 
   // Link to existing owner or create new
@@ -62,6 +64,7 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
           is_up_employee: isUp,
           is_bp_employee: isBp,
           is_upfit_employee: isUpfit,
+          is_bpas_employee: isBpas,
           is_third_party_vendor: isVendor,
         }),
       });
@@ -96,7 +99,7 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
     setSaving(false);
   };
 
-  const hasTeam = isUp || isBp || isUpfit || isVendor;
+  const hasTeam = isUp || isBp || isUpfit || isBpas || isVendor;
 
   return (
     <div className="space-y-6">
@@ -256,6 +259,19 @@ export function ProfileForm({ profile, owner, owners, isAdmin }: Props) {
             <div>
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">UPFIT</span>
               <span className="text-xs text-slate-400 ml-2">UP.FIT</span>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isBpas}
+              onChange={(e) => { if (isAdmin || e.target.checked) setIsBpas(e.target.checked); }}
+              disabled={!isAdmin && isBpas && owner?.is_bpas_employee}
+              className="rounded border-slate-300 text-violet-600 w-4 h-4"
+            />
+            <div>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">BPAS</span>
+              <span className="text-xs text-slate-400 ml-2">Bulletproof Auto Spa</span>
             </div>
           </label>
           <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">

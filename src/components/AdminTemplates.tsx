@@ -7,7 +7,7 @@ type Template = {
   id: string;
   name: string;
   description: string | null;
-  company_scope: { is_up: boolean; is_bp: boolean; is_upfit: boolean };
+  company_scope: { is_up: boolean; is_bp: boolean; is_upfit: boolean; is_bpas: boolean };
   gates: GateStep[];
   created_by_email: string | null;
   status: string;
@@ -21,6 +21,7 @@ function CompanyBadges({ scope }: { scope: Template["company_scope"] }) {
       {scope.is_up && <span className="rounded bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">UP</span>}
       {scope.is_bp && <span className="rounded bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">BP</span>}
       {scope.is_upfit && <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">UPFIT</span>}
+      {scope.is_bpas && <span className="rounded bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300" title="Bulletproof Auto Spa">BPAS</span>}
     </span>
   );
 }
@@ -83,7 +84,7 @@ function TemplateCard({
                 placeholder="Description..."
               />
               <div className="flex gap-2">
-                {(["is_up", "is_bp", "is_upfit"] as const).map(key => (
+                {(["is_up", "is_bp", "is_upfit", "is_bpas"] as const).map(key => (
                   <button
                     key={key}
                     type="button"

@@ -18,7 +18,7 @@ export default async function ProfilePage() {
   if (profile?.owner_id) {
     const { data } = await supabase
       .from("owners")
-      .select("id, name, email, phone, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor")
+      .select("id, name, email, phone, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor")
       .eq("id", profile.owner_id)
       .maybeSingle();
     owner = data;

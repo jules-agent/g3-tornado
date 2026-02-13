@@ -18,6 +18,7 @@ type Project = {
   is_up?: boolean;
   is_bp?: boolean;
   is_upfit?: boolean;
+  is_bpas?: boolean;
   visibility?: string;
   created_by?: string;
   one_on_one_owner_id?: string;
@@ -29,6 +30,7 @@ type Owner = {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
 };
 
@@ -79,6 +81,7 @@ export default function TaskForm({
   const [newProjectIsUp, setNewProjectIsUp] = useState(false);
   const [newProjectIsBp, setNewProjectIsBp] = useState(false);
   const [newProjectIsUpfit, setNewProjectIsUpfit] = useState(false);
+  const [newProjectIsBpas, setNewProjectIsBpas] = useState(false);
   const [fuCadenceDays, setFuCadenceDays] = useState(
     initialValues?.fu_cadence_days ?? 3
   );
@@ -97,10 +100,11 @@ export default function TaskForm({
   const [taskIsUp, setTaskIsUp] = useState(false);
   const [taskIsBp, setTaskIsBp] = useState(false);
   const [taskIsUpfit, setTaskIsUpfit] = useState(false);
+  const [taskIsBpas, setTaskIsBpas] = useState(false);
   const [taskIsPersonal, setTaskIsPersonal] = useState(false);
 
   // Template state
-  const [templates, setTemplates] = useState<{ id: string; name: string; gates: { name: string; owner_name: string }[]; company_scope: { is_up: boolean; is_bp: boolean; is_upfit: boolean } }[]>([]);
+  const [templates, setTemplates] = useState<{ id: string; name: string; gates: { name: string; owner_name: string }[]; company_scope: { is_up: boolean; is_bp: boolean; is_upfit: boolean; is_bpas: boolean } }[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
 
   // Fetch approved templates
@@ -139,7 +143,8 @@ export default function TaskForm({
   // Auto-assign current user as owner on create & get admin status
   const [currentUserOwnerId, setCurrentUserOwnerId] = useState<string | null>(null);
   const [currentUserOwner, setCurrentUserOwner] = useState<{
-    is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_third_party_vendor?: boolean;
+    is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean; is_third_party_vendor?: boolean;
   } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -183,9 +188,9 @@ export default function TaskForm({
   // Filter contacts based on task-level company flags (or project flags as fallback)
   const { employees: filteredEmployees, vendors: filteredVendors } = useMemo(() => {
     // Use task-level company selection if any are set
-    const hasTaskFlags = taskIsUp || taskIsBp || taskIsUpfit;
+    const hasTaskFlags = taskIsUp || taskIsBp || taskIsUpfit || taskIsBpas;
     const companyContext = hasTaskFlags
-      ? { is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit }
+      ? { is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit, is_bpas: taskIsBpas }
       : taskIsPersonal
         ? null // Personal = no company filtering, but limited to user
         : projects.find(p => p.id === projectId) || null;
@@ -238,6 +243,7 @@ export default function TaskForm({
           is_up: newProjectVisibility === "shared" ? newProjectIsUp : false,
           is_bp: newProjectVisibility === "shared" ? newProjectIsBp : false,
           is_upfit: newProjectVisibility === "shared" ? newProjectIsUpfit : false,
+          is_bpas: newProjectVisibility === "shared" ? newProjectIsBpas : false,
           one_on_one_owner_id: newProjectVisibility === "one_on_one" ? oneOnOneOwnerId : null,
         }),
       });
@@ -256,12 +262,13 @@ export default function TaskForm({
       // Transfer company flags from the new project form to the task-level selector
       if (newProjectVisibility === "personal") {
         setTaskIsPersonal(true);
-        setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false);
+        setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); setTaskIsBpas(false);
       } else if (newProjectVisibility === "shared") {
         setTaskIsPersonal(false);
         setTaskIsUp(newProjectIsUp);
         setTaskIsBp(newProjectIsBp);
         setTaskIsUpfit(newProjectIsUpfit);
+        setTaskIsBpas(newProjectIsBpas);
       }
       setNewProjectName("");
       setIsAddingProject(false);
@@ -269,6 +276,7 @@ export default function TaskForm({
       setNewProjectIsUp(false);
       setNewProjectIsBp(false);
       setNewProjectIsUpfit(false);
+      setNewProjectIsBpas(false);
       setOneOnOneOwnerId("");
       router.refresh();
     } catch {
@@ -365,7 +373,7 @@ export default function TaskForm({
 
     if (mode === "create") {
       // Validate company selection
-      if (!taskIsUp && !taskIsBp && !taskIsUpfit && !taskIsPersonal) {
+      if (!taskIsUp && !taskIsBp && !taskIsUpfit && !taskIsBpas && !taskIsPersonal) {
         setError("Please select which company this task applies to (UP, BP, UPFIT, or Personal).");
         setIsSaving(false);
         return;
@@ -375,7 +383,7 @@ export default function TaskForm({
       if (!taskIsPersonal && projectId && projectId !== NEW_PROJECT_VALUE) {
         await supabase
           .from("projects")
-          .update({ is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit })
+          .update({ is_up: taskIsUp, is_bp: taskIsBp, is_upfit: taskIsUpfit, is_bpas: taskIsBpas })
           .eq("id", projectId);
       }
 
@@ -554,12 +562,13 @@ export default function TaskForm({
               if (proj) {
                 if (proj.visibility === "personal") {
                   setTaskIsPersonal(true);
-                  setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false);
+                  setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); setTaskIsBpas(false);
                 } else {
                   setTaskIsPersonal(false);
                   setTaskIsUp(!!proj.is_up);
                   setTaskIsBp(!!proj.is_bp);
                   setTaskIsUpfit(!!proj.is_upfit);
+                setTaskIsBpas(!!proj.is_bpas);
                 }
               }
             }}
@@ -646,6 +655,10 @@ export default function TaskForm({
                     <input type="checkbox" checked={newProjectIsUpfit} onChange={(e) => setNewProjectIsUpfit(e.target.checked)} className="h-3.5 w-3.5 rounded border-slate-300" />
                     UPFIT
                   </label>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" checked={newProjectIsBpas} onChange={(e) => setNewProjectIsBpas(e.target.checked)} className="h-3.5 w-3.5 rounded border-slate-300" />
+                    BPAS
+                  </label>
                 </div>
               )}
 
@@ -712,7 +725,7 @@ export default function TaskForm({
                 )}
                 {!hasNoFlags && (
                   <p className="text-xs text-slate-400 mt-0.5 mb-3">
-                    {taskIsPersonal ? "Personal — only you will see this." : `Applies to: ${[taskIsUp && "UP", taskIsBp && "BP", taskIsUpfit && "UPFIT"].filter(Boolean).join(", ")}`}
+                    {taskIsPersonal ? "Personal — only you will see this." : `Applies to: ${[taskIsUp && "UP", taskIsBp && "BP", taskIsUpfit && "UPFIT", taskIsBpas && "BPAS"].filter(Boolean).join(", ")}`}
                   </p>
                 )}
               </>
@@ -742,7 +755,15 @@ export default function TaskForm({
             </button>
             <button
               type="button"
-              onClick={() => { setTaskIsPersonal(!taskIsPersonal); setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); }}
+              onClick={() => { setTaskIsBpas(!taskIsBpas); setTaskIsPersonal(false); }}
+              className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsBpas ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
+              title="Bulletproof Auto Spa"
+            >
+              BPAS
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTaskIsPersonal(!taskIsPersonal); setTaskIsUp(false); setTaskIsBp(false); setTaskIsUpfit(false); setTaskIsBpas(false); setTaskIsBpas(false); }}
               className={`rounded-xl px-6 py-4 text-base font-bold border-2 transition min-h-[56px] ${taskIsPersonal ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 active:bg-slate-50"}`}
             >
               🔒 Personal
@@ -754,7 +775,7 @@ export default function TaskForm({
         {(() => {
           const matching = templates.filter(t => {
             const s = t.company_scope;
-            return (taskIsUp && s.is_up) || (taskIsBp && s.is_bp) || (taskIsUpfit && s.is_upfit);
+            return (taskIsUp && s.is_up) || (taskIsBp && s.is_bp) || (taskIsUpfit && s.is_upfit) || (taskIsBpas && s.is_bpas);
           });
           if (matching.length === 0) return null;
           return (

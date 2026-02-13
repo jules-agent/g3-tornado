@@ -56,18 +56,18 @@ export default async function Home({
   const userOwnerId = effectiveUser.ownerId ?? null;
 
   // Get owner flags for project filtering
-  let userOwnerFlags: { is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_third_party_vendor?: boolean } | null = null;
+  let userOwnerFlags: { is_up_employee?: boolean; is_bp_employee?: boolean; is_upfit_employee?: boolean; is_bpas_employee?: boolean; is_third_party_vendor?: boolean } | null = null;
   if (userOwnerId) {
     const { data: ownerData } = await supabase
       .from("owners")
-      .select("is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor")
+      .select("is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor")
       .eq("id", userOwnerId)
       .maybeSingle();
     userOwnerFlags = ownerData;
   }
 
   const [{ data: projects }, { data: allTasks }, { data: allProfiles }] = await Promise.all([
-    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, visibility, created_by, one_on_one_owner_id").order("name"),
+    supabase.from("projects").select("id, name, is_up, is_bp, is_upfit, is_bpas, visibility, created_by, one_on_one_owner_id").order("name"),
     supabase
       .from("tasks")
       .select(
@@ -139,7 +139,7 @@ export default async function Home({
   }
 
   // Filter projects by visibility and team membership
-  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; visibility?: string; created_by?: string };
+  type ProjectWithFlags = { id: string; name: string; is_up?: boolean; is_bp?: boolean; is_upfit?: boolean; is_bpas?: boolean; visibility?: string; created_by?: string };
   const allProjects = (projects as ProjectWithFlags[] ?? []);
   // Build set of project IDs created by this user (for personal/one-on-one visibility)
   const myProjectIds = new Set(
@@ -173,10 +173,11 @@ export default async function Home({
     }
     // Shared projects: admins see all, others filter by team
     if (isAdmin) return true;
-    if (!p.is_up && !p.is_bp && !p.is_upfit) return true;
+    if (!p.is_up && !p.is_bp && !p.is_upfit && !p.is_bpas) return true;
     if (p.is_up && userOwnerFlags?.is_up_employee) return true;
     if (p.is_bp && userOwnerFlags?.is_bp_employee) return true;
     if (p.is_upfit && userOwnerFlags?.is_upfit_employee) return true;
+    if (p.is_bpas && userOwnerFlags?.is_bpas_employee) return true;
     if (userOwnerFlags?.is_third_party_vendor) return true;
     return false;
   });

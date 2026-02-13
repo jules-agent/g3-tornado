@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const { ownerId, field, value } = await request.json();
   
-  const allowedFields = ["is_up_employee", "is_bp_employee", "is_upfit_employee", "is_third_party_vendor", "is_private"];
+  const allowedFields = ["is_up_employee", "is_bp_employee", "is_upfit_employee", "is_bpas_employee", "is_third_party_vendor", "is_private"];
   if (!ownerId || !allowedFields.includes(field) || typeof value !== "boolean") {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     updateData.is_up_employee = false;
     updateData.is_bp_employee = false;
     updateData.is_upfit_employee = false;
+    updateData.is_bpas_employee = false;
   } else if (value && field !== "is_third_party_vendor" && field !== "is_private") {
     updateData.is_third_party_vendor = false;
   }

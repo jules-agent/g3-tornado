@@ -20,11 +20,12 @@ function validateOwnerFlags(data: {
   is_up_employee?: boolean;
   is_bp_employee?: boolean;
   is_upfit_employee?: boolean;
+  is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
 }): { valid: boolean; error?: string } {
-  const { is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor } = data;
+  const { is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor } = data;
   
-  const isEmployee = is_up_employee || is_bp_employee || is_upfit_employee;
+  const isEmployee = is_up_employee || is_bp_employee || is_upfit_employee || is_bpas_employee;
   
   if (is_third_party_vendor && isEmployee) {
     return {
@@ -54,6 +55,7 @@ export async function GET() {
       is_up_employee,
       is_bp_employee,
       is_upfit_employee,
+      is_bpas_employee,
       is_third_party_vendor,
       created_by,
       created_by_email,
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
     is_up_employee = false,
     is_bp_employee = false,
     is_upfit_employee = false,
+    is_bpas_employee = false,
     is_third_party_vendor = false,
   } = body;
 
@@ -96,6 +99,7 @@ export async function POST(request: Request) {
     is_up_employee,
     is_bp_employee,
     is_upfit_employee,
+    is_bpas_employee,
     is_third_party_vendor,
   });
 
@@ -112,6 +116,7 @@ export async function POST(request: Request) {
       is_up_employee,
       is_bp_employee,
       is_upfit_employee,
+      is_bpas_employee,
       is_third_party_vendor,
       created_by: user.id,
       created_by_email: user.email,
@@ -146,6 +151,7 @@ export async function PUT(request: Request) {
     is_up_employee,
     is_bp_employee,
     is_upfit_employee,
+    is_bpas_employee,
     is_third_party_vendor,
   } = body;
 
@@ -158,6 +164,7 @@ export async function PUT(request: Request) {
     is_up_employee,
     is_bp_employee,
     is_upfit_employee,
+    is_bpas_employee,
     is_third_party_vendor,
   });
 
@@ -176,6 +183,7 @@ export async function PUT(request: Request) {
   if (typeof is_up_employee === "boolean") updateData.is_up_employee = is_up_employee;
   if (typeof is_bp_employee === "boolean") updateData.is_bp_employee = is_bp_employee;
   if (typeof is_upfit_employee === "boolean") updateData.is_upfit_employee = is_upfit_employee;
+  if (typeof is_bpas_employee === "boolean") updateData.is_bpas_employee = is_bpas_employee;
   if (typeof is_third_party_vendor === "boolean") updateData.is_third_party_vendor = is_third_party_vendor;
 
   const { data, error } = await supabase
@@ -197,6 +205,7 @@ export async function PUT(request: Request) {
   if (is_up_employee) classificationInfo.push("UP");
   if (is_bp_employee) classificationInfo.push("BP");
   if (is_upfit_employee) classificationInfo.push("UP.FIT");
+  if (is_bpas_employee) classificationInfo.push("BPAS");
   if (is_third_party_vendor) classificationInfo.push("3rd Party Vendor");
 
   await supabase.from("activity_log").insert({
@@ -232,7 +241,7 @@ export async function DELETE(request: Request) {
   // Get owner details for logging
   const { data: owner } = await supabase
     .from("owners")
-    .select("name, is_up_employee, is_bp_employee, is_upfit_employee, is_third_party_vendor")
+    .select("name, is_up_employee, is_bp_employee, is_upfit_employee, is_bpas_employee, is_third_party_vendor")
     .eq("id", id)
     .single();
 
@@ -251,6 +260,7 @@ export async function DELETE(request: Request) {
   if (owner?.is_up_employee) classificationInfo.push("UP");
   if (owner?.is_bp_employee) classificationInfo.push("BP");
   if (owner?.is_upfit_employee) classificationInfo.push("UP.FIT");
+  if (owner?.is_bpas_employee) classificationInfo.push("BPAS");
   if (owner?.is_third_party_vendor) classificationInfo.push("3rd Party Vendor");
 
   await supabase.from("activity_log").insert({

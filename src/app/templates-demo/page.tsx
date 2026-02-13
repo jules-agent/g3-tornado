@@ -44,6 +44,19 @@ const SAMPLE_TEMPLATES = [
     ],
   },
   {
+    id: "detail-service",
+    name: "Detail & PPF Service",
+    company: "BPAS",
+    description: "Full detailing, PPF, or ceramic coating service workflow",
+    gates: [
+      { owner: "Service Advisor", task: "Confirm service scope & quote with client" },
+      { owner: "Detailing Lead", task: "Vehicle intake & wash prep" },
+      { owner: "PPF Tech", task: "Complete PPF/ceramic/tint installation" },
+      { owner: "QC", task: "Final inspection & photos" },
+      { owner: "Service Advisor", task: "Client pickup & follow-up" },
+    ],
+  },
+  {
     id: "vendor-po",
     name: "Vendor PO Follow-up",
     company: "UP",
@@ -62,6 +75,7 @@ function CompanyBadge({ company }: { company: string }) {
     UP: "bg-blue-100 text-blue-700 border-blue-200",
     BP: "bg-purple-100 text-purple-700 border-purple-200",
     UPFIT: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    BPAS: "bg-violet-100 text-violet-700 border-violet-200",
   };
   return (
     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors[company] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
@@ -285,6 +299,7 @@ export default function TemplatesDemo() {
                   <span className="rounded-xl px-5 py-3 text-sm font-bold border-2 bg-slate-900 text-white border-slate-900 shadow-md">UP</span>
                   <span className="rounded-xl px-5 py-3 text-sm font-bold border-2 bg-white text-slate-500 border-slate-200">BP</span>
                   <span className="rounded-xl px-5 py-3 text-sm font-bold border-2 bg-white text-slate-500 border-slate-200">UPFIT</span>
+                  <span className="rounded-xl px-5 py-3 text-sm font-bold border-2 bg-white text-slate-500 border-slate-200" title="Bulletproof Auto Spa">BPAS</span>
                   <span className="rounded-xl px-5 py-3 text-sm font-bold border-2 bg-white text-slate-500 border-slate-200">🔒 Personal</span>
                 </div>
               </div>
