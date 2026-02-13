@@ -1,19 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-
-async function checkAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { isAdmin: false, user: null };
-  
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  
-  const isAdmin = profile?.role === "admin" || user.email === "ben@unpluggedperformance.com";
-  return { isAdmin, user };
-}
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 // Validate owner flags - third party vendor and employee flags are mutually exclusive
 function validateOwnerFlags(data: {
@@ -71,12 +58,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { isAdmin, user } = await checkAdmin(supabase);
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
 
-  if (!isAdmin || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const supabase = await createClient();
+  const user = auth.user;
 
   const body = await request.json();
   const { 
@@ -135,12 +121,11 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const supabase = await createClient();
-  const { isAdmin, user } = await checkAdmin(supabase);
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
 
-  if (!isAdmin || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const supabase = await createClient();
+  const user = auth.user;
 
   const body = await request.json();
   const { 
@@ -226,12 +211,11 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
-  const { isAdmin, user } = await checkAdmin(supabase);
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
 
-  if (!isAdmin || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const supabase = await createClient();
+  const user = auth.user;
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 export async function POST(req: NextRequest) {
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
 
-  // Check admin
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (profile?.role !== "admin") return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  const supabase = await createServerClient();
+  const user = auth.user;
 
   const { userId, action } = await req.json();
   if (!userId || !["pause", "void", "activate"].includes(action)) {

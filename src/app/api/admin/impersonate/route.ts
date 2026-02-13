@@ -1,26 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 // Start impersonation session
 export async function POST(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   const supabase = await createClient();
-  
-  // Check if user is admin
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const user = auth.user;
 
   const { targetUserId } = await request.json();
   

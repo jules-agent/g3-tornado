@@ -1,17 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 export async function POST(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   const supabase = await createClient();
-
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user?.email !== "ben@unpluggedperformance.com") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const { userId, role } = await request.json();
 

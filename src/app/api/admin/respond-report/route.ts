@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 export async function POST(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   try {
     const body = await request.json();
     const { reportId, reportDescription, reporterEmail, response } = body;
@@ -10,7 +14,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Verify admin
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!

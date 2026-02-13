@@ -1,26 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 export async function POST(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   const supabase = await createClient();
-
-  // Check if requester is admin
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
-
-  // Check admin role
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (adminProfile?.role !== "admin" && user.email !== "ben@unpluggedperformance.com") {
-    return NextResponse.json({ error: "Unauthorized - admin only" }, { status: 403 });
-  }
 
   const { userId, action } = await request.json();
 

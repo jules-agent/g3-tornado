@@ -1,17 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 // CSV data from Google Sheets - parsed at build time
 // This endpoint wipes existing data and imports fresh from the sheet
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
 
-  // Check auth - must be admin
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== "ben@unpluggedperformance.com") {
-    return NextResponse.json({ error: "Unauthorized - admin only" }, { status: 401 });
-  }
+  const supabase = await createClient();
 
   try {
     const { csvData, confirm } = await request.json();

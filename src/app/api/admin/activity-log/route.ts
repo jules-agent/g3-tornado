@@ -1,25 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/app/api/gigatron/_helpers";
 
 // Get activity log
 export async function GET(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin access
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
 
   const url = new URL(request.url);
   const entityType = url.searchParams.get("type"); // Filter by entity type
@@ -59,23 +47,11 @@ export async function GET(request: Request) {
 
 // Delete entity and log the deletion
 export async function DELETE(request: Request) {
+  const auth = await requireAuth(true);
+  if ("error" in auth) return auth.error;
+
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin access
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const user = auth.user;
 
   const { entityType, entityId, entityName } = await request.json();
 
