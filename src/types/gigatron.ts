@@ -282,3 +282,28 @@ export interface SalesMonthly {
   data: SalesMonthlyRow[];
   months: number;
 }
+
+// --- CEO Dashboard ---
+
+export interface CeoFinancial {
+  accounts_receivable: { open_invoices: number; total_ar: number };
+  payments: { this_month: number; last_month: number };
+  gross_profit: { revenue: number; cost: number; gross_profit: number };
+  payment_trend: Array<{ month: string; collected: number }>;
+}
+
+export interface CeoOperations {
+  pipeline: Array<{ status: string; count: number; value: number }>;
+  hot_orders: { count: number; value: number };
+  order_paths: Array<{ path: string; count: number; value: number }>;
+  fulfillment: { total: number; completed: number; pending: number };
+  vendors: { active_vendors: number; open_pos: number };
+}
+
+export interface CeoTeam {
+  sales_leaderboard: Array<{ rep: string; orders: number; revenue: number }>;
+  departments: Array<{ dept: string; count: number }>;
+  staff_count: number;
+  new_customers: { this_month: number; last_month: number };
+  total_customers: number;
+}

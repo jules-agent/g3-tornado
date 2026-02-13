@@ -29,6 +29,9 @@ import type {
   PaginationParams,
   SalesSummary,
   SalesMonthly,
+  CeoFinancial,
+  CeoOperations,
+  CeoTeam,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -184,4 +187,20 @@ export async function getSalesSummary(): Promise<SalesSummary> {
 
 export async function getSalesMonthly(months?: number): Promise<SalesMonthly> {
   return fetchGigatron<SalesMonthly>("/sales/monthly", months ? { months } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// CEO Dashboard API (3 endpoints)
+// ---------------------------------------------------------------------------
+
+export async function getCeoFinancial(): Promise<CeoFinancial> {
+  return fetchGigatron<CeoFinancial>("/ceo/financial");
+}
+
+export async function getCeoOperations(): Promise<CeoOperations> {
+  return fetchGigatron<CeoOperations>("/ceo/operations");
+}
+
+export async function getCeoTeam(): Promise<CeoTeam> {
+  return fetchGigatron<CeoTeam>("/ceo/team");
 }

@@ -1,6 +1,9 @@
 "use client";
 
 import { SalesKPIs } from "./kpi/SalesKPIs";
+import { FinancialKPIs } from "./kpi/FinancialKPIs";
+import { OperationsKPIs } from "./kpi/OperationsKPIs";
+import { TeamKPIs } from "./kpi/TeamKPIs";
 import { InventoryKPIs } from "./kpi/InventoryKPIs";
 import { PartsKPIs } from "./kpi/PartsKPIs";
 import { VendorKPIs } from "./kpi/VendorKPIs";
@@ -20,9 +23,15 @@ export function HealthDashboard() {
         </p>
       </div>
 
-      {/* Dashboard Sections — Sales first */}
+      {/* Dashboard Sections — CEO priority order */}
       <div className="space-y-10">
         <SalesKPIs />
+        <div className="border-t border-slate-800" />
+        <FinancialKPIs />
+        <div className="border-t border-slate-800" />
+        <OperationsKPIs />
+        <div className="border-t border-slate-800" />
+        <TeamKPIs />
         <div className="border-t border-slate-800" />
         <InventoryKPIs />
         <div className="border-t border-slate-800" />

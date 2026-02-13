@@ -26,6 +26,9 @@ import type {
   CustomersFilters,
   SalesSummary,
   SalesMonthly,
+  CeoFinancial,
+  CeoOperations,
+  CeoTeam,
 } from "@/types/gigatron";
 
 // ---------------------------------------------------------------------------
@@ -218,4 +221,20 @@ export function useSalesMonthly(months?: number, opts?: SWRConfiguration) {
     fetcher,
     { ...defaultOpts, ...opts }
   );
+}
+
+// ---------------------------------------------------------------------------
+// CEO Dashboard hooks (admin only)
+// ---------------------------------------------------------------------------
+
+export function useCeoFinancial(opts?: SWRConfiguration) {
+  return useSWR<CeoFinancial>("/api/gigatron/ceo/financial", fetcher, { ...defaultOpts, ...opts });
+}
+
+export function useCeoOperations(opts?: SWRConfiguration) {
+  return useSWR<CeoOperations>("/api/gigatron/ceo/operations", fetcher, { ...defaultOpts, ...opts });
+}
+
+export function useCeoTeam(opts?: SWRConfiguration) {
+  return useSWR<CeoTeam>("/api/gigatron/ceo/team", fetcher, { ...defaultOpts, ...opts });
 }
