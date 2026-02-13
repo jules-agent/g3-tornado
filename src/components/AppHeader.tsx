@@ -43,6 +43,18 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(user.role === "admin" || user.email === "ben@unpluggedperformance.com");
 
+  // Listen for custom events from MobileToday (or other components)
+  useEffect(() => {
+    const openFocus = () => setShowFocusMode(true);
+    const openParking = () => setShowParkingLot(true);
+    window.addEventListener("g3:openFocusMode", openFocus);
+    window.addEventListener("g3:openParkingLot", openParking);
+    return () => {
+      window.removeEventListener("g3:openFocusMode", openFocus);
+      window.removeEventListener("g3:openParkingLot", openParking);
+    };
+  }, []);
+
   // Close more menu on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

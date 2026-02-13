@@ -4,6 +4,7 @@ import { getEffectiveUser } from "@/lib/impersonation";
 import { ProjectFilter } from "@/components/ProjectFilter";
 import { SearchBox } from "@/components/SearchBox";
 import { TaskTable } from "@/components/TaskTable";
+import { MobileToday } from "@/components/MobileToday";
 
 type Gate = {
   name: string;
@@ -284,6 +285,26 @@ export default async function Home({
     overdue: visibleTasks.filter((t) => t.isStale).length,
   };
 
+  // Fetch recent notes for mobile view
+  const { data: recentNotesRaw } = await supabase
+    .from("task_notes")
+    .select("id, content, created_at, task_id, tasks (description, task_number), profiles (full_name, email)")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const recentNotes = (recentNotesRaw || []).map((n: Record<string, unknown>) => {
+    const task = n.tasks as { description?: string; task_number?: string } | null;
+    const profile = n.profiles as { full_name?: string | null; email?: string } | null;
+    return {
+      id: n.id as string,
+      content: n.content as string,
+      created_at: n.created_at as string,
+      taskDescription: task?.description || "",
+      taskNumber: task?.task_number || "",
+      authorName: profile?.full_name || profile?.email || "Unknown",
+    };
+  });
+
   // Count shared (one-on-one) tasks
   const sharedCount = visibleTasks.filter(t => t.project_id && oneOnOneProjectIds.has(t.project_id)).length;
 
@@ -297,7 +318,18 @@ export default async function Home({
   ];
 
   return (
-    <div className="space-y-1">
+    <>
+    {/* Mobile: iOS-style Today dashboard */}
+    <div className="md:hidden">
+      <MobileToday
+        userName={effectiveUser.fullName || effectiveUser.email || ""}
+        stats={stats}
+        recentNotes={recentNotes}
+      />
+    </div>
+
+    {/* Desktop: existing task table */}
+    <div className="hidden md:block space-y-1">
       {/* Search and Filters - sticky */}
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 pb-1 space-y-1.5">
         {/* Desktop: Search on its own row */}
@@ -345,5 +377,6 @@ export default async function Home({
       {/* Table with resizable/reorderable columns */}
       <TaskTable tasks={filteredTasks} total={stats.total} allTasks={visibleTasks} currentProject={projectFilter} currentFilter={filter} creatorNames={creatorNames} projectCreators={Object.fromEntries(allProjects.map(p => [p.id, p.created_by || ""]))} />
     </div>
+    </>
   );
 }
