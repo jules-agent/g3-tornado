@@ -112,9 +112,8 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     setSaving(false);
     setEditingNote(null);
     setNoteValue("");
-    setCompletedIds((prev) => new Set([...prev, taskId]));
     
-    // Show restart clock modal
+    // Show cadence modal — card stays until cadence is set
     setPendingNoteTaskId(taskId);
     setPendingNoteCadence(taskCadence);
     setShowRestartClock(true);
@@ -133,16 +132,22 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
       })
       .eq("id", pendingNoteTaskId);
 
+    // NOW the card is complete — remove it and refresh
+    setCompletedIds((prev) => new Set([...prev, pendingNoteTaskId]));
     setShowRestartClock(false);
     setPendingNoteTaskId(null);
     router.refresh();
   }, [pendingNoteTaskId, router]);
 
   const handleRestartClockCancel = useCallback(() => {
+    // Even on cancel, complete the card (they already added note/gate)
+    if (pendingNoteTaskId) {
+      setCompletedIds((prev) => new Set([...prev, pendingNoteTaskId]));
+    }
     setShowRestartClock(false);
     setPendingNoteTaskId(null);
     router.refresh();
-  }, [router]);
+  }, [pendingNoteTaskId, router]);
 
   // Gate management
   const startGateManagement = useCallback(async (taskId: string) => {
@@ -193,6 +198,38 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     setNewGateOwner("");
   }, [newGateName, newGateOwner]);
 
+  // Add gate AND save to DB in one step (for Enter key)
+  const addGateAndSave = useCallback(async () => {
+    if (!managingGates) return;
+    // Build final gates list including any new gate being typed
+    let finalGates = [...editGates];
+    if (newGateName.trim()) {
+      finalGates = [...finalGates, {
+        name: newGateName.trim(),
+        owner_name: newGateOwner.trim(),
+        completed: false,
+      }];
+    }
+    if (finalGates.length === 0) return;
+    
+    setSavingGates(true);
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({ gates: finalGates, updated_at: new Date().toISOString() })
+      .eq("id", managingGates);
+    setSavingGates(false);
+    setNewGateName("");
+    setNewGateOwner("");
+    setEditGates(finalGates);
+    
+    // Transition to note input on same card (don't close focus mode)
+    const taskId = managingGates;
+    setManagingGates(null);
+    setEditingNote(taskId);
+    setNoteValue("");
+  }, [managingGates, editGates, newGateName, newGateOwner]);
+
   const moveGate = useCallback((idx: number, dir: -1 | 1) => {
     const newIdx = idx + dir;
     if (newIdx < 0 || newIdx >= editGates.length) return;
@@ -207,16 +244,32 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
 
   const saveGates = useCallback(async () => {
     if (!managingGates) return;
+    // Include any unsaved new gate being typed
+    let finalGates = [...editGates];
+    if (newGateName.trim()) {
+      finalGates = [...finalGates, {
+        name: newGateName.trim(),
+        owner_name: newGateOwner.trim(),
+        completed: false,
+      }];
+    }
     setSavingGates(true);
     const supabase = createClient();
     await supabase
       .from("tasks")
-      .update({ gates: editGates, updated_at: new Date().toISOString() })
+      .update({ gates: finalGates, updated_at: new Date().toISOString() })
       .eq("id", managingGates);
     setSavingGates(false);
+    setNewGateName("");
+    setNewGateOwner("");
+    setEditGates(finalGates);
+    
+    // Transition to note input on same card (don't close focus mode)
+    const taskId = managingGates;
     setManagingGates(null);
-    router.refresh();
-  }, [managingGates, editGates, router]);
+    setEditingNote(taskId);
+    setNoteValue("");
+  }, [managingGates, editGates, newGateName, newGateOwner]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -328,7 +381,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                             type="text"
                             value={newGateName}
                             onChange={(e) => setNewGateName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && addGateToTask()}
+                            onKeyDown={(e) => e.key === "Enter" && addGateAndSave()}
                             placeholder="New gate..."
                             className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
                           />
@@ -363,32 +416,42 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                         </div>
                       </div>
                     ) : editingNote === task.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={noteValue}
-                          onChange={(e) => setNoteValue(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && addNote(task.id, task.fu_cadence_days)}
-                          placeholder="Add update note..."
-                          className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
-                          autoFocus
-                        />
-                        <SpeechInput
-                          onResult={(spoken) => setNoteValue(prev => prev ? prev + ' ' + spoken : spoken)}
-                          disabled={saving}
-                        />
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Add a note</div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={noteValue}
+                            onChange={(e) => setNoteValue(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addNote(task.id, task.fu_cadence_days)}
+                            placeholder="Add update note..."
+                            className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
+                            autoFocus
+                          />
+                          <SpeechInput
+                            onResult={(spoken) => setNoteValue(prev => prev ? prev + ' ' + spoken : spoken)}
+                            disabled={saving}
+                          />
+                          <button
+                            onClick={() => addNote(task.id, task.fu_cadence_days)}
+                            disabled={saving || !noteValue.trim()}
+                            className="px-2.5 py-1.5 rounded-lg bg-teal-500 text-white text-xs font-medium hover:bg-teal-600 disabled:opacity-50 transition"
+                          >
+                            {saving ? "..." : "✓"}
+                          </button>
+                        </div>
                         <button
-                          onClick={() => addNote(task.id, task.fu_cadence_days)}
-                          disabled={saving || !noteValue.trim()}
-                          className="px-2.5 py-1.5 rounded-lg bg-teal-500 text-white text-xs font-medium hover:bg-teal-600 disabled:opacity-50 transition"
+                          onClick={() => {
+                            // Skip note → go straight to cadence
+                            setEditingNote(null);
+                            setNoteValue("");
+                            setPendingNoteTaskId(task.id);
+                            setPendingNoteCadence(task.fu_cadence_days);
+                            setShowRestartClock(true);
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-600"
                         >
-                          {saving ? "..." : "✓"}
-                        </button>
-                        <button
-                          onClick={() => { setEditingNote(null); setNoteValue(""); }}
-                          className="text-slate-300 hover:text-slate-500 text-xs"
-                        >
-                          ✕
+                          Skip note → set cadence
                         </button>
                       </div>
                     ) : (
