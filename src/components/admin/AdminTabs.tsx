@@ -42,7 +42,6 @@ type Owner = {
   is_upfit_employee?: boolean;
   is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
-  is_personal?: boolean;
   is_private?: boolean;
   private_owner_id?: string | null;
   created_by?: string | null;
@@ -1146,13 +1145,14 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [contactType, setContactType] = useState<'employee' | 'vendor' | 'personal'>('employee');
   const [isUpEmployee, setIsUpEmployee] = useState(false);
   const [isBpEmployee, setIsBpEmployee] = useState(false);
   const [isUpfitEmployee, setIsUpfitEmployee] = useState(false);
   const [isBpasEmployee, setIsBpasEmployee] = useState(false);
-  const [isThirdPartyVendor, setIsThirdPartyVendor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [ownerMenuOpen, setOwnerMenuOpen] = useState<string | null>(null);
   const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
   const [editName, setEditName] = useState("");
@@ -1162,24 +1162,18 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
 
   const resetForm = () => {
     setName(""); setEmail(""); setPhone("");
-    setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); setIsBpasEmployee(false); setIsThirdPartyVendor(false);
+    setContactType('employee');
+    setIsUpEmployee(false); setIsBpEmployee(false); setIsUpfitEmployee(false); setIsBpasEmployee(false);
     setError("");
-  };
-
-  // Vendors CAN have company associations (and must have at least one)
-  const handleVendorChange = (checked: boolean) => {
-    setIsThirdPartyVendor(checked);
-  };
-
-  const handleEmployeeChange = (setter: (v: boolean) => void, checked: boolean) => {
-    setter(checked);
   };
 
   const saveOwner = async () => {
     if (!name.trim()) return;
-    // Vendor must have at least one company
-    if (isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee && !isBpasEmployee) {
-      setError("Vendors must be associated with at least one company (UP, BP, or UPFIT)");
+    const isVendor = contactType === 'vendor';
+    const isPersonal = contactType === 'personal';
+    // Employee/Vendor must have at least one company
+    if (!isPersonal && !isUpEmployee && !isBpEmployee && !isUpfitEmployee && !isBpasEmployee) {
+      setError("Must be associated with at least one company (UP, BP, UPFIT, or BPAS)");
       return;
     }
     setLoading(true); setError("");
@@ -1187,18 +1181,27 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       const res = await fetch("/api/admin/owners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: email || null, phone: phone || null, is_up_employee: isUpEmployee, is_bp_employee: isBpEmployee, is_upfit_employee: isUpfitEmployee, is_bpas_employee: isBpasEmployee, is_third_party_vendor: isThirdPartyVendor }),
+        body: JSON.stringify({
+          name,
+          email: email || null,
+          phone: phone || null,
+          is_up_employee: isPersonal ? false : isUpEmployee,
+          is_bp_employee: isPersonal ? false : isBpEmployee,
+          is_upfit_employee: isPersonal ? false : isUpfitEmployee,
+          is_bpas_employee: isPersonal ? false : isBpasEmployee,
+          is_third_party_vendor: isVendor,
+          is_private: isPersonal ? true : false,
+        }),
       });
       const data = await res.json();
       if (res.ok) { resetForm(); setShowAdd(false); router.refresh(); }
-      else setError(data.error || "Failed to save owner");
-    } catch { setError("Failed to save owner"); }
+      else setError(data.error || "Failed to save contact");
+    } catch { setError("Failed to save contact"); }
     setLoading(false);
   };
 
   const updateOwnerField = async (ownerId: string, field: string, value: string) => {
     try {
-      // Get owner current data for the PUT
       const owner = owners.find(o => o.id === ownerId);
       if (!owner) return;
       const res = await fetch("/api/admin/owners", {
@@ -1239,10 +1242,10 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
   };
 
   const deleteOwner = async (ownerId: string) => {
-    if (!confirm("Delete this owner? They will be removed from all tasks.")) return;
+    if (!confirm("Delete this contact? They will be removed from all tasks.")) return;
     setOwnerMenuOpen(null);
     try { await fetch(`/api/admin/owners?id=${ownerId}`, { method: "DELETE" }); router.refresh(); }
-    catch { console.error("Failed to delete owner"); }
+    catch { console.error("Failed to delete contact"); }
   };
 
   const startEdit = (owner: Owner) => {
@@ -1253,57 +1256,103 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
     setOwnerMenuOpen(null);
   };
 
+  const getOwnerType = (owner: Owner): 'employee' | 'vendor' | 'personal' => {
+    const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee || owner.is_bpas_employee;
+    if (!hasCompany && !owner.is_third_party_vendor) return 'personal';
+    if (owner.is_third_party_vendor) return 'vendor';
+    return 'employee';
+  };
+
+  // Filter owners by search query
+  const filteredOwners = owners.filter((owner) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      owner.name.toLowerCase().includes(q) ||
+      (owner.email && owner.email.toLowerCase().includes(q)) ||
+      (owner.phone && owner.phone.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      {/* Sticky toolbar */}
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 sticky top-0 z-20">
         <h2 className="font-semibold text-slate-900 dark:text-white">Contacts</h2>
-        <button
-          onClick={() => { setShowAdd(!showAdd); resetForm(); }}
-          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
-        >
-          + Add Owner
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search contacts..."
+            className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none w-56"
+          />
+          <button
+            onClick={() => { setShowAdd(!showAdd); resetForm(); }}
+            className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-teal-600 transition"
+          >
+            + Add Contact
+          </button>
+        </div>
       </div>
 
       {showAdd && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Owner Name *</label>
+              <label className="block text-xs text-slate-500 mb-1">Contact Name *</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full max-w-md rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="Full name or company name" />
             </div>
+            {/* Contact Type Toggle */}
             <div>
-              <label className="block text-xs text-slate-500 mb-2">Company Association{isThirdPartyVendor ? " (required for vendors)" : ""}:</label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={isUpEmployee} onChange={(e) => handleEmployeeChange(setIsUpEmployee, e.target.checked)} className="rounded border-slate-300 text-blue-600" />
-                  <span className="text-slate-700 dark:text-slate-300">UP</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={isBpEmployee} onChange={(e) => handleEmployeeChange(setIsBpEmployee, e.target.checked)} className="rounded border-slate-300 text-emerald-600" />
-                  <span className="text-slate-700 dark:text-slate-300">BP</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => handleEmployeeChange(setIsUpfitEmployee, e.target.checked)} className="rounded border-slate-300 text-purple-600" />
-                  <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" checked={isBpasEmployee} onChange={(e) => handleEmployeeChange(setIsBpasEmployee, e.target.checked)} className="rounded border-slate-300 text-violet-600" />
-                  <span className="text-slate-700 dark:text-slate-300">BPAS</span>
-                </label>
+              <label className="block text-xs text-slate-500 mb-2">Contact Type</label>
+              <div className="flex gap-1 bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5 w-fit">
+                {(['employee', 'vendor', 'personal'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setContactType(t)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
+                      contactType === t
+                        ? t === 'employee' ? 'bg-teal-500 text-white shadow'
+                          : t === 'vendor' ? 'bg-slate-600 text-white shadow'
+                          : 'bg-purple-500 text-white shadow'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
               </div>
             </div>
-            <label className="flex items-center gap-1.5 text-sm">
-              <input type="checkbox" checked={isThirdPartyVendor} onChange={(e) => handleVendorChange(e.target.checked)} className="rounded border-slate-300 text-orange-600" />
-              <span className="text-slate-700 dark:text-slate-300">3rd Party Vendor</span>
-            </label>
-            {isThirdPartyVendor && !isUpEmployee && !isBpEmployee && !isUpfitEmployee && (
-              <p className="text-xs text-red-600 dark:text-red-400">⚠️ Vendors must have at least one company association</p>
+            {/* Company checkboxes - only for Employee/Vendor */}
+            {contactType !== 'personal' && (
+              <div>
+                <label className="block text-xs text-slate-500 mb-2">Company Association (required):</label>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" checked={isUpEmployee} onChange={(e) => setIsUpEmployee(e.target.checked)} className="rounded border-slate-300 text-blue-600" />
+                    <span className="text-slate-700 dark:text-slate-300">UP</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" checked={isBpEmployee} onChange={(e) => setIsBpEmployee(e.target.checked)} className="rounded border-slate-300 text-emerald-600" />
+                    <span className="text-slate-700 dark:text-slate-300">BP</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" checked={isUpfitEmployee} onChange={(e) => setIsUpfitEmployee(e.target.checked)} className="rounded border-slate-300 text-purple-600" />
+                    <span className="text-slate-700 dark:text-slate-300">UPFIT</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" checked={isBpasEmployee} onChange={(e) => setIsBpasEmployee(e.target.checked)} className="rounded border-slate-300 text-violet-600" />
+                    <span className="text-slate-700 dark:text-slate-300">BPAS</span>
+                  </label>
+                </div>
+              </div>
             )}
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-xs text-slate-500 mb-1">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="owner@example.com" />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm" placeholder="contact@example.com" />
               </div>
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-xs text-slate-500 mb-1">Phone</label>
@@ -1312,13 +1361,13 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
             </div>
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button onClick={() => saveOwner()} disabled={loading || !name.trim()} className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
-              {loading ? "Saving..." : "Add Owner"}
+              {loading ? "Saving..." : "Add Contact"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Edit Owner Modal */}
+      {/* Edit Contact Modal */}
       {editingOwner && (
         <div className="border-b border-slate-100 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/10 px-4 py-3">
           <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">✏️ Editing: {editingOwner.name}</p>
@@ -1348,14 +1397,10 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
       <div className="overflow-visible">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <tr className="bg-slate-50 dark:bg-slate-700 text-left text-slate-500 dark:text-slate-400 uppercase tracking-wide sticky top-[49px] z-10">
               <th className="px-4 py-2 font-semibold">Name</th>
-              <th className="px-3 py-2 font-semibold text-center w-12">UP</th>
-              <th className="px-3 py-2 font-semibold text-center w-12">BP</th>
-              <th className="px-3 py-2 font-semibold text-center w-16">UPFIT</th>
-              <th className="px-3 py-2 font-semibold text-center w-16">BPAS</th>
-              <th className="px-3 py-2 font-semibold text-center w-16">Vendor</th>
-              <th className="px-3 py-2 font-semibold text-center w-16">Personal</th>
+              <th className="px-3 py-2 font-semibold w-24">Type</th>
+              <th className="px-3 py-2 font-semibold w-40">Companies</th>
               <th className="px-3 py-2 font-semibold text-center w-16">Private</th>
               <th className="px-4 py-2 font-semibold">Email</th>
               <th className="px-4 py-2 font-semibold">Phone</th>
@@ -1364,16 +1409,19 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-            {owners.length === 0 ? (
+            {filteredOwners.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-slate-400">No owners yet.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                  {searchQuery ? "No contacts match your search." : "No contacts yet."}
+                </td>
               </tr>
             ) : (
-              owners.map((owner) => {
-                const isVendor = owner.is_third_party_vendor;
+              filteredOwners.map((owner) => {
+                const ownerType = getOwnerType(owner);
                 const hasCompany = owner.is_up_employee || owner.is_bp_employee || owner.is_upfit_employee || owner.is_bpas_employee;
+                const isVendor = owner.is_third_party_vendor;
                 const vendorWarning = isVendor && !hasCompany;
-                
+
                 return (
                   <tr key={owner.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 ${vendorWarning ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
@@ -1382,11 +1430,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-red-600 dark:text-red-400">⚠️ Vendor needs company:</span>
                           <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                toggleFlag(owner.id, e.target.value as any, true);
-                              }
-                            }}
+                            onChange={(e) => { if (e.target.value) toggleFlag(owner.id, e.target.value, true); }}
                             className="text-[10px] rounded border-red-300 bg-white dark:bg-slate-800 text-slate-900 dark:text-white cursor-pointer focus:ring-red-500"
                             defaultValue=""
                           >
@@ -1399,26 +1443,78 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_up_employee || false} onChange={(e) => toggleFlag(owner.id, "is_up_employee", e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                    {/* Type badge */}
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {(ownerType === 'employee' || (hasCompany && !isVendor)) && (
+                          <span
+                            onClick={() => {
+                              // Toggle: if employee with companies, remove all company flags
+                              if (hasCompany && !isVendor) {
+                                // Don't auto-toggle type for safety
+                              }
+                            }}
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300 cursor-default"
+                          >
+                            Employee
+                          </span>
+                        )}
+                        {isVendor && (
+                          <span
+                            onClick={() => toggleFlag(owner.id, "is_third_party_vendor", false)}
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200 cursor-pointer hover:opacity-75"
+                            title="Click to remove vendor flag"
+                          >
+                            Vendor
+                          </span>
+                        )}
+                        {ownerType === 'personal' && (
+                          <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 cursor-default">
+                            Personal
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_bp_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bp_employee", e.target.checked)} className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                    {/* Company badges */}
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {owner.is_up_employee && (
+                          <span onClick={() => toggleFlag(owner.id, "is_up_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 cursor-pointer hover:opacity-75" title="Click to remove UP">
+                            UP
+                          </span>
+                        )}
+                        {owner.is_bp_employee && (
+                          <span onClick={() => toggleFlag(owner.id, "is_bp_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 cursor-pointer hover:opacity-75" title="Click to remove BP">
+                            BP
+                          </span>
+                        )}
+                        {owner.is_upfit_employee && (
+                          <span onClick={() => toggleFlag(owner.id, "is_upfit_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 cursor-pointer hover:opacity-75" title="Click to remove UPFIT">
+                            UF
+                          </span>
+                        )}
+                        {owner.is_bpas_employee && (
+                          <span onClick={() => toggleFlag(owner.id, "is_bpas_employee", false)} className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 cursor-pointer hover:opacity-75" title="Click to remove BPAS">
+                            BPAS
+                          </span>
+                        )}
+                        {!hasCompany && ownerType !== 'personal' && (
+                          <span className="text-[10px] text-slate-400 italic">None</span>
+                        )}
+                        {ownerType === 'personal' && (
+                          <span className="text-[10px] text-slate-400 italic">—</span>
+                        )}
+                      </div>
                     </td>
+                    {/* Private toggle */}
                     <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_upfit_employee || false} onChange={(e) => toggleFlag(owner.id, "is_upfit_employee", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_bpas_employee || false} onChange={(e) => toggleFlag(owner.id, "is_bpas_employee", e.target.checked)} className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 cursor-pointer" title="Bulletproof Auto Spa" />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_third_party_vendor || false} onChange={(e) => toggleFlag(owner.id, "is_third_party_vendor", e.target.checked)} className="rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer" />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_personal || false} onChange={(e) => toggleFlag(owner.id, "is_personal", e.target.checked)} className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer" />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={owner.is_private || false} onChange={(e) => toggleFlag(owner.id, "is_private", e.target.checked)} className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
+                      <button
+                        onClick={() => toggleFlag(owner.id, "is_private", !owner.is_private)}
+                        className={`text-sm ${owner.is_private ? "text-purple-600 dark:text-purple-400" : "text-slate-300 dark:text-slate-600 hover:text-slate-400"}`}
+                        title={owner.is_private ? "Private (click to make public)" : "Public (click to make private)"}
+                      >
+                        {owner.is_private ? "🔒" : "🔓"}
+                      </button>
                     </td>
                     <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                       <EditableCell value={owner.email || ""} onSave={(v) => updateOwnerField(owner.id, "email", v)} placeholder="Add email" type="email" />
@@ -1428,12 +1524,11 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                     </td>
                     <td className="px-4 py-2">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        (owner.is_personal || owner.is_private) 
-                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" 
+                        owner.is_private
+                          ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
                           : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
                       }`}>
                         {owner.is_private && "🔒 "}
-                        {owner.is_personal && !owner.is_private && "👤 "}
                         {owner.created_by_email ? owner.created_by_email.split("@")[0] : "—"}
                       </span>
                     </td>
@@ -1457,7 +1552,7 @@ function OwnersTab({ owners }: { owners: Owner[] }) {
                             onClick={() => deleteOwner(owner.id)}
                             className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                           >
-                            🗑️ Delete Owner
+                            🗑️ Delete Contact
                           </button>
                         </div>
                       )}
