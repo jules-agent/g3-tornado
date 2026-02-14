@@ -174,8 +174,8 @@ export default function ManageOwnersPage() {
     const validation = validateContactAssociations({
       is_up: newForm.is_up,
       is_bp: newForm.is_bp,
-      is_upfit_employee: newForm.is_upfit,
-      is_bpas_employee: newForm.is_bpas,
+      is_upfit: newForm.is_upfit,
+      is_bpas: newForm.is_bpas,
       is_third_party_vendor: isVendor,
       is_private: newForm.is_private || isPersonal,
       contactType: newContactType,

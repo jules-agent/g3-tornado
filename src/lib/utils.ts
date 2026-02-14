@@ -144,13 +144,19 @@ export function deriveContactType(contact: {
 export function validateContactAssociations(contact: {
   is_up?: boolean;
   is_bp?: boolean;
+  is_upfit?: boolean;
+  is_bpas?: boolean;
+  // Backwards compatibility - accept _employee suffix
   is_upfit_employee?: boolean;
   is_bpas_employee?: boolean;
   is_third_party_vendor?: boolean;
   is_private?: boolean;
   contactType?: 'employee' | 'vendor' | 'personal' | null;
 }): { valid: boolean; error?: string } {
-  const hasCompany = contact.is_up || contact.is_bp || contact.is_upfit_employee || contact.is_bpas_employee;
+  // Accept both naming conventions for backwards compatibility
+  const upfitChecked = contact.is_upfit || contact.is_upfit_employee || false;
+  const bpasChecked = contact.is_bpas || contact.is_bpas_employee || false;
+  const hasCompany = contact.is_up || contact.is_bp || upfitChecked || bpasChecked;
   const isVendor = contact.is_third_party_vendor;
   const contactType = contact.contactType;
 

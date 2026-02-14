@@ -109,8 +109,8 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
     const validation = validateContactAssociations({
       is_up: isUp,
       is_bp: isBp,
-      is_upfit_employee: isUpfit,
-      is_bpas_employee: isBpas,
+      is_upfit: isUpfit,
+      is_bpas: isBpas,
       is_third_party_vendor: isVendorType,
       is_private: isPrivate || isPersonalType,
       contactType: contactType,

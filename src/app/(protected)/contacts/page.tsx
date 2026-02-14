@@ -187,8 +187,8 @@ export default function ContactsPage() {
     const validation = validateContactAssociations({
       is_up: newIsUp,
       is_bp: newIsBp,
-      is_upfit_employee: newIsUpfit,
-      is_bpas_employee: newIsBpas,
+      is_upfit: newIsUpfit,
+      is_bpas: newIsBpas,
       is_third_party_vendor: isVendor,
       is_private: newIsPrivate || isPersonal,
       contactType: newContactType,
@@ -291,8 +291,8 @@ export default function ContactsPage() {
     const validation = validateContactAssociations({
       is_up: editIsUp,
       is_bp: editIsBp,
-      is_upfit_employee: editIsUpfit,
-      is_bpas_employee: editIsBpas,
+      is_upfit: editIsUpfit,
+      is_bpas: editIsBpas,
       is_third_party_vendor: isVendor,
       is_private: editIsPrivate || isPersonal,
       contactType: editContactType,
