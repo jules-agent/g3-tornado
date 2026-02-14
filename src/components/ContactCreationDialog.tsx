@@ -205,13 +205,13 @@ export function ContactCreationDialog({ isOpen, onClose, onContactCreated }: Con
               <input
                 type="text"
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => setName(capitalizeFirst(e.target.value))}
                 placeholder="Enter contact name..."
                 className="flex-1 px-5 py-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[56px]"
                 autoFocus
               />
               <SpeechInput
-                onResult={(spoken) => setName(prev => prev ? prev + ' ' + spoken : spoken)}
+                onResult={(spoken) => setName(prev => prev ? capitalizeFirst(prev + ' ' + spoken) : capitalizeFirst(spoken))}
               />
             </div>
           </div>

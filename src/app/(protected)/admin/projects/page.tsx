@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { capitalizeFirst } from "@/lib/utils";
 
 type Project = {
   id: string;
@@ -139,7 +140,7 @@ export default function ManageProjectsPage() {
         <input
           type="text"
           value={newName}
-          onChange={(e) => setNewName(e.target.value)}
+          onChange={(e) => setNewName(capitalizeFirst(e.target.value))}
           placeholder="Add new project..."
           className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
@@ -170,7 +171,7 @@ export default function ManageProjectsPage() {
                   <input
                     type="text"
                     value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
+                    onChange={(e) => setEditingName(capitalizeFirst(e.target.value))}
                     className="flex-1 px-3 py-1.5 border border-teal-300 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                     autoFocus
                     onKeyDown={(e) => {

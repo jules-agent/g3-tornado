@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { filterContactsByProject, filterProjectsByUser } from "@/lib/utils";
+import { filterContactsByProject, filterProjectsByUser, capitalizeFirst } from "@/lib/utils";
 import SpeechInput from "@/components/SpeechInput";
 
 /** Auto-capitalize first letter of each word as user types */
@@ -635,7 +635,7 @@ export default function TaskForm({
 
               <input
                 value={newProjectName}
-                onChange={(event) => setNewProjectName(event.target.value)}
+                onChange={(event) => setNewProjectName(capitalizeFirst(event.target.value))}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") { event.preventDefault(); void createProject(); }
                   if (event.key === "Escape") { setIsAddingProject(false); setProjectId(""); }
@@ -1023,7 +1023,7 @@ export default function TaskForm({
                 <div className="mt-2 space-y-2">
                   <input
                     value={newProjectName}
-                    onChange={(event) => setNewProjectName(event.target.value)}
+                    onChange={(event) => setNewProjectName(capitalizeFirst(event.target.value))}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") { event.preventDefault(); void createProject(); }
                       if (event.key === "Escape") { setIsAddingProject(false); setProjectId(projects[0]?.id ?? ""); }

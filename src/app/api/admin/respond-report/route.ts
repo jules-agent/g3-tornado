@@ -24,8 +24,25 @@ export async function POST(request: Request) {
     console.log(`[Admin Response] Reporter: ${reporterEmail}`);
     console.log(`[Admin Response] Original: ${reportDescription}`);
 
-    // The response is saved on the bug_report record (done client-side)
-    // This endpoint exists for future webhook/notification integration
+    // Get the original report to find the user who submitted it
+    const { data: originalReport } = await supabaseAdmin
+      .from("bug_reports")
+      .select("reported_by, type")
+      .eq("id", reportId)
+      .single();
+
+    if (originalReport?.reported_by) {
+      // Create a new inbox notification for the user
+      // This creates a separate bug_report entry that acts as an admin message
+      await supabaseAdmin.from("bug_reports").insert({
+        type: "feature_request", // Use feature_request type as a generic message type
+        description: `Admin response to your ${originalReport.type === 'tagline_downvote' ? 'daily motto feedback' : 'feedback'}: ${response}`,
+        status: "reviewing",
+        resolution: null,
+        reported_by: originalReport.reported_by,
+        reported_by_email: reporterEmail,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
