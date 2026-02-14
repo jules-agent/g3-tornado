@@ -224,13 +224,6 @@ export default function InboxPage() {
     fetchReports();
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm("Reject and remove this report?")) return;
-    const supabase = createClient();
-    await supabase.from("bug_reports").delete().eq("id", id);
-    fetchReports();
-  };
-
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [sendingResponse, setSendingResponse] = useState(false);
@@ -371,55 +364,80 @@ export default function InboxPage() {
                                       disabled={sendingResponse || !responseText.trim()}
                                       className="rounded-lg bg-teal-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-40 transition"
                                     >
-                                      {sendingResponse ? "Sending..." : "Send Response"}
+                                      {sendingResponse ? "Sending..." : "✓ Send & Complete"}
                                     </button>
                                     <button
                                       onClick={() => { setRespondingTo(null); setResponseText(""); }}
-                                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                                      className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                                     >
                                       Cancel
                                     </button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {report.type === "tagline_downvote" ? (
+                                <div className="space-y-2">
+                                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Review Actions</div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {report.type === "tagline_downvote" ? (
+                                      <>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const supabase = createClient();
+                                            await supabase.from("bug_reports").update({ status: "fixed", resolution: "Restored to rotation", fixed_at: new Date().toISOString() }).eq("id", report.id);
+                                            markAsRead([report.id]);
+                                            fetchReports();
+                                          }}
+                                          className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-700 px-3 py-1.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                                        >
+                                          🔄 Restore To Rotation
+                                        </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const supabase = createClient();
+                                            await supabase.from("bug_reports").update({ status: "wont_fix", resolution: "Removed from rotation", fixed_at: new Date().toISOString() }).eq("id", report.id);
+                                            markAsRead([report.id]);
+                                            fetchReports();
+                                          }}
+                                          className="rounded-lg bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
+                                        >
+                                          ❌ Remove From Rotation
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleMarkComplete(report.id); }}
+                                          className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                                        >
+                                          ✅ Mark Fixed
+                                        </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const supabase = createClient();
+                                            await supabase.from("bug_reports").update({ status: "wont_fix", resolution: "Will not fix", fixed_at: new Date().toISOString() }).eq("id", report.id);
+                                            markAsRead([report.id]);
+                                            fetchReports();
+                                          }}
+                                          className="rounded-lg bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
+                                        >
+                                          ⏭️ Won't Fix
+                                        </button>
+                                      </>
+                                    )}
                                     <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const supabase = createClient();
-                                        await supabase.from("bug_reports").update({ status: "rejected" }).eq("id", report.id);
-                                        markAsRead([report.id]);
-                                        fetchReports();
-                                      }}
-                                      className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                                      onClick={(e) => { e.stopPropagation(); setRespondingTo(report.id); }}
+                                      className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 px-3 py-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
                                     >
-                                      🔄 Restore To Rotation
+                                      💬 Respond
                                     </button>
-                                  ) : (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleMarkComplete(report.id); }}
-                                      className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
-                                    >
-                                      ✅ Complete
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleReject(report.id); }}
-                                    className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-2.5 py-1 text-[11px] font-semibold text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
-                                  >
-                                    ❌ Reject
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setRespondingTo(report.id); }}
-                                    className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
-                                  >
-                                    💬 Respond
-                                  </button>
+                                  </div>
                                   {!readIds.has(report.id) && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleMarkRead(report.id); }}
-                                      className="rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition"
+                                      className="rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition mt-2"
                                     >
                                       👁 Mark Read
                                     </button>
