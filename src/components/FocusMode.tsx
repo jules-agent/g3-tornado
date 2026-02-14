@@ -202,8 +202,9 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     setFilteredOwners(filtered.map(o => ({ id: o.id, name: o.name })));
   }, [tasks, focusedTasks]);
 
-  const addGateToTask = useCallback(() => {
+  const addGateToTask = useCallback((e?: React.KeyboardEvent) => {
     if (!newGateName.trim()) return;
+    e?.preventDefault(); // Prevent form submission
     setEditGates(prev => [...prev, {
       name: newGateName.trim(),
       owner_name: newGateOwner.trim(),
@@ -211,6 +212,11 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
     }]);
     setNewGateName("");
     setNewGateOwner("");
+    // Focus back on gate name input for quick multi-gate entry
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('input[placeholder="New gate..."]');
+      input?.focus();
+    }, 50);
   }, [newGateName, newGateOwner]);
 
   // Add gate AND save to DB in one step (for Enter key)
@@ -431,7 +437,12 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                             type="text"
                             value={newGateName}
                             onChange={(e) => setNewGateName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && addGateAndSave()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addGateToTask(e);
+                              }
+                            }}
                             placeholder="New gate..."
                             className="flex-1 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
                           />
@@ -444,6 +455,12 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                                 setNewGateOwner(e.target.value);
                               }
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addGateToTask();
+                              }
+                            }}
                             className="w-28 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-teal-400"
                           >
                             <option value="">Who?</option>
@@ -452,7 +469,7 @@ export function FocusMode({ isOpen, onClose, tasks }: { isOpen: boolean; onClose
                             ))}
                             <option value="__add__">+ Add new contact...</option>
                           </select>
-                          <button onClick={addGateToTask} disabled={!newGateName.trim()} className="text-teal-500 hover:text-teal-600 text-xs font-bold disabled:opacity-30">+</button>
+                          <button onClick={() => addGateToTask()} disabled={!newGateName.trim()} className="text-teal-500 hover:text-teal-600 text-xs font-bold disabled:opacity-30">+</button>
                         </div>
                         <div className="flex gap-2 pt-1">
                           <button
