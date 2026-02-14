@@ -221,6 +221,10 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   const [completingGate, setCompletingGate] = useState<{ taskId: string; gateIndex: number; gates: Gate[]; currentCadenceDays: number } | null>(null);
   const [showRestartClock, setShowRestartClock] = useState(false);
   
+  // Note update state (for clock reset after adding note)
+  const [pendingNoteTaskId, setPendingNoteTaskId] = useState<string | null>(null);
+  const [pendingNoteCadence, setPendingNoteCadence] = useState<number>(1);
+  
   // Row actions menu state
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
   const rowMenuRef = useRef<HTMLDivElement>(null);
@@ -706,7 +710,16 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
     setEditingNoteTaskId(null);
     setEditingNoteValue('');
     setSavingNote(false);
-    router.refresh();
+    
+    // Show cadence modal to reset clock
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setPendingNoteTaskId(taskId);
+      setPendingNoteCadence(task.fu_cadence_days);
+      setShowRestartClock(true);
+    } else {
+      router.refresh();
+    }
   };
 
   const handleNoteKeyDown = (e: React.KeyboardEvent, taskId: string) => {
