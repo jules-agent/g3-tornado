@@ -823,26 +823,48 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
   };
 
   const handleRestartClockConfirm = async (newCadenceDays: number) => {
-    if (!completingGate) return;
-    
     const supabase = createClient();
-    await supabase
-      .from("tasks")
-      .update({
-        last_movement_at: new Date().toISOString(),
-        fu_cadence_days: newCadenceDays,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", completingGate.taskId);
     
-    setShowRestartClock(false);
-    setCompletingGate(null);
-    router.refresh();
+    // Handle completing gate scenario
+    if (completingGate) {
+      await supabase
+        .from("tasks")
+        .update({
+          last_movement_at: new Date().toISOString(),
+          fu_cadence_days: newCadenceDays,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", completingGate.taskId);
+      
+      setShowRestartClock(false);
+      setCompletingGate(null);
+      router.refresh();
+      return;
+    }
+    
+    // Handle note update scenario
+    if (pendingNoteTaskId) {
+      await supabase
+        .from("tasks")
+        .update({
+          last_movement_at: new Date().toISOString(),
+          fu_cadence_days: newCadenceDays,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pendingNoteTaskId);
+      
+      setShowRestartClock(false);
+      setPendingNoteTaskId(null);
+      setPendingNoteCadence(1);
+      router.refresh();
+    }
   };
 
   const handleRestartClockCancel = () => {
     setShowRestartClock(false);
     setCompletingGate(null);
+    setPendingNoteTaskId(null);
+    setPendingNoteCadence(1);
     router.refresh();
   };
 
@@ -1606,7 +1628,7 @@ export function TaskTable({ tasks, total, allTasks, currentProject = "all", curr
           isOpen={showRestartClock}
           onConfirm={handleRestartClockConfirm}
           onCancel={handleRestartClockCancel}
-          currentCadenceDays={completingGate.currentCadenceDays}
+          currentCadenceDays={completingGate ? completingGate.currentCadenceDays : pendingNoteCadence}
         />
       )}
 
