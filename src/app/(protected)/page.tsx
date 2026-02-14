@@ -240,8 +240,13 @@ export default async function Home({
         task.status
       ].filter(Boolean).join(' ').toLowerCase();
       
-      // All terms must match (AND logic)
-      return searchTerms.every(term => searchableText.includes(term));
+      // All terms must match (AND logic) with word boundary matching
+      return searchTerms.every(term => {
+        // Escape special regex characters and use word boundaries for exact word matching
+        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp('\\b' + escapedTerm, 'i');
+        return regex.test(searchableText);
+      });
     });
   }
 
