@@ -6,6 +6,7 @@ import AddNoteForm from "@/components/AddNoteForm";
 import TaskActions from "@/components/TaskActions";
 import { DeleteNoteButton } from "@/components/DeleteNoteButton";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { TaskGatesSection } from "@/components/TaskGatesSection";
 
 export default async function TaskDetailPage({
   params,
@@ -42,6 +43,7 @@ export default async function TaskDetailPage({
           task_number,
           project_id,
           close_requested_at,
+          gates,
           projects (id, name),
           task_owners (owner_id, owners (id, name))
         `
@@ -216,6 +218,12 @@ export default async function TaskDetailPage({
               />
             </div>
           </div>
+
+          <TaskGatesSection
+            taskId={task.id}
+            gates={task.gates as { name: string; owner_name: string; task_name?: string; completed: boolean }[] | null}
+            currentCadenceDays={task.fu_cadence_days}
+          />
 
           <CollapsibleSection title="Edit task" defaultOpen={false}>
             <p className="text-sm text-slate-500 mb-4">
